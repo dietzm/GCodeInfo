@@ -79,6 +79,7 @@ public class Model {
 				if(gc.getX() == GCode.UNINITIALIZED && gc.getY()==GCode.UNINITIALIZED && gc.getZ()==GCode.UNINITIALIZED || !ACCELERATION){
 					f=gc.getF(); //no movement no acceleration
 					faccel=gc.getF(); //faccel is the same
+					//TODO: separate acceleration from normal speed, to show difference
 				}else{
 					faccel=gc.getF(); //acceleration
 				}

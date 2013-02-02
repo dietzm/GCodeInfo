@@ -14,7 +14,7 @@ public class GCodeUtil {
 	 * 0.93 printbed position added
 	 * 0.94 Java 1.6 compatible 
 	 * 0.95 Fixed average values (height,temp) , support skeinforge comments , guess diameter, show weight and price
-	 * 0.96 Add change commands
+	 * 0.96 tbd
 	 * 
 	 */
 	public static final String VERSION ="0.96";
@@ -50,27 +50,25 @@ public class GCodeUtil {
 				 * Scale   
 				 */
 
-				//Change speed
-				ArrayList<GCode> gcodes = model.getLayer(7).getGcodes();
-				for (GCode gCode : gcodes) {
-					gCode.changeSpeed(0);
-				}
-				//Change temp
-				for (GCode gCode : gcodes) {
-					if(gCode.getS_Ext() != GCode.UNINITIALIZED){
-						gCode.changeTemp(200f, 65f);
-						//update temps, but always add a temp at the beginning of the layer
-						//TODO: if a temp definitions exists before G1/G2/G3 , do not insert a new one
-					}
-					
-				}
-				int idx = gcodes.get(0).getLineindex();
-				System.out.println(gcodes.get(0)+" "+idx+"  "+model.getGcodes().get(idx-1).getLineindex());
-				model.getGcodes().add(idx,new GCode("M104 S200", 15751) );
-				
-				
-				
-				model.saveModel("testfile.gcode");
+//				//Change speed
+//				ArrayList<GCode> gcodes = model.getLayer(7).getGcodes();
+//				for (GCode gCode : gcodes) {
+//					gCode.changeSpeed(0);
+//				}
+//				//Change temp
+//				for (GCode gCode : gcodes) {
+//					if(gCode.getS_Ext() != GCode.UNINITIALIZED){
+//						gCode.changeTemp(200f, 65f);
+//						//update temps, but always add a temp at the beginning of the layer
+//						//TODO: if a temp definitions exists before G1/G2/G3 , do not insert a new one
+//					}
+//					
+//				}
+//				int idx = gcodes.get(0).getLineindex();
+//				System.out.println(gcodes.get(0)+" "+idx+"  "+model.getGcodes().get(idx-1).getLineindex());
+//				model.getGcodes().add(idx,new GCode("M104 S200", 15751) );
+//				
+//				model.saveModel("testfile.gcode");
 			}
 			if(mode.contains("m")){
 				printModelDetails(model);
