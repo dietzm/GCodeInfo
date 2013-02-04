@@ -2,9 +2,11 @@ package de.dietzm;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.FileReader;
+import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -442,7 +444,12 @@ public class Model {
 		return unit;
 	}
 	public void loadModel()throws IOException{
-		FileReader fread =  new FileReader(filename);
+		FileInputStream fread =  new FileInputStream(filename);
+		loadModel(fread);
+	}
+	
+	public void loadModel(InputStream in)throws IOException{
+		InputStreamReader fread =  new InputStreamReader(in);
 		BufferedReader gcread= new BufferedReader(fread);
 		ArrayList<GCode> codes = getGcodes();
 		
