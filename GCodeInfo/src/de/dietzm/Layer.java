@@ -1,9 +1,11 @@
 package de.dietzm;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.SortedMap;
+import java.util.TreeMap;
+
+import de.dietzm.SpeedEntry.Speedtype;
 
 public class Layer implements Comparable<Layer>{
 	
@@ -29,10 +31,7 @@ public class Layer implements Comparable<Layer>{
 	private boolean isprinted =false;
 
 	private int number;
-
-	private HashMap<Float,Float> SpeedAnalysis = new HashMap<Float,Float>();
-
-	private HashMap<Float,Float> SpeedAnalysisT = new HashMap<Float,Float>();
+	private SortedMap<Float,SpeedEntry> SpeedAnalysisT = new TreeMap<Float,SpeedEntry>();
 	private float time = 0;
 	float traveldistance=0;
 	private String unit = "mm"; //default is mm
@@ -125,22 +124,25 @@ public class Layer implements Comparable<Layer>{
 	 */
 	private void categorizeSpeed(GCode gcode, float sp) {
 		sp = Math.round(sp);
-		//TODO: Introduce a speed object and remember which speeds are used by which layer
-		//Categorize movements by speed, to recognize which movement type is longest.
-		Float distforspeed = SpeedAnalysis.get(sp);
-		if (distforspeed != null){
-			float newdistsp = distforspeed.floatValue()+gcode.getDistance();
-			SpeedAnalysis.put(sp,newdistsp);
-		}else{
-			SpeedAnalysis.put(sp,gcode.getDistance());
-		}
 		//Categorize movements by speed, to recognize which movement type takes longest.
-		Float timeforspeed = SpeedAnalysisT.get(sp);
+		SpeedEntry timeforspeed = SpeedAnalysisT.get(sp);
 		if (timeforspeed != null){
-			float newtimesp = timeforspeed.floatValue()+gcode.getTime();
-			SpeedAnalysisT.put(sp,newtimesp);
+			timeforspeed.addTime(gcode.getTime());
+			timeforspeed.addDistance(gcode.getDistance());
+			if(gcode.isExtruding()){
+				timeforspeed.setPrint(Speedtype.PRINT);
+			}else{
+				timeforspeed.setPrint(Speedtype.TRAVEL);
+			}
 		}else{
-			SpeedAnalysisT.put(sp,gcode.getTime());
+			SpeedEntry sped = new SpeedEntry(sp,gcode.getTime(),number);
+			sped.addDistance(gcode.getDistance());
+			if(gcode.isExtruding()){
+				sped.setPrint(Speedtype.PRINT);
+			}else{
+				sped.setPrint(Speedtype.TRAVEL);
+			}
+			SpeedAnalysisT.put(sp, sped);
 		}
 	}
 	@Override
@@ -212,17 +214,13 @@ public class Layer implements Comparable<Layer>{
 		
 	}
 	
-	public HashMap<Float, Float> getSpeedAnalysis() {
-		return SpeedAnalysis;
-	}
+//	public SortedMap<Float, Float> getSpeedAnalysis() {
+//		return SpeedAnalysis;
+//	}
 
-
-	
-	public HashMap<Float, Float> getSpeedAnalysisT() {
+	public SortedMap<Float, SpeedEntry> getSpeedAnalysisT() {
 		return SpeedAnalysisT;
 	}
-
-
 
 	public float getTime() {
 		
@@ -281,17 +279,18 @@ public class Layer implements Comparable<Layer>{
 	
 	
 	public String getLayerSpeedReport() {
-		ArrayList<Float> speeds = new ArrayList<Float>(getSpeedAnalysis().keySet());
-		Collections.sort(speeds);
+		ArrayList<Float> speeds = new ArrayList<Float>(SpeedAnalysisT.keySet());
+		//Collections.sort(speeds);
 		//TODO: use stringbuffer instead of string concatenation 
-		String var2="---------- Layer Speed Distribution ------------";
+		String var2="---------- Layer #"+number+" Speed Distribution ------------";
 		for (Iterator<Float> iterator = speeds.iterator(); iterator.hasNext();) {
 			float speedval =  iterator.next();
-			float dist = SpeedAnalysis.get(speedval);
-			float tim = SpeedAnalysisT.get(speedval);
+			SpeedEntry tim = SpeedAnalysisT.get(speedval);
 			var2=var2+"\n\tSpeed "+speedval+
-					" \tDistance:"+GCode.round2digits(dist/(distance/100))+"%"+ 
-					"  \tTime:"+GCode.round2digits(tim)+"sec/"+GCode.round2digits(tim/(time/100))+"%";
+					" \t"+tim.getType()+
+					" \tDistance:"+GCode.round2digits(tim.getDistance()/(distance/100))+"%"+ 
+					"  \tTime:"+GCode.round2digits(tim.getTime())+"sec/"
+					+GCode.round2digits(tim.getTime()/(time/100))+"%";
 			
 		}
 		return var2;
@@ -324,7 +323,7 @@ public class Layer implements Comparable<Layer>{
 		//TODO: use stringbuffer instead of string concatenation 
 		String var = "#"+number+
 				"\t H:"+zPosition+"/"+Layerheight+unit+
-				"\t Tmp:"+GCode.removeTrailingZeros(Float.toString(exttemp))+"/"+GCode.removeTrailingZeros(Float.toString(bedtemp))+"°"+
+				"\t T:"+GCode.removeTrailingZeros(Float.toString(exttemp))+"/"+GCode.removeTrailingZeros(Float.toString(bedtemp))+"°"+
 				"\t Speed: "+getSpeed(Speed.SPEED_PRINT_AVG)+unit+"/s"+
 				"\t Time: "+GCode.formatTimetoHHMMSS(time);
 		return var;

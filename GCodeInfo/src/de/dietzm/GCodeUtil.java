@@ -3,7 +3,6 @@ package de.dietzm;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 
 public class GCodeUtil {
@@ -14,10 +13,11 @@ public class GCodeUtil {
 	 * 0.93 printbed position added
 	 * 0.94 Java 1.6 compatible 
 	 * 0.95 Fixed average values (height,temp) , support skeinforge comments , guess diameter, show weight and price
-	 * 0.96 tbd
+	 * 0.96 use sorted map instead of sorting each time, Nice looking labels for current infos,  pageing for layer details, about/help dialog
+	 * 0.97 Use SpeedEntry, show speedtype travel/print, show layers for speed
 	 * 
 	 */
-	public static final String VERSION ="0.96";
+	public static final String VERSION ="0.97";
 
 	
 	
@@ -166,7 +166,7 @@ public class GCodeUtil {
 		 * Print Layer details
 		 */
 		ArrayList<Layer> layers = new ArrayList<Layer>(model.getLayer().values());
-		Collections.sort(layers);
+		//Collections.sort(layers);
 		
 		for (Iterator<Layer> iterator = layers.iterator(); iterator.hasNext();) {
 			Layer lay = iterator.next();
@@ -197,8 +197,7 @@ public class GCodeUtil {
 		 * Print Layer details
 		 */
 		ArrayList<Layer> layers = new ArrayList<Layer>(model.getLayer().values());
-		Collections.sort(layers);
-		
+		//Collections.sort(layers);		
 		for (Iterator<Layer> iterator = layers.iterator(); iterator.hasNext();) {
 			Layer lay = iterator.next();
 			float layperc =  GCode.round2digits(lay.getTime()/(model.getTime()/100));

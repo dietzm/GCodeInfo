@@ -3,6 +3,7 @@ package de.dietzm.gcodesim;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.FontMetrics;
 import java.awt.Frame;
 import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
@@ -70,6 +71,13 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 	@Override
 	public void drawtext(String text, float x, float y) {
 		g.drawString(text,x,y);
+	}
+	
+	
+	public void drawtext(String text, float x, float y, float w) {
+		int wide = g.getFontMetrics().stringWidth(text);
+		float center = (w-wide)/2;
+		g.drawString(text,x+center,y);
 
 	}
 

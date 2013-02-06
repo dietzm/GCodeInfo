@@ -144,64 +144,52 @@ public class GcodeSimulator extends Frame {
 			public void keyTyped(KeyEvent arg0) {
 				if (arg0.getKeyChar() == '+') {
 					gp.toggleSpeed(true);
-				}
-				if (arg0.getKeyChar() == '-') {
+				} else if (arg0.getKeyChar() == '-') {
 					gp.toggleSpeed(false);
-				}
-				if (arg0.getKeyChar() == 'n') { // next layer
+				} else if (arg0.getKeyChar() == 'n') { // next layer
 					gp.setCmd(Commands.NEXTLAYER);
-				}
-				if (arg0.getKeyChar() == 'b') { // layer before
+				} else if (arg0.getKeyChar() == 'b') { // layer before
 					gp.setCmd(Commands.PREVIOUSLAYER);
-				}
-				
-				if (arg0.getKeyChar() == 'd') { // debug
+				} else if (arg0.getKeyChar() == 'd') { // debug
 					gp.setCmd(Commands.DEBUG);
-				}
-				if (arg0.getKeyChar() == 'm') { // modeldetails
+				} else if (arg0.getKeyChar() == 'm') { // modeldetails
 					gp.toggleModeldetails();
-					updateSize();					
-				}
-				if (arg0.getKeyChar() == 't') { // detailstype
+					updateSize();
+				} else if (arg0.getKeyChar() == 't') { // detailstype
 					gp.toggleType();
-				}
-				
-				if (arg0.getKeyChar() == 'r') { // restart
-					gp.setCmd( Commands.RESTART);
-
-				}
-				if (arg0.getKeyChar() == 'i') { // zoom in
+				} else if (arg0.getKeyChar() == 'r') { // restart
+					gp.setCmd(Commands.RESTART);
+				} else if (arg0.getKeyChar() == 'i') { // zoom in
 					if (gp.getZoom() < 6)
-						gp.setZoom(gp.getZoom()+1);
+						gp.setZoom(gp.getZoom() + 1);
 					updateSize();
-					//TODO
-					//	printstroke = new BasicStroke(zoom - 0.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND);
-					//gp.setCmd(Commands.REPAINTLAYERS);
-				}
-				if (arg0.getKeyChar() == 'o') { // zoom out
+					// TODO
+					// printstroke = new BasicStroke(zoom - 0.5f,
+					// BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND);
+					// gp.setCmd(Commands.REPAINTLAYERS);
+				} else if (arg0.getKeyChar() == 'o') { // zoom out
 					if (gp.getZoom() > 1)
-						gp.setZoom((float)gp.getZoom()-1);
+						gp.setZoom((float) gp.getZoom() - 1);
 					updateSize();
-					//TODO
-				//	printstroke = new BasicStroke(zoom - 0.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND);
-//					gp.setCmd(Commands.RESTART);
-				}
-
-				if (arg0.getKeyChar() == 'q') {
+					// TODO
+					// printstroke = new BasicStroke(zoom - 0.5f,
+					// BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND);
+					// gp.setCmd(Commands.RESTART);
+				} else if (arg0.getKeyChar() == 'q') {
 					System.exit(0);
-				}
-				if (arg0.getKeyChar() == 'f') { //open file
+				} else if (arg0.getKeyChar() == 'f') { // open file
 					gp.setCmd(Commands.OPENFILE);
-
-				}
-				if (arg0.getKeyChar() == 'p') {
+				} else if (arg0.getKeyChar() == 'p') {
 					gp.togglePause();
+				} else {
+					gp.showHelp();
 				}
 
 			}
 
 			private void updateSize() {
-				setSize((int)(GcodePainter.bedsizeX * gp.getZoom() + 40+(gp.isModeldetails()?487:0)), (int)(GcodePainter.bedsizeY * gp.getZoom() + 100));
+				setSize((int) (GcodePainter.bedsizeX * gp.getZoom() + 40 + (gp.isModeldetails() ? 487 : 0)),
+						(int) (GcodePainter.bedsizeY * gp.getZoom() + 100));
 			}
 
 			@Override

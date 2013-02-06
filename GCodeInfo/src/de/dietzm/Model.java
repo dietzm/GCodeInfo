@@ -8,9 +8,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import de.dietzm.Layer.Speed;
 
@@ -18,7 +18,7 @@ public class Model {
 
 	private static double PRICE_PER_G=30/1000d; //Euro per gram 
 	private boolean isguessed=false; 
-	private static boolean ACCELERATION = true;
+	private static boolean ACCELERATION = false;
 	private float avgbedtemp=-1,avgextemp=-1;
 	private float avgLayerHeight = -1;
 	private float avgspeed=0,avgtravelspeed=0,maxprintspeed=0,minprintspeed=Float.MAX_VALUE;
@@ -27,9 +27,9 @@ public class Model {
 	private float extrusion=0;
 	private String filename;
 	private ArrayList<GCode> gcodes = new ArrayList<GCode>();
-	private HashMap<Float, Layer> layer = new HashMap<Float, Layer>();
+	private SortedMap<Float, Layer> layer = new TreeMap<Float, Layer>();
 	private int layercount = 0, notprintedLayers = 0;
-	private HashMap<Float, Float> SpeedAnalysisT = new HashMap<Float, Float>();
+	private SortedMap<Float, SpeedEntry> SpeedAnalysisT = new TreeMap<Float, SpeedEntry>();
 	private float time, distance,traveldistance;
 	private String unit = "mm"; //default is mm
 	public enum Material {PLA,ABS,UNKNOWN};
@@ -229,14 +229,18 @@ public class Model {
 		for (Iterator<Float> iterator = lay.getSpeedAnalysisT().keySet()
 				.iterator(); iterator.hasNext();) {
 			float speedkey = iterator.next();
-			Float timespeedlay = lay.getSpeedAnalysisT().get(speedkey);
-			Float timeforspeed = SpeedAnalysisT.get(speedkey);
-			//TODO: Introduce a speed object and remember which speeds are used by which layer
-			if (timeforspeed != null) {
-				float newtimesp = timeforspeed.floatValue() + timespeedlay;
-				SpeedAnalysisT.put(speedkey, newtimesp);
+			SpeedEntry timespeedlay = lay.getSpeedAnalysisT().get(speedkey);
+			SpeedEntry speedsum = SpeedAnalysisT.get(speedkey);
+			if (speedsum != null) {
+				speedsum.addTime(timespeedlay.getTime());
+				speedsum.addDistance(timespeedlay.getDistance());
+				speedsum.setPrint(timespeedlay.getType());
+				speedsum.addLayers(lay.getNumber());
 			} else {
-				SpeedAnalysisT.put(speedkey, timespeedlay);
+				SpeedEntry sped = new SpeedEntry(speedkey,timespeedlay.getTime(),lay.getNumber());
+				sped.addDistance(timespeedlay.getDistance());
+				sped.setPrint(timespeedlay.getType());
+				SpeedAnalysisT.put(speedkey, sped);
 			}
 		}
 		//Assume that unit is only set once
@@ -389,7 +393,7 @@ public class Model {
 		return gcodes;
 	}
 
-	public HashMap<Float, Layer> getLayer() {
+	public SortedMap<Float, Layer> getLayer() {
 		return layer;
 	}
 	
@@ -432,7 +436,7 @@ public class Model {
 		
 	}
 
-	public HashMap<Float, Float> getSpeedAnalysisT() {
+	public SortedMap<Float, SpeedEntry> getSpeedAnalysisT() {
 		return SpeedAnalysisT;
 	}
 
@@ -514,25 +518,39 @@ public class Model {
 		String var="---------- Model Speed Distribution ------------";
 		//TODO: use stringbuffer instead of string concatenation 
 		ArrayList<Float> speeds = new ArrayList<Float>(getSpeedAnalysisT().keySet());
-		Collections.sort(speeds);
 		for (Iterator<Float> iterator = speeds.iterator(); iterator.hasNext();) {
 			float speedval =  iterator.next();
-			float tim = getSpeedAnalysisT().get(speedval);
+			SpeedEntry tim = getSpeedAnalysisT().get(speedval);
 			var=var+"\n\tSpeed "+speedval+
-					" \tTime:"+GCode.round2digits(tim)+"sec\t\t"+GCode.round2digits(tim/(time/100))+"%";				
+					"  \t"+tim.getType()+
+					"  \tTime:"+GCode.round2digits(tim.getTime())+"sec   \t\t"
+					+GCode.round2digits(tim.getTime()/(time/100))+"%"+
+					"  \t Layers:[";	
+			int max=4;
+			//print the layer nr but only max of 4 (too much of info)
+			for (Iterator<Integer> layrs = tim.getLayers().iterator(); layrs.hasNext();) {
+					var=var+" "+layrs.next();
+					max--;
+					if(max==0){
+						var+=" ...";
+						break;
+					}
+			}
+			var+=" ]";
 		}
+
 		return var;
 	}
 	public String getModelLayerSummaryReport(){
 		ArrayList<Layer> layers = new ArrayList<Layer>(getLayer().values());
-		Collections.sort(layers);
+		//Collections.sort(layers);
 		//TODO: use stringbuffer instead of string concatenation 
 		String var="---------- Printed Layer Summary ------------\n";
 		for (Iterator<Layer> iterator = layers.iterator(); iterator.hasNext();) {
 			Layer lay = iterator.next();
 			if(!lay.isPrinted()) continue;
 			float layperc =  GCode.round2digits(lay.getTime()/(getTime()/100));
-			var=var+"\t"+lay.getLayerSummaryReport() + "\t "+layperc+ "%\n"; 
+			var=var+"\t"+lay.getLayerSummaryReport() + " \t "+layperc+ "%\n"; 
 		}
 		return var;
 	}
