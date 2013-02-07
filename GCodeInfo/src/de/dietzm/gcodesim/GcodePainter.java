@@ -3,7 +3,6 @@ package de.dietzm.gcodesim;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Collections;
 
 import de.dietzm.GCode;
 import de.dietzm.Layer;
@@ -13,6 +12,9 @@ import de.dietzm.Model;
 public class GcodePainter implements Runnable {
 	public enum Commands {RESTART,NEXTLAYER,REPAINTLABEL,DEBUG,EXIT,OPENFILE,NOOP,REPAINTLAYERS,PREVIOUSLAYER,HELP}; 
 	
+	private boolean useAccelTime=true;
+	boolean ffLayer=false; //Fast Forward Layer
+	int fftoGcode=0 , fftoLayer=0; //Fast forward to gcode linenumber # / to layer
 	float zoom = 3.5f;
 	public float getZoom() {
 		return zoom;
@@ -147,7 +149,7 @@ public class GcodePainter implements Runnable {
 		printLabelBox(g2, 0,12, String.valueOf(lay.getNumber()), "Layer #",lay);
 		printLabelBox(g2, 12,20, String.valueOf(lay.getZPosition()), "Z-Position",lay);
 		printLabelBox(g2, 32,22, String.valueOf(lay.getSpeed(Speed.SPEED_PRINT_AVG)), "Avg. Speed",lay);
-		printLabelBox(g2, 54,24, GCode.formatTimetoHHMMSS(lay.getTime()), "Layer Time",lay);
+		printLabelBox(g2, 54,24, GCode.formatTimetoHHMMSS((useAccelTime?lay.getTimeAccel():lay.getTime())), "Layer Time",lay);
 		printLabelBox(g2, 78,13,GCode.removeTrailingZeros(String.valueOf(GCode.round2digits(speedup)))+"x", "Speedup",lay);
 		printLabelBox(g2, 91,9,(lay.getFanspeed()!=0?"On":"-"), "Fan",lay);
 				
@@ -290,10 +292,35 @@ public class GcodePainter implements Runnable {
 		}
 	}
 
-	void printLine(GraphicRenderer g2, float[] lastpos, float[] pos) {
-		g2.drawline((lastpos[0]+Xoffset) * zoom, (bedsizeY * zoom) - ((lastpos[1]+Yoffset) * zoom), (pos[0]+Xoffset) * zoom,
-				(bedsizeY * zoom) - ((pos[1]+Yoffset) * zoom));
-	
+	float printLine(GraphicRenderer g2, float[] lastpos, float[] pos,float time) {
+		float x1 = (lastpos[0]+Xoffset) * zoom;
+		float y1 =  (bedsizeY * zoom) - ((lastpos[1]+Yoffset) * zoom);
+		float x2 = (pos[0]+Xoffset) * zoom;
+		float y2 = (bedsizeY * zoom) - ((pos[1]+Yoffset) * zoom);
+		
+		//Instead of painting one long line and wait , we split the line into segments to have a smoother painting
+		float distx=x2-x1;
+		float disty=y2-y1;
+		int maxdist = (int)Math.max(Math.abs(distx), Math.abs(disty))/5; //paint each 5mm 
+		if( maxdist > 5){
+			float stepx=distx/maxdist;
+			float stepy=disty/maxdist;
+			for (int i = 0; i < maxdist; i++) {
+				g2.drawline(x1+(i*stepx),y1+(i*stepy),x1+((i+1)*stepx),y1+((i+1)*stepy));
+				g2.repaint();
+				try {
+					if(!ffLayer && fftoGcode==0 && fftoLayer==0 ){
+						Thread.sleep((long)(time/maxdist)); //pause not done here
+					}
+				} catch (InterruptedException e) {
+					time=0;
+				}
+			}
+			return 0; //already slept enough , no sleep in main loop
+		}
+		
+		g2.drawline(x1,y1, x2,y2);
+		return time; //not slept, sleep in the main loop
 	}
 
 	@Override
@@ -301,8 +328,7 @@ public class GcodePainter implements Runnable {
 	 * Paint the gcodes to a offline image (offbuf) and trigger repaint
 	 */
 	public void run() {
-		boolean ffLayer=false; //Fast Forward Layer
-		int fftoGcode=0 , fftoLayer=0; //Fast forward to gcode linenumber # / to layer
+
 		while (true) {
 			if (layers != null) {
 				g2.clearrect(0, 0, g2.getWidth(),g2.getHeight());
@@ -321,14 +347,15 @@ public class GcodePainter implements Runnable {
 					// Paint all Gcodes
 					for (GCode gCode : gc) {
 						float[] pos = gCode.getCurrentPosition();
+						float sleeptime = ((useAccelTime?gCode.getTimeAccel():gCode.getTime())* 1000) / activespeedup;
 						if (lastpos != null) {
 							if (gCode.isExtruding()) {
 								g2.setColor(lay.getNumber() % 7);								
-								printLine(g2, lastpos, pos);
+								sleeptime = printLine(g2, lastpos, pos,sleeptime);
 							} else if (PAINTTRAVEL) {
 								g2.setColor(8);
 								g2.setStroke(0);
-								printLine(g2, lastpos, pos);
+								sleeptime = printLine(g2, lastpos, pos,sleeptime);
 								g2.setStroke(1);
 							}
 							if (gCode.getFanspeed()!=0){
@@ -396,7 +423,7 @@ public class GcodePainter implements Runnable {
 								if(fftoGcode==0){
 									fftoGcode=gCode.getLineindex();
 								}
-								System.out.println("Layernum"+fftoGcode);
+								//System.out.println("Layernum"+fftoGcode);
 								break A;
 							default:
 								break;
@@ -405,7 +432,7 @@ public class GcodePainter implements Runnable {
 							
 							if(!ffLayer && fftoGcode==0 && fftoLayer==0 ){
 								g2.repaint();
-								Thread.sleep((int) ((gCode.getTime() * 1000) / activespeedup) + pause);
+								Thread.sleep((int)sleeptime + pause);
 							}else{
 								if(fftoGcode != 0 && fftoGcode == gCode.getLineindex()){
 									fftoGcode=0;
@@ -423,7 +450,6 @@ public class GcodePainter implements Runnable {
 					}//ForGCodes
 	
 				}//ForLayers
-				//g2.clearrect(0, 0, bedsizeX + 10, bedsizeY);
 			}else{ //If layer==null
 				paintLoading(g2);
 				try {

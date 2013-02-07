@@ -33,6 +33,7 @@ public class Layer implements Comparable<Layer>{
 	private int number;
 	private SortedMap<Float,SpeedEntry> SpeedAnalysisT = new TreeMap<Float,SpeedEntry>();
 	private float time = 0;
+	private float timeaccel=0;
 	float traveldistance=0;
 	private String unit = "mm"; //default is mm
 
@@ -52,6 +53,7 @@ public class Layer implements Comparable<Layer>{
 	void addGcodes(GCode gcode) {
 		this.gcodes.add(gcode);
 		time=time+gcode.getTime();
+		timeaccel=timeaccel+gcode.getTimeAccel();
 		distance=distance+gcode.getDistance();
 		if(!gcode.isExtruding()){
 			traveldistance+= gcode.getDistance();
@@ -223,8 +225,15 @@ public class Layer implements Comparable<Layer>{
 	}
 
 	public float getTime() {
-		
 		return time;
+	}
+	
+	/**
+	 * Get time incl linear acceleration
+	 * @return
+	 */
+	public float getTimeAccel() {
+		return timeaccel;
 	}
 
 
@@ -303,6 +312,7 @@ public class Layer implements Comparable<Layer>{
 				"\n LayerHeight: "+Layerheight+unit+
 				"\n Is Printed: "+isPrinted()+
 				"\n Print Time: "+GCode.formatTimetoHHMMSS(time)+
+				"\n Print Time (Accel): "+GCode.formatTimetoHHMMSS(timeaccel)+
 				"\n Distance (All/travel): "+GCode.round2digits(distance)+"/"+GCode.round2digits(traveldistance)+
 				unit+"\n Extrusion: "+GCode.round2digits(extrusion)+
 				unit+"\n Bed Temperatur:"+bedtemp+"°"+

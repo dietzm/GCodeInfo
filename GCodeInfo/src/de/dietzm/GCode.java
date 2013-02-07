@@ -29,6 +29,7 @@ public class GCode {
 	//Dynamic values updated by analyse	
 	private float extrusion;	
 	private float time;
+	private float timeaccel; //track acceleration as extra time (+/-)
 	private float extemp,bedtemp,fanspeed; //remember
 	public float getFanspeed() {
 		return fanspeed;
@@ -485,6 +486,15 @@ public class GCode {
 
 	public void setTime(float time) {
 		this.time = time;
+	}
+	
+	public void setTimeAccel(float time) {
+		this.timeaccel = time;
+	}
+	
+	
+	public float getTimeAccel() {
+		return this.timeaccel;
 	}
 
 	public void setX(float x) {

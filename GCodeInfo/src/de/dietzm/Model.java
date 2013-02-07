@@ -18,7 +18,7 @@ public class Model {
 
 	private static double PRICE_PER_G=30/1000d; //Euro per gram 
 	private boolean isguessed=false; 
-	private static boolean ACCELERATION = false;
+	private static boolean ACCELERATION = true;
 	private float avgbedtemp=-1,avgextemp=-1;
 	private float avgLayerHeight = -1;
 	private float avgspeed=0,avgtravelspeed=0,maxprintspeed=0,minprintspeed=Float.MAX_VALUE;
@@ -30,7 +30,7 @@ public class Model {
 	private SortedMap<Float, Layer> layer = new TreeMap<Float, Layer>();
 	private int layercount = 0, notprintedLayers = 0;
 	private SortedMap<Float, SpeedEntry> SpeedAnalysisT = new TreeMap<Float, SpeedEntry>();
-	private float time, distance,traveldistance;
+	private float time, distance,traveldistance,timeaccel;
 	private String unit = "mm"; //default is mm
 	public enum Material {PLA,ABS,UNKNOWN};
 	
@@ -60,8 +60,8 @@ public class Model {
 		float ypos=0;
 		float zpos=0;
 		float epos=0;
-		float f=1000;
-		float faccel=f;
+		float f_old=1000;
+		float f_new=f_old;
 		float bedtemp=0,exttemp=0;
 	
 		
@@ -76,14 +76,12 @@ public class Model {
 			
 			//Update Speed if specified
 			//TODO Clarify if default speed is the last used speed or not
-			//TODO implement acceleration 
 			if(gc.getF() != GCode.UNINITIALIZED){
 				if(gc.getX() == GCode.UNINITIALIZED && gc.getY()==GCode.UNINITIALIZED && gc.getZ()==GCode.UNINITIALIZED || !ACCELERATION){
-					f=gc.getF(); //no movement no acceleration
-					faccel=gc.getF(); //faccel is the same
-					//TODO: separate acceleration from normal speed, to show difference
+					f_old=gc.getF(); //no movement no acceleration
+					f_new=gc.getF(); //faccel is the same
 				}else{
-					faccel=gc.getF(); //acceleration
+					f_new=gc.getF(); //acceleration
 				}
 			}
 			
@@ -143,8 +141,16 @@ public class Model {
 						epos=gc.getE();
 				 }
 				 
-				 gc.setTime(move / (((f+faccel)/2) / 60));
-				 f=faccel; //acceleraction done. assign new speed
+				 gc.setTime(move / (f_new / 60)); //Set time w/o acceleration
+				 if(f_new >= f_old){
+					 //Assume sprinter _MAX_START_SPEED_UNITS_PER_SECOND {40.0,40.0,....}
+					 gc.setTimeAccel(move / (((Math.min(40*60,f_old)+f_new)/2) / 60)); //set time with linear acceleration
+					 //System.out.println("F"+f_old+"FA"+f_new+"time"+gc.getTime()+"ACCEL: "+(Math.abs(40-f_new)/gc.getTimeAccel()));
+				 }else{
+					 gc.setTimeAccel(move / ((f_old+f_new)/2 / 60)); //set time with linear acceleration
+					 //System.out.println("F"+f_old+"FA"+f_new+"  DEACCEL: "+(Math.abs(f_old-f_new)/gc.getTimeAccel()));
+				 }
+				 f_old=f_new; //acceleration done. assign new speed
 					
 				 //Calculate print size
 				 if(gc.getE() != GCode.UNINITIALIZED && gc.getE() > 0) { 
@@ -176,6 +182,7 @@ public class Model {
 
 	void endLayer(Layer lay) {
 		time += lay.getTime();
+		timeaccel += lay.getTimeAccel();
 		distance += lay.getDistance();
 		traveldistance += lay.getTraveldistance();
 
@@ -511,7 +518,8 @@ public class Model {
 		var+=("Max.Speed(Print):  "+getSpeed(Speed.SPEED_PRINT_MAX)+mm_in+"/s\n");
 		var+=("Min.Speed(Print):  "+getSpeed(Speed.SPEED_PRINT_MIN)+mm_in+"/s\n");
 		var+=("Gcode Lines:     "+getGcodecount()+"\n");
-		var+=("Overall Time:    "+GCode.formatTimetoHHMMSS(time)+ " ("+time+"sec)\n");
+		var+=("Overall Time (w/o Acceleration):   "+GCode.formatTimetoHHMMSS(time)+ " ("+time+"sec)\n");
+		var+=("Overall Time (w/ Acceleration):    "+GCode.formatTimetoHHMMSS(timeaccel)+ " ("+timeaccel+"sec)\n");
 		return var;
 	}
 	public String getModelSpeedReport(){

@@ -34,9 +34,11 @@ public class GcodeSimulator extends Frame {
 	 * 0.69 Fixed average values (height,temp) , support skeinforge comments , guess diameter, show weight and price
 	 * 0.70 Refactored Simulator to abstract AWT implementation (allow other UI implementations like android)
 	 * 0.71 Undisruptive zoom (no restart), nextLayer completes the layer painting (not skips it), previous layer cmd added. Printbed grid.
-	 * 
+	 * 0.80 Nice looking labels for current infos,  pageing for layer details, about/help dialog.
+	 * 		Fixed acceleration (ignore acceleration for speed distribution), use acceleration for paint and layer time. 
+	 * 		Smoother Painting by splitting longer lines into multiple 
 	 */
-	public static final String VERSION = "v0.71";	
+	public static final String VERSION = "v0.80";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 
@@ -208,7 +210,7 @@ public class GcodeSimulator extends Frame {
 
 	@Override
 	public void paint(Graphics g) {
-		g.drawImage(awt.getImage(), 5, 30, this);		
+		g.drawImage(awt.getImage(), 5, 31, this);		
 		super.paint(g);
 	}
 	
