@@ -3,15 +3,11 @@ package de.dietzm;
 
 public class GCode {
 	
-	public enum GCDEF {
+	public static enum GCDEF {
 		G0,G1,G2,G20,G21,G28,G4,G90,G91,G92,M0,M1,M101,M103,M104,M105,M106,M107,M108,M109,M113,M114,M140,M190,M82,M83,M84,UNKNOWN;
 	}
-	
 	public static final float UNINITIALIZED = -99999.99f;
-	
-	private String codeline;
-
-	
+	private String codeline;	
 	//Parsed values, not changed by analyse 
 	private float e=UNINITIALIZED; //Extruder 1
 	private float f=UNINITIALIZED; //Speed
@@ -21,9 +17,8 @@ public class GCode {
 	private float s_ext=UNINITIALIZED;
 	private float s_bed=UNINITIALIZED;
 	private float s_fan=UNINITIALIZED;
-	private String gcode;
+	private GCDEF gcode;
 	private int lineindex;
-	private String params;
 	private String comment;
 	
 	//Dynamic values updated by analyse	
@@ -31,6 +26,10 @@ public class GCode {
 	private float time;
 	private float timeaccel; //track acceleration as extra time (+/-)
 	private float extemp,bedtemp,fanspeed; //remember
+	private String unit = null; //default is mm
+	float[] currentPosition;
+	float distance;
+	
 	public float getFanspeed() {
 		return fanspeed;
 	}
@@ -52,9 +51,7 @@ public class GCode {
 		return bedtemp;
 	}
 
-	private String unit = null; //default is mm
-	float[] currentPosition;
-	float distance;
+
 	
 	public String getCodeline() {
 		return codeline;
@@ -88,9 +85,7 @@ public class GCode {
 	public float getS_Bed() {
 		return s_bed;
 	}
-	public String getCode() {
-		return codeline;
-	}
+
 	public String getComment() {
 		return comment;
 	}
@@ -121,7 +116,7 @@ public class GCode {
 		return s_fan;
 	}
 
-	public String getGcode() {
+	public GCDEF getGcode() {
 		return gcode;
 	}
 
@@ -129,9 +124,7 @@ public class GCode {
 		return lineindex;
 	}
 
-	public String getParams() {
-		return params;
-	}
+
 
 
 	
@@ -236,6 +229,22 @@ public class GCode {
 	public boolean isExtruding(){
 		return ( e != UNINITIALIZED && e > 0 );
 	}
+	
+	/**
+	 * Is printable, returns false for comments only and unknown GCODES
+	 * @return
+	 */
+	public boolean isPrintable(){
+		 return gcode != GCDEF.UNKNOWN; 
+	}
+	
+	/**
+	 * Is printable, returns false for comments only and unknown GCODES
+	 * @return
+	 */
+	public boolean isComment(){
+		 return gcode == GCDEF.UNKNOWN && getComment() != null; 
+	}
 
 	/**
 	 * Parse the GCode and initialize variables
@@ -243,6 +252,8 @@ public class GCode {
 	 */
 	public boolean parseGcode() {
 		String codelinevar=codeline;
+		gcode=GCDEF.UNKNOWN;
+		//codeline=null;
 		int idx;
 		if((idx = codelinevar.indexOf(';')) != -1){
 			//is a comment
@@ -262,16 +273,15 @@ public class GCode {
 		
 		
 		String[] segments = codelinevar.split(" ");
-		gcode=segments[0].trim();
+		String gcodestr=segments[0].trim();
 		
-		GCDEF GCEnum;
 		try {
-			GCEnum = GCDEF.valueOf(gcode);
+			gcode = GCDEF.valueOf(gcodestr);
 		} catch (Exception e1) {
-			GCEnum=GCDEF.UNKNOWN;
+			
 		}
 				
-		switch (GCEnum) {
+		switch (gcode) {
 		case G0:
 		case G1:
 			//System.out.println("G1 ->"+code);
@@ -409,7 +419,7 @@ public class GCode {
 			System.err.println("Deprecated Gcode M108");
 			return false;
 		default:
-			System.err.println("Unknown Gcode "+lineindex+": "+ codeline.substring(0,Math.min(15,codeline.length()))+"....");
+			System.err.println("Unknown Gcode "+lineindex+": "+ codelinevar.substring(0,Math.min(15,codelinevar.length()))+"....");
 			return false;
 		}
 		//update used values
@@ -435,9 +445,7 @@ public class GCode {
 		this.bedtemp = bedtemp;
 	}
 
-	public void setCode(String code) {
-		this.codeline = code;
-	}
+
 
 	public void setCurrentPosition(float[] currentPosition) {
 		this.currentPosition = currentPosition;
@@ -472,7 +480,7 @@ public class GCode {
 	
 	
 
-	public void setGcode(String gcode) {
+	public void setGcode(GCDEF gcode) {
 		this.gcode = gcode;
 	}
 
@@ -480,9 +488,7 @@ public class GCode {
 		this.lineindex = lineindex;
 	}
 	
-	public void setParams(String params) {
-		this.params = params;
-	}
+
 
 	public void setTime(float time) {
 		this.time = time;

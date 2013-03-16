@@ -6,11 +6,16 @@ import java.awt.Frame;
 import java.awt.Graphics;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStream;
 
 import de.dietzm.gcodesim.GcodePainter.Commands;
 
@@ -37,8 +42,10 @@ public class GcodeSimulator extends Frame {
 	 * 0.80 Nice looking labels for current infos,  pageing for layer details, about/help dialog.
 	 * 		Fixed acceleration (ignore acceleration for speed distribution), use acceleration for paint and layer time. 
 	 * 		Smoother Painting by splitting longer lines into multiple 
+	 * 0.81 Add mouse listerners , Add default gcode , percent of loading
+	 * 0.90 Add Front and Side View, Add experimental printing support (/dev/ttyUSB0 , s-shortcut) 
 	 */
-	public static final String VERSION = "v0.80";	
+	public static final String VERSION = "v0.90";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 
@@ -48,18 +55,14 @@ public class GcodeSimulator extends Frame {
 		setBackground(Color.black);
 	}
 	
-	public void init(String filename) throws IOException{
+	public void init(String filename,InputStream in) throws IOException{
 		awt = new AWTGraphicRenderer(GcodePainter.bedsizeX, GcodePainter.bedsizeY,this);
 		gp = new GcodePainter(awt);
-		setSize((int)(GcodePainter.bedsizeX * gp.getZoom() + 40),(int)(GcodePainter.bedsizeY * gp.getZoom() + 100));
-		setVisible(true);		
-		gp.start(filename,null);
-		
+		updateSize();
+		setVisible(true);	
 		setBackground(Color.black);
-		
-		
 		addListeners();
-		
+		gp.start(filename,in);				
 	}
 
 	public GcodeSimulator getFrame(){
@@ -75,12 +78,14 @@ public class GcodeSimulator extends Frame {
 	public static void main(String[] args) throws Exception {
 		GcodeSimulator gs = new GcodeSimulator();
 		String filename;
+		InputStream in = null;
 		if (args.length < 1 || !new File(args[0]).exists()) {
-			filename = openFileBrowser(gs);
+			filename = "/gcodesim.gcode";
+			in= gs.getClass().getResourceAsStream(filename);			
 		} else {
 			filename = args[0];
 		}
-		gs.init(filename);
+		gs.init(filename,in);
 		gs.requestFocus();
 
 	}
@@ -125,14 +130,85 @@ public class GcodeSimulator extends Frame {
 		fd.setVisible(true);
 		// Choosing a "recently used" file will fail because of redhat
 		// bugzilla 881425 / jdk 7165729
-		if (fd.getFile() == null)
-			System.exit(0); // cancel pressed
+		if (fd.getFile() == null)	return null;
 		filename = fd.getDirectory() + fd.getFile();
 		
 		return filename;
 	}
 
+	private void updateSize() {
+		int[] sz = gp.getSize();
+		setSize(sz[0],sz[1]);
+	}
+	
 	private void addListeners() {
+		
+		addMouseWheelListener(new MouseWheelListener() {
+			
+			@Override
+			public void mouseWheelMoved(MouseWheelEvent arg0) {
+				int mwrot=arg0.getWheelRotation();
+				
+				if( arg0.isControlDown() || arg0.isAltDown() ) {
+				//Zoom
+					if (gp.getZoom() > 1 && mwrot < 0)	gp.setZoom((float) gp.getZoom() + mwrot/10f);
+					if (gp.getZoom() < 8 && mwrot > 0)	gp.setZoom(gp.getZoom() + mwrot/10f);
+					updateSize();
+				}else{
+					//Speedup
+					if( mwrot > 0){
+						gp.toggleSpeed(false);
+					}else{
+						gp.toggleSpeed(true);
+					}
+					
+				}
+			}
+		});
+		
+		addMouseListener(new MouseListener() {
+			
+			@Override
+			public void mouseReleased(MouseEvent arg0) {
+			}
+			
+			@Override
+			public void mousePressed(MouseEvent arg0) {
+			}
+			
+			@Override
+			public void mouseExited(MouseEvent arg0) {
+			}
+			
+			@Override
+			public void mouseEntered(MouseEvent arg0) {
+			}
+			
+			@Override
+			public void mouseClicked(MouseEvent arg0) {
+				if(arg0.getButton() == MouseEvent.BUTTON3){
+					if(arg0.isAltDown() || arg0.isControlDown()){
+						gp.setCmd(Commands.OPENFILE);
+					}else{
+						gp.toggleModeldetails();
+						updateSize();
+					}
+				}else if(arg0.getButton() == MouseEvent.BUTTON2){
+						gp.showHelp();
+				}else{
+					if(arg0.getPoint().x > GcodePainter.bedsizeX * gp.getZoom()+gp.gap ){
+						gp.toggleType();
+					}else{
+						if(arg0.isAltDown() || arg0.isControlDown()){
+							gp.setCmd(Commands.PREVIOUSLAYER);
+						}else {
+							gp.setCmd(Commands.NEXTLAYER);
+						}
+					}
+				}
+				
+			}
+		});
 		// WindowListener
 		addWindowListener(new WindowAdapter() {
 			@Override
@@ -162,8 +238,8 @@ public class GcodeSimulator extends Frame {
 				} else if (arg0.getKeyChar() == 'r') { // restart
 					gp.setCmd(Commands.RESTART);
 				} else if (arg0.getKeyChar() == 'i') { // zoom in
-					if (gp.getZoom() < 6)
-						gp.setZoom(gp.getZoom() + 1);
+					if (gp.getZoom() < 8)
+						gp.setZoom(gp.getZoom() + 0.5f);
 					updateSize();
 					// TODO
 					// printstroke = new BasicStroke(zoom - 0.5f,
@@ -171,7 +247,7 @@ public class GcodeSimulator extends Frame {
 					// gp.setCmd(Commands.REPAINTLAYERS);
 				} else if (arg0.getKeyChar() == 'o') { // zoom out
 					if (gp.getZoom() > 1)
-						gp.setZoom((float) gp.getZoom() - 1);
+						gp.setZoom((float) gp.getZoom() - 0.5f);
 					updateSize();
 					// TODO
 					// printstroke = new BasicStroke(zoom - 0.5f,
@@ -183,16 +259,15 @@ public class GcodeSimulator extends Frame {
 					gp.setCmd(Commands.OPENFILE);
 				} else if (arg0.getKeyChar() == 'p') {
 					gp.togglePause();
+				} else if (arg0.getKeyChar() == 's') {
+					gp.togglePrint();
 				} else {
 					gp.showHelp();
 				}
 
 			}
 
-			private void updateSize() {
-				setSize((int) (GcodePainter.bedsizeX * gp.getZoom() + 40 + (gp.isModeldetails() ? 487 : 0)),
-						(int) (GcodePainter.bedsizeY * gp.getZoom() + 100));
-			}
+		
 
 			@Override
 			public void keyReleased(KeyEvent arg0) {
@@ -210,7 +285,7 @@ public class GcodeSimulator extends Frame {
 
 	@Override
 	public void paint(Graphics g) {
-		g.drawImage(awt.getImage(), 5, 31, this);		
+		g.drawImage(awt.getImage(), 4, 28, this);		
 		super.paint(g);
 	}
 	

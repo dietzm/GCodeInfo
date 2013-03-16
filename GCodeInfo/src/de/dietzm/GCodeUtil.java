@@ -126,13 +126,8 @@ public class GCodeUtil {
 		System.out.println("****************************** Embedded Comments **************************");
 		System.out.println("***************************************************************************");
 		
-		ArrayList<GCode> codes = model.getGcodes();
-		for (GCode gCode : codes) {
-			//Ignore comments behind gcodes
-			if (gCode.getGcode() == null && gCode.getComment() != null){
-				System.out.println(gCode.getComment());
-			}
-		}
+		System.out.println(model.getModelComments());
+		
 	}
 
 	private static void printModelDetails(Model model) {

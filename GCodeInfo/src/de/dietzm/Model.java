@@ -2,6 +2,7 @@ package de.dietzm;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -12,6 +13,7 @@ import java.util.Iterator;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+import de.dietzm.GCode.GCDEF;
 import de.dietzm.Layer.Speed;
 
 public class Model {
@@ -33,9 +35,16 @@ public class Model {
 	private float time, distance,traveldistance,timeaccel;
 	private String unit = "mm"; //default is mm
 	public enum Material {PLA,ABS,UNKNOWN};
+	private long filesize=0, readbytes=0;
 	
 
 
+	public long getFilesize() {
+		return filesize;
+	}
+	public long getReadbytes() {
+		return readbytes;
+	}
 	public Model(String file) throws IOException {
 		this.filename = file;
 		//read env variables
@@ -67,7 +76,7 @@ public class Model {
 		
 		for (GCode gc : getGcodes()) {
 			//Initialize Axis  
-			if("G92".equals(gc.getGcode()) || "G28".equals(gc.getGcode())){
+			if(gc.getGcode() == GCDEF.G28 || gc.getGcode() == GCDEF.G92){
 					if(gc.getE() != GCode.UNINITIALIZED) epos=gc.getE();
 					if(gc.getX() != GCode.UNINITIALIZED) xpos=gc.getX();
 					if(gc.getY() != GCode.UNINITIALIZED) ypos=gc.getY();
@@ -94,7 +103,7 @@ public class Model {
 			}
 			
 
-			if ("G1".equals(gc.getGcode()) || "G0".equals(gc.getGcode())) {
+			if (gc.getGcode() == GCDEF.G1 || gc.getGcode() == GCDEF.G0 ) {
 				gc.setExtemp(exttemp); //Make sure all gcodes know the current temp
 				gc.setBedtemp(bedtemp);
 				//Detect Layer change and create new layers.
@@ -159,7 +168,7 @@ public class Model {
 			}
 			
 			//Assume that unit is only set once 
-			if("G20".equals(gc.getGcode()) || "G21".equals(gc.getGcode())){
+			if(gc.getGcode() == GCDEF.G20 || gc.getGcode() == GCDEF.G21){
 				currLayer.setUnit(gc.getUnit());
 			}
 		
@@ -327,7 +336,7 @@ public class Model {
 			ArrayList<GCode> codes = getGcodes();
 			for (GCode gCode : codes) {
 				//Ignore comments behind gcodes
-				if (gCode.getGcode() == null && gCode.getComment() != null){
+				if (gCode.isComment()){
 					//System.out.println("COMMENT"+gCode.getComment());
 					if(gCode.getComment().matches(".*FILAMENT_DIAMETER\\s=.*")){ //SLICER
 						//System.out.println("MATCHES:"+gCode.getComment());
@@ -454,16 +463,18 @@ public class Model {
 	public String getUnit() {
 		return unit;
 	}
-	public void loadModel()throws IOException{
+	public boolean loadModel()throws IOException{
 		FileInputStream fread =  new FileInputStream(filename);
-		loadModel(fread);
+		File f = new File(filename);
+		filesize= f.length();
+		return loadModel(fread);
 	}
 	
-	public void loadModel(InputStream in)throws IOException{
+	
+	public boolean loadModel(InputStream in)throws IOException{
 		InputStreamReader fread =  new InputStreamReader(in);
 		BufferedReader gcread= new BufferedReader(fread);
 		ArrayList<GCode> codes = getGcodes();
-		
 		String line;
 		int idx=1;
 		int errorcnt=0, success=0;
@@ -479,11 +490,17 @@ public class Model {
 				success++;
 			}
 			codes.add(gc);
+			readbytes+=line.getBytes().length;
 		}
 		gcread.close();
 		if(errorcnt != 0){
 			System.err.println("Detected "+errorcnt+" error(s) during parsing of Gcode file. Results might be wrong.");
+			if(idx/errorcnt < 50){
+				codes.clear();
+				return false;
+			}
 		}
+		return true;
 	}
 	public void saveModel(String newfilename)throws IOException{
 		FileWriter fwr =  new FileWriter(newfilename);
@@ -497,6 +514,17 @@ public class Model {
 		fwr.close();
 	}
 	
+	public String getModelComments(){
+		String var ="--------- Slicer Comments------------\n";
+		for (GCode gCode : gcodes) {
+			//Ignore comments behind gcodes
+			if (gCode.isComment()){
+				//System.out.println(gCode.getComment());
+				var+=gCode.getComment()+"\n";
+			}
+		}
+		return var;
+	}
 	public String getModelDetailReport(){
 		float time = getTime();
 		float[] sizes = getDimension();

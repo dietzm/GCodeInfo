@@ -1,5 +1,7 @@
 package de.dietzm.gcodesim;
 
+import de.dietzm.GCode;
+
 public interface GraphicRenderer {
 
 	public void setColor(int idx);
@@ -16,4 +18,7 @@ public interface GraphicRenderer {
 	public void setFontSize(float font);
 	public String browseFileDialog();
 	public void drawtext(String text, float x, float y, float w);
+	//Printer
+	public boolean print(GCode code);
+
 }

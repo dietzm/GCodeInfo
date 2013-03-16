@@ -1,9 +1,17 @@
 package de.dietzm.gcodesim;
 
+import gnu.io.CommPortIdentifier;
+import gnu.io.NoSuchPortException;
+import gnu.io.PortInUseException;
+import gnu.io.SerialPort;
+import gnu.io.SerialPortEvent;
+import gnu.io.SerialPortEventListener;
+import gnu.io.UnsupportedCommOperationException;
+
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.FontMetrics;
+import java.awt.Font;
 import java.awt.Frame;
 import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
@@ -11,9 +19,51 @@ import java.awt.GraphicsEnvironment;
 import java.awt.Toolkit;
 import java.awt.geom.Line2D;
 import java.awt.image.BufferedImage;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+
+import de.dietzm.GCode;
+import de.dietzm.SerialIO;
 
 
 public class AWTGraphicRenderer implements GraphicRenderer {
+	
+	SerialIO sio = null;
+
+	@Override
+	public boolean print(GCode code){
+		if(sio == null){
+			try {
+				sio = new SerialIO("/dev/ttyUSB0");
+			} catch (NoClassDefFoundError er) {
+				er.printStackTrace();
+				setColor(7);
+				drawtext("Opening COM Port FAILED ! RXTX Jar Missing.  "+er,10, 100,600);
+				return false;
+			} catch (Exception e) {
+				e.printStackTrace();
+				setColor(7);
+				drawtext("Opening COM Port FAILED ! "+e,10, 100,600);
+				return false;
+			} 
+		}
+		try {
+			System.out.println("Print:["+code.getCodeline()+"]");
+			String result = sio.addToPrintQueue(code);
+			System.out.println("RESULT:["+result+"]");
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return false;
+		}
+		return true;
+	}
 	
 	Graphics2D g = null;
 	Color[] colors = new Color[] { Color.red, Color.blue, Color.yellow, Color.cyan, Color.green,
@@ -36,7 +86,9 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 		offimg = gfxConf.createCompatibleImage((int)d.getWidth(),(int)d.getWidth());
 		g = (Graphics2D) offimg.getGraphics();
 		g.setBackground(Color.black);
+		g.setFont(Font.decode(Font.SANS_SERIF));
 		this.frame=frame;
+		
 	}
 
 	public void setFontSize(float font){
@@ -70,6 +122,7 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 
 	@Override
 	public void drawtext(String text, float x, float y) {
+		//g.getFontMetrics(); 
 		g.drawString(text,x,y);
 	}
 	
@@ -95,7 +148,7 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 	public void repaint(){
 		frame.repaint();
 	}
-	public BufferedImage getImage(){
+	public synchronized BufferedImage getImage(){
 		return offimg;
 	}
 
