@@ -3,6 +3,7 @@ package de.dietzm;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 
 public class GCodeUtil {
@@ -15,9 +16,9 @@ public class GCodeUtil {
 	 * 0.95 Fixed average values (height,temp) , support skeinforge comments , guess diameter, show weight and price
 	 * 0.96 use sorted map instead of sorting each time, Nice looking labels for current infos,  pageing for layer details, about/help dialog
 	 * 0.97 Use SpeedEntry, show speedtype travel/print, show layers for speed
-	 * 
+	 * 0.98 Add edit function to modify gcodes (experimental)
 	 */
-	public static final String VERSION ="0.97";
+	public static final String VERSION ="0.98";
 
 	
 	
@@ -26,18 +27,31 @@ public class GCodeUtil {
 	 */
 	public static void main(String[] args) {
 		
-		if(args.length < 2 || !new File(args[1]).exists()){
+		if(args.length < 2 ){
 			printUsageandExit();
 		}
 		String mode = args[0];
+		String filename = args[1];
+		if(mode.startsWith("e")){
+			//edit mode
+			if(args.length < 4 ){
+				printUsageandExit();
+			}
+			filename = args[3];
+		}
+		
+		if ( !new File(filename).exists()){
+			printUsageandExit();
+		}
+			
 		try {
 			long start = System.currentTimeMillis();
-			Model model = new Model(args[1]);
+			Model model = new Model(filename);
 			model.loadModel();
 			long load = System.currentTimeMillis();
 			model.analyze();
 			
-			if(mode.contains("e")){ //edit
+			if(mode.startsWith("e")){ //edit
 				/**
 				 * Allow Modifications:
 				 * Change layer height (recalculate E) 
@@ -49,25 +63,19 @@ public class GCodeUtil {
 				 * Add/remove Offset X/Y/Z ?
 				 * Scale   
 				 */
+				String option = args[1];
+				String layersarg = args[2];	
+				Collection<Layer> lays = parseLayerArgument(model, layersarg);
+				
+				if(option.contains("offset=") && !layersarg.equalsIgnoreCase("all")){
+					System.err.println("Offset change can only be done if all layers are choosen");
+					System.exit(1);
+				}
+				editLayer(model, option, lays);
 
-//				//Change speed
-//				ArrayList<GCode> gcodes = model.getLayer(7).getGcodes();
-//				for (GCode gCode : gcodes) {
-//					gCode.changeSpeed(0);
-//				}
-//				//Change temp
-//				for (GCode gCode : gcodes) {
-//					if(gCode.getS_Ext() != GCode.UNINITIALIZED){
-//						gCode.changeTemp(200f, 65f);
-//						//update temps, but always add a temp at the beginning of the layer
-//						//TODO: if a temp definitions exists before G1/G2/G3 , do not insert a new one
-//					}
-//					
-//				}
 //				int idx = gcodes.get(0).getLineindex();
 //				System.out.println(gcodes.get(0)+" "+idx+"  "+model.getGcodes().get(idx-1).getLineindex());
 //				model.getGcodes().add(idx,new GCode("M104 S200", 15751) );
-//				
 //				model.saveModel("testfile.gcode");
 			}
 			if(mode.contains("m")){
@@ -101,10 +109,179 @@ public class GCodeUtil {
 
 	}
 
+	private static void editLayer(Model model, String option, Collection<Layer> lays)	throws IOException {
+		
+		if(option.startsWith("speed=")){
+			int value = Integer.parseInt(option.substring(6));
+			changeSpeed(lays, value);
+
+		}else if(option.startsWith("extr=")){
+			int value = Integer.parseInt(option.substring(5));
+			changeExtrusion(lays, value);
+		}else if(option.startsWith("exttemp=")){
+			float value = Float.parseFloat(option.substring(8));
+			changeExtTemp(lays, value);
+		}else if(option.startsWith("bedtemp=")){
+			float value = Float.parseFloat(option.substring(8));
+			changeBedTemp(lays, value);
+		}else if(option.startsWith("layerh=")){
+			int value = Integer.parseInt(option.substring(7));
+			changeLayerHeight(lays, value);
+		}else if(option.startsWith("zoffset=")){
+			float value = Float.parseFloat(option.substring(8));
+			changeZOffset(lays, value);
+		}else if(option.startsWith("yoffset=")){
+			float value = Float.parseFloat(option.substring(8));
+			changeYOffset(lays, value);
+		}else if(option.startsWith("xoffset=")){
+			float value = Float.parseFloat(option.substring(8));
+			changeXOffset(lays, value);
+		}else if(option.startsWith("fan=")){
+			int value = Integer.parseInt(option.substring(4));
+			System.out.println("Change Fan to "+value);
+			changeFan(lays, value);
+		}else if(option.startsWith("delete")){
+			System.out.println("Delete Layers ");
+			deleteLayer(lays);
+		}else{
+			printUsageandExit();
+		}
+		System.out.println("Saving to file "+model.getFilename()+"-new");
+		model.saveModel(model.getFilename()+"-new");
+		System.exit(0);
+	}
+
+	protected static void deleteLayer(Collection<Layer> lays) {
+		for (Layer layer : lays) {
+			ArrayList<GCode> gcodes = layer.getGcodes();
+			for (GCode gCode : gcodes) {
+				gCode.changeToComment();
+			}
+		}
+	}
+
+	protected static void changeFan(Collection<Layer> lays, int value) {
+		for (Layer layer : lays) {
+			ArrayList<GCode> gcodes = layer.getGcodes();
+			for (GCode gCode : gcodes) {
+				gCode.changeFan(value);
+				//todo... add fan value if not exits
+			}
+		}
+	}
+
+	protected static void changeXOffset(Collection<Layer> lays, float value) {
+		System.out.println("Add X Offset "+value);
+		for (Layer layer : lays) {
+			ArrayList<GCode> gcodes = layer.getGcodes();
+			for (GCode gCode : gcodes) {
+				gCode.changeXOffset(value);
+			}
+		}
+	}
+
+	protected static void changeYOffset(Collection<Layer> lays, float value) {
+		System.out.println("Add Y Offset "+value);
+		for (Layer layer : lays) {
+			ArrayList<GCode> gcodes = layer.getGcodes();
+			for (GCode gCode : gcodes) {
+				gCode.changeYOffset(value);
+			}
+		}
+	}
+
+	protected static void changeZOffset(Collection<Layer> lays, float value) {
+		System.out.println("Add Z Offset "+value);
+		for (Layer layer : lays) {
+			ArrayList<GCode> gcodes = layer.getGcodes();
+			for (GCode gCode : gcodes) {
+				gCode.changeZOffset(value);
+			}
+		}
+	}
+
+	protected static void changeLayerHeight(Collection<Layer> lays, int value) {
+		System.out.println("Change Layerheight by "+value+"%");
+		for (Layer layer : lays) {
+			ArrayList<GCode> gcodes = layer.getGcodes();
+			for (GCode gCode : gcodes) {
+				gCode.changeLayerHeight(value);
+			}
+		}
+	}
+
+	protected static void changeBedTemp(Collection<Layer> lays, float value) {
+		System.out.println("Set Bed temp to "+value);
+		for (Layer layer : lays) {
+			ArrayList<GCode> gcodes = layer.getGcodes();
+		for (GCode gCode : gcodes) {
+				gCode.changeBedTemp(value);
+				//update temps, but always add a temp at the beginning of the layer
+				//TODO: if a temp definitions exists before G1/G2/G3 , do not insert a new one
+		}
+		}
+	}
+
+	protected static void changeExtTemp(Collection<Layer> lays, float value) {
+		System.out.println("Set Extruder temp to "+value);
+		for (Layer layer : lays) {
+			ArrayList<GCode> gcodes = layer.getGcodes();
+		for (GCode gCode : gcodes) {
+			gCode.changeExtTemp(value);
+				//update temps, but always add a temp at the beginning of the layer
+				//TODO: if a temp definitions exists before G1/G2/G3 , do not insert a new one						
+		}
+		}
+	}
+
+	protected static void changeExtrusion(Collection<Layer> lays, int value) {
+		System.out.println("Change Extrusion by "+value+"%");
+		for (Layer layer : lays) {
+			ArrayList<GCode> gcodes = layer.getGcodes();
+			for (GCode gCode : gcodes) {
+				gCode.changeExtrusion(value);
+			}
+		}
+	}
+
+	protected static void changeSpeed(Collection<Layer> lays, int value) {
+		System.out.println("Change Speed by "+value+"%" );
+		for (Layer layer : lays) {
+			ArrayList<GCode> gcodes = layer.getGcodes();
+			for (GCode gCode : gcodes) {
+				gCode.changeSpeed(value);
+			}
+		}
+	}
+
+	private static Collection<Layer> parseLayerArgument(Model model, String layersarg) {
+		Collection<Layer> lays;
+		if(layersarg.equalsIgnoreCase("all")){
+			lays=model.getLayer().values();
+		}else{
+			String[] layersarg1 = layersarg.split(",");
+			lays= new ArrayList<Layer>();
+			for (Layer lay1 : model.getLayer().values()) {
+				for (String lan : layersarg1) {
+					if(lan.equals(String.valueOf(lay1.getNumber()))){
+						lays.add(lay1);
+					}
+				}				
+		
+			}
+		}
+		
+		if(lays.isEmpty()){
+			System.err.println("No matching layers found.");
+			System.exit(1);
+		}
+		return lays;
+	}
+
 	private static void printUsageandExit() {
 		String name ="GcodeUtil";
 		System.err.println(name+" "+VERSION+"\nWrong Parameters or gcode file does not exist.");
-		System.err.println("Usage: "+name+" [mode m|p|n] gcodefile [");
+		System.err.println("Usage: "+name+" [mode m|l|p|n] gcodefile ");
 		System.err.println("Modes:");
 		System.err.println("\tm = Show Model Info");
 		System.err.println("\tl = Show Layer Summary");
@@ -113,11 +290,29 @@ public class GCodeUtil {
 		System.err.println("\ts = Show Printing Speed Details Info");
 		System.err.println("\tc = Show embedded comments (e.g. from slicer)");
 		
+		System.err.println("Edit Mode Usage: "+name+" [editmode e] [option] [layers]  gcodefile ");
+		System.err.println("\te speed=-10 = Reduce Speed by 10 percent");
+		System.err.println("\te extr=10 = Increase extrusion rate by 10 percent");
+		System.err.println("\te layerh=10 = Increase Layerheight by 10 percent (+increase extrusion)");
+		System.err.println("\te exttemp=170.3 = Set extruder temperatur to 170.3 (only update existing gcodes)");
+		System.err.println("\te bedtemp=50.3 = Set bed temperatur to 50.3 (only update existing gcodes)");
+		System.err.println("\te zoffset=0.1 = Add Offset to Z position (requires layer option 'all'");
+		System.err.println("\te xoffset=0.1 = Add Offset to X position (requires layer option 'all'");
+		System.err.println("\te yoffset=0.1 = Add Offset to Y position (requires layer option 'all'");
+		System.err.println("\te fan=255 = Set Fan 0=off, 255=full (only update existing gcodes)");
+		System.err.println("\te delete = Delete the specified layers");
+		System.err.println("[layers] = comma separated list of layers or 'all' for all ");
+		
+		
 		System.err.println("\nExample: \nShow Model Info and Printed Layers");
 		System.err.println("\t "+name+" mp /tmp/object.gcode ");
 		System.err.println("\nShow All Info");
 		System.err.println("\t "+name+" mlpnsc /tmp/object.gcode ");
 		
+		System.err.println("\nEdit Model, increase 1-3 layer speed by 25%");
+		System.err.println("\t "+name+" e speed=25 1,2,3 /tmp/object.gcode ");
+		System.err.println("\nEdit Model, disable fan for all layers");
+		System.err.println("\t "+name+" e fan=0 all /tmp/object.gcode ");
 		System.exit(1);
 	}
 	

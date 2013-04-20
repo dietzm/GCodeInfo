@@ -1,32 +1,17 @@
 package de.dietzm.gcodesim;
 
-import gnu.io.CommPortIdentifier;
-import gnu.io.NoSuchPortException;
-import gnu.io.PortInUseException;
-import gnu.io.SerialPort;
-import gnu.io.SerialPortEvent;
-import gnu.io.SerialPortEventListener;
-import gnu.io.UnsupportedCommOperationException;
-
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Frame;
+import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsEnvironment;
 import java.awt.Toolkit;
 import java.awt.geom.Line2D;
 import java.awt.image.BufferedImage;
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
 
 import de.dietzm.GCode;
 import de.dietzm.SerialIO;
@@ -75,7 +60,7 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 			new BasicStroke(3.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND),
 			new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND, 1,new float[] { 1,6}, 0)
 			};
-	BufferedImage offimg ;
+	BufferedImage offimg ;//, offimg2;
 	private final GraphicsConfiguration gfxConf = GraphicsEnvironment.getLocalGraphicsEnvironment()
 			.getDefaultScreenDevice().getDefaultConfiguration();
 	
@@ -84,6 +69,7 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 	public AWTGraphicRenderer(int bedsizeX,int bedsizeY, Frame frame){
 		Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
 		offimg = gfxConf.createCompatibleImage((int)d.getWidth(),(int)d.getWidth());
+//		offimg2= gfxConf.createCompatibleImage((int)d.getWidth(),(int)d.getWidth());
 		g = (Graphics2D) offimg.getGraphics();
 		g.setBackground(Color.black);
 		g.setFont(Font.decode(Font.SANS_SERIF));
@@ -145,11 +131,36 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 	public int getHeight(){
 		return offimg.getHeight();
 	}
-	public void repaint(){
+	public synchronized void repaint(){
+		//cloneImage();
 		frame.repaint();
+		
+//		try {
+//			//Wait for repaint to happen to avoid changing the image in between. (causes flickering) 
+//			wait(10);
+//		} catch (InterruptedException e) {
+//		}
 	}
-	public synchronized BufferedImage getImage(){
-		return offimg;
+
+	/**
+	 * Clone the image to avoid problems with multithreading (EDT vs GCodePainter thread)
+	 */
+	@SuppressWarnings("unused")
+	private void cloneImage() {
+//		ColorModel cm = offimg.getColorModel();
+//		 boolean isAlphaPremultiplied = cm.isAlphaPremultiplied();
+//		 WritableRaster raster = offimg.copyData(null);
+//		 offimg2 =  new BufferedImage(cm, raster, isAlphaPremultiplied, null);
+//		  BufferedImage currentImage = new BufferedImage(width,height,BufferedImage.TYPE_3BYTE_BGR);
+
+	//Fastest method to clone the image (DOES NOT WORK for MACOS)
+//		  int[] frame = ((DataBufferInt)offimg.getRaster().getDataBuffer()).getData();
+//		  int[] imgData = ((DataBufferInt)offimg2.getRaster().getDataBuffer()).getData();
+//		   System.arraycopy(frame,0,imgData,0,frame.length);
+	}
+	public synchronized void drawImage(Graphics g){		
+		g.drawImage(offimg, 6, 55, frame);	
+		//notifyAll();
 	}
 
 	@Override

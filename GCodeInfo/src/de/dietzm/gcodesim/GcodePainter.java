@@ -6,7 +6,6 @@ import java.util.ArrayList;
 
 import de.dietzm.GCode;
 import de.dietzm.Layer;
-import de.dietzm.Layer.Speed;
 import de.dietzm.Model;
 
 public class GcodePainter implements Runnable {
@@ -26,6 +25,7 @@ public class GcodePainter implements Runnable {
 	public static final int bedsizeY = 200;
 	Thread gcodepainter;
 	String errormsg=null;
+	float mtime;
 
 	private static final boolean PAINTTRAVEL = true;
 	// Model & Layer Info
@@ -33,7 +33,6 @@ public class GcodePainter implements Runnable {
 	ArrayList<Layer> layers;
 	GraphicRenderer g2;
 	Commands cmd = Commands.NOOP;
-	boolean modeldetails=false;
 	boolean print=false;
 	
 	public float getZoom() {
@@ -42,24 +41,15 @@ public class GcodePainter implements Runnable {
 
 	public void setZoom(float zoom) {
 		this.zoom = zoom;
-		cmd=Commands.REPAINTLAYERS;
-		gcodepainter.interrupt();
+		setCmd(Commands.REPAINTLAYERS);
 	}
 
-	public float getSpeedup() {
-		return speedup;
-	}
-
-//	public void setSpeedup(float speedup) {
-//		this.speedup = speedup;
-//		gcodepainter.interrupt();
-//	}
 	
 	/**
 	 * Will increase/decrease the speed 
 	 * @param boolean faster, true=increase speed, false=decrease
 	 */
-	public void toggleSpeed(boolean faster){
+	public synchronized void toggleSpeed(boolean faster){
 		if(faster && speedup >= 1){
 			speedup++;
 		}else if(faster && speedup < 1){
@@ -73,11 +63,9 @@ public class GcodePainter implements Runnable {
 		
 	}
 
-	public int getPause() {
-		return pause;
-	}
 
-	public void togglePause() {
+
+	public synchronized void togglePause() {
 		if (pause == 0) {
 			pause =999999;
 		} else {
@@ -86,43 +74,29 @@ public class GcodePainter implements Runnable {
 		}		
 	}
 	
-	public void togglePrint(){
+	public synchronized void togglePrint(){
 		setCmd(Commands.PRINT);
-		gcodepainter.interrupt();
 	}
 	
-	public void showHelp(){
+	public synchronized void showHelp(){
 		setCmd(Commands.HELP);
-		gcodepainter.interrupt();
 	}
 
 
 
-	public void setCmd(Commands cmd) {
-		this.cmd = cmd;
+	public synchronized void setCmd(Commands cmd) {
 		gcodepainter.interrupt();
+		this.cmd = cmd;		
 	}
 	
-	public int[] getSize(){
+	public int[] getSize(boolean details){
 		return new int[]{ 
-				(int) (bedsizeX * getZoom() + gap + (isModeldetails() ? bedsizeX*zoom/zoommod*2 : 0) +10),
-				(int) (bedsizeY * getZoom() + 93)		
+				(int) (bedsizeX * getZoom() + gap + (details ? bedsizeX*zoom/zoommod*2 : 0) +13),
+				(int) (bedsizeY * getZoom() + (bedsizeY * getZoom()/12)+65)		
 		};
 	}
 
 
-	public boolean isModeldetails() {
-		return modeldetails;
-	}
-
-	public void toggleModeldetails() {
-		this.modeldetails = !modeldetails;
-		if(modeldetails){
-			setCmd(Commands.REPAINTLABEL);
-		}
-		gcodepainter.interrupt();
-	}
-	
 	/**
 	 * Restart from thread
 	 * @param filename
@@ -150,16 +124,13 @@ public class GcodePainter implements Runnable {
 		
 	}
 	
-	public void toggleType(){
+	public synchronized void toggleType(){
 		if(detailstype<7){
 			detailstype++;
 		}else {
 			detailstype=0;
 		}
-		if(modeldetails){
-			setCmd(Commands.REPAINTLABEL);
-			gcodepainter.interrupt();
-		}
+		setCmd(Commands.REPAINTLABEL);
 	}
 
 	int detailstype=0;
@@ -170,7 +141,7 @@ public class GcodePainter implements Runnable {
 	
 	public GcodePainter(GraphicRenderer g, boolean modeldetails, float zoomlevel){
 		this.g2=g;		
-		this.modeldetails=modeldetails;
+	//	this.modeldetails=modeldetails;
 		this.zoom=zoomlevel;
 	}
 
@@ -195,75 +166,74 @@ public class GcodePainter implements Runnable {
 		//System.out.println("X/Y Offset:"+Xoffset+"/"+Yoffset);
 	}
 
-	void paintLabel(GraphicRenderer g2, Layer lay) {
+	void paintLabel(GraphicRenderer g2, Layer lay,GCode gc) {
 		//Clear box background
 		g2.clearrect(0, bedsizeY * zoom + 5, bedsizeX * zoom+gap, bedsizeY * zoom);
 		g2.setColor(lay.getNumber() % 7);
-		
-		float zoomsmall= zoom/zoommod;
-		g2.setFontSize(20);
-		g2.drawtext("Front View", bedsizeX * zoom + gap+bedsizeX*zoomsmall,30,bedsizeX*zoomsmall);
-		g2.drawtext("Side View", bedsizeX * zoom + gap,30,bedsizeX*zoomsmall);
-		
+
 		// Paint boxes with infos about current layer
 		printLabelBox(g2, 0,12, String.valueOf(lay.getNumber()), "Layer #",lay);
 		printLabelBox(g2, 12,20, String.valueOf(lay.getZPosition()), "Z-Position",lay);
-		printLabelBox(g2, 32,22, String.valueOf(lay.getSpeed(Speed.SPEED_PRINT_AVG)), "Avg. Speed",lay);
-		printLabelBox(g2, 54,24, GCode.formatTimetoHHMMSS((useAccelTime?lay.getTimeAccel():lay.getTime())), "Layer Time",lay);
+		//printLabelBox(g2, 32,22, String.valueOf(lay.getSpeed(Speed.SPEED_PRINT_AVG)), "Avg. Speed",lay);
+		printLabelBox(g2, 32,22,String.valueOf(Math.round(gc.getSpeed())), "Current Speed",lay);
+		//printLabelBox(g2, 54,24, GCode.formatTimetoHHMMSS((useAccelTime?lay.getTimeAccel():lay.getTime())), "Layer Time",lay);
+		printLabelBox(g2, 54,24, GCode.formatTimetoHHMMSS(mtime), "Remaining Time",lay);
 		printLabelBox(g2, 78,13,GCode.removeTrailingZeros(String.valueOf(GCode.round2digits(speedup)))+"x", "Speedup",lay);
-		printLabelBox(g2, 91,9,(lay.getFanspeed()!=0?"On":"-"), "Fan",lay);
+		printLabelBox(g2, 91,9,(gc.getFanspeed()!=0?String.valueOf(Math.round(gc.getFanspeed()/25)):"-"), "Fan",lay);
+	}
+
+	private void printDetails(GraphicRenderer g2, Layer lay) {
+		g2.setColor(lay.getNumber() % 7);
+		float boxheight=(bedsizeX*zoom)/12f;
+		int linegap=(int)(5*zoom);
+		float size=2+10f*(zoom);
+		g2.setFontSize(size/3);
 		
-		
-		if (modeldetails){
-			float boxheight=(bedsizeX*zoom)/12f;
-			int linegap=(int)(5*zoom);
-			// bed
-			String details;
-			int start=0;
-			switch (detailstype) {
-			case 0:
-				details = "--------------- Model details ------------------\n"+model.getModelDetailReport()+model.guessPrice(model.guessDiameter());
-				//details="";
-				break;
-			case 1:
-				 details = "--------------- Layer details ------------------\n"+lay.getLayerDetailReport();
-				break;
-			case 2:
-			case 3:
-			case 4:
-				details = model.getModelLayerSummaryReport();
-				String[] lines = details.split("\n");
-				if(lines.length*linegap+30 >= bedsizeY*zoom+boxheight -(bedsizeY*zoom/zoommod) ){
-					start=(int) (((bedsizeY*zoom+boxheight -linegap -(bedsizeY*zoom/zoommod) )/linegap)+1)*(detailstype-2); //TODO calculate number
-					//System.out.println("START:"+start);
-					break;
-				}
-				detailstype=5; //skip
-			case 5:
-				 details = model.getModelSpeedReport();
-				break;
-			case 6:
-				details = lay.getLayerSpeedReport();
-				break;
-			case 7:
-				details = model.getModelComments();
-				if(details.length() != 0) break;
-			default:
-				 details = model.getModelDetailReport();
+		// bed
+		String details;
+		int start=0;
+		switch (detailstype) {
+		case 0:
+			details = "--------------- Model details ------------------\n"+model.getModelDetailReport()+model.guessPrice(model.guessDiameter());
+			//details="";
+			break;
+		case 1:
+			 details = "--------------- Layer details ------------------\n"+lay.getLayerDetailReport();
+			break;
+		case 2:
+		case 3:
+		case 4:
+			details = model.getModelLayerSummaryReport();
+			String[] lines = details.split("\n");
+			if(lines.length*linegap+30 >= bedsizeY*zoom+boxheight -(bedsizeY*zoom/zoommod) ){
+				start=(int) (((bedsizeY*zoom+boxheight -linegap -(bedsizeY*zoom/zoommod) )/linegap)+1)*(detailstype-2); //TODO calculate number
+				//System.out.println("START:"+start);
 				break;
 			}
-			g2.clearrect(bedsizeX*zoom+gap+5,(bedsizeY*zoom/zoommod)+5, (bedsizeX * zoom/zoommod*2)-10, bedsizeY * zoom + boxheight -(bedsizeY*zoom/zoommod)-10 );
+			detailstype=5; //skip
+		case 5:
+			 details = model.getModelSpeedReport();
+			break;
+		case 6:
+			details = lay.getLayerSpeedReport();
+			break;
+		case 7:
+			details = model.getModelComments();
+			if(details.length() != 0) break;
+		default:
+			 details = model.getModelDetailReport();
+			break;
+		}
+		g2.clearrect(bedsizeX*zoom+gap+5,(bedsizeY*zoom/zoommod)+5, (bedsizeX * zoom/zoommod*2)-10, bedsizeY * zoom + boxheight -(bedsizeY*zoom/zoommod)-10 );
+		
+		String[] det = details.split("\n");
+		int c=0;
+		for (int i = start; i < det.length; i++) {
+			int y = (int)(bedsizeY*zoom/zoommod)+linegap+c*linegap; //avoid painting across the border
+			c++;
+			if(y >= bedsizeY*zoom+boxheight) break;
 			
-			String[] det = details.split("\n");
-			int c=0;
-			for (int i = start; i < det.length; i++) {
-				int y = (int)(bedsizeY*zoom/zoommod)+linegap+c*linegap; //avoid painting across the border
-				c++;
-				if(y >= bedsizeY*zoom+boxheight) break;
-				
-				g2.drawtext(det[i], bedsizeX*zoom+gap+5,y );
-				
-			}
+			g2.drawtext(det[i], bedsizeX*zoom+gap+5,y );
 			
 		}
 	}
@@ -275,7 +245,7 @@ public class GcodePainter implements Runnable {
 		float gap=zoom;
 		float size=2+10f*(zoom);
 		g2.setColor(7);//white
-		g2.drawrect(1+boxpos,bedsizeY*zoom+1, boxsize,boxheight);
+		g2.drawrect(boxpos,bedsizeY*zoom, boxsize,boxheight+1);
 		g2.setColor(lay.getNumber() % 7);
 		g2.setFontSize(size);
 		g2.drawtext(value, boxpos, bedsizeY*zoom+size-gap,boxsize);
@@ -359,7 +329,11 @@ public class GcodePainter implements Runnable {
 		float boxheight=(bedsizeX*zoom)/12f;
 		g2.drawrect(bedsizeX * zoom + gap, 0,  bedsizeX*zoomsmall*2, bedsizeY * zoom+boxheight+1); // Draw print		
 		
+		float fsize=2+5f*(zoom);
+		g2.setFontSize(fsize);
 		
+		g2.drawtext("Front View", bedsizeX * zoom + gap+bedsizeX*zoomsmall,fsize+2,bedsizeX*zoomsmall);
+		g2.drawtext("Side View", bedsizeX * zoom + gap,fsize+2,bedsizeX*zoomsmall);
 		
 		//Draw grid
 		g2.setStroke(2);
@@ -369,8 +343,8 @@ public class GcodePainter implements Runnable {
 			g2.drawline(0,i*zoom,bedsizeX*zoom,i*zoom);	
 		}
 		//draw front & side grid
-		//g2.drawline(bedsizeX * zoom + gap, bedsizeY*zoomsmall, bedsizeX * zoom + gap +30, bedsizeY * zoomsmall-30);
-		//g2.drawline(bedsizeX * zoom + gap+bedsizeX * zoomsmall, bedsizeY*zoomsmall, bedsizeX * zoom + gap +bedsizeX *zoomsmall -30, bedsizeY * zoomsmall-30);
+		g2.drawline(bedsizeX * zoom + gap, bedsizeY*zoomsmall, bedsizeX * zoom + gap +60, bedsizeY * zoomsmall-60);
+		g2.drawline(bedsizeX * zoom + gap+bedsizeX * zoomsmall, bedsizeY*zoomsmall, bedsizeX * zoom + gap +bedsizeX *zoomsmall -60, bedsizeY * zoomsmall-60);
 																
 	
 		//Print level bar
@@ -392,13 +366,13 @@ public class GcodePainter implements Runnable {
 	
 	}
 
-	float printLine(GraphicRenderer g2, float[] lastpos, float[] pos, float time) {
+	float printLine(GraphicRenderer g2, float[] lastpos, float[] pos, float time,long starttime) {
 		float x1 = (lastpos[0] + Xoffset) * zoom;
 		float y1 = (bedsizeY * zoom) - ((lastpos[1] + Yoffset) * zoom);
 		float x2 = (pos[0] + Xoffset) * zoom;
 		float y2 = (bedsizeY * zoom) - ((pos[1] + Yoffset) * zoom);
 
-		if (!ffLayer && fftoGcode == 0 && fftoLayer == 0) {
+		if (!ffLayer && fftoGcode == 0 && fftoLayer == 0 && speedup < 10 ) {
 			// Instead of painting one long line and wait , we split the line
 			// into segments to have a smoother painting
 			float distx = x2 - x1;
@@ -414,7 +388,12 @@ public class GcodePainter implements Runnable {
 							+ ((i + 1) * stepy));
 					try {
 						g2.repaint();
-						if(!print) Thread.sleep((long) (time / maxdist)); // pause not done
+						if(!print) {
+							long paintdur=System.currentTimeMillis()-starttime;
+							long sleepremain = Math.max(0,((long)time)-paintdur);
+							long dosleep = Math.min(sleepremain, (long)(time / maxdist));
+							Thread.sleep(dosleep ); // pause not done
+						}
 					} catch (InterruptedException e) {
 						time = 0;
 					}
@@ -428,7 +407,7 @@ public class GcodePainter implements Runnable {
 	}
 	
 	
-	void printLineHorizontal(GraphicRenderer g2, float[] lastpos, float[] pos, Layer lay) {
+	void printLineHorizontal(GraphicRenderer g2, float[] lastpos, float[] pos, Layer lay,GCode gc) {
 		g2.setColor(lay.getNumber() % 7);
 		g2.setStroke(1);
 		float zoomsmall= zoom/zoommod;
@@ -443,6 +422,30 @@ public class GcodePainter implements Runnable {
 		g2.drawline(y1, z, y2, z);	
 		//Print side view
 		g2.drawline(x1+(bedsizeX * zoomsmall), z, x2+(bedsizeX * zoomsmall),z);
+
+		//Print Extrusion		
+//		if(gc.getExtrusion() > 0){		
+//			float xex = gc.getExtrusion()/gc.getDistance()*10000;
+//			System.out.println("extru:"+xex);
+//		g2.drawline((bedsizeX * zoom + gap) + (bedsizeX * zoomsmall)+(gc.getLineindex()/10%(bedsizeX * zoomsmall)), 
+//				(bedsizeY *zoomsmall)-22-xex, 
+//				(bedsizeX * zoom + gap) + (bedsizeX * zoomsmall)+(gc.getLineindex()/10%(bedsizeX * zoomsmall))
+//				,(bedsizeY * zoomsmall)-20-xex);
+//		}else if(gc.getExtrusion() < 0){
+//			float xex = gc.getExtrusion()*10;
+//			g2.setColor(1);
+//			System.out.println("restract:"+xex);
+//			g2.drawline((bedsizeX * zoom + gap) + (bedsizeX * zoomsmall)+(gc.getLineindex()/10%(bedsizeX * zoomsmall)), 
+//					(bedsizeY *zoomsmall)-22-xex, 
+//					(bedsizeX * zoom + gap) + (bedsizeX * zoomsmall)+(gc.getLineindex()/10%(bedsizeX * zoomsmall))
+//					,(bedsizeY * zoomsmall)-20-(xex));
+//		}
+//		
+		//Print speed
+		//g2.drawline((bedsizeX * zoom + gap) + (bedsizeX * zoomsmall)+(gc.getLineindex()/10%(bedsizeX * zoomsmall)), 
+//				(bedsizeY *zoomsmall)-22-gc.getSpeed(), 
+//				(bedsizeX * zoom + gap) + (bedsizeX * zoomsmall)+(gc.getLineindex()/10%(bedsizeX * zoomsmall))
+//				,(bedsizeY * zoomsmall)-20-gc.getSpeed());
 			
 	}
 
@@ -457,33 +460,41 @@ public class GcodePainter implements Runnable {
 			if (layers != null) {
 				g2.clearrect(0, 0, g2.getWidth(),g2.getHeight());
 				calculateOffset();
+				mtime = model.getTimeaccel();
 				A: for (Layer lay : layers) {
 					float activespeedup = speedup;
 					ffLayer=false;
 					float[] lastpos = null;
 					
-					paintLabel(g2, lay);
+					//paintLabel(g2, lay);
+					printDetails(g2, lay);
 					printBed(g2, lay);
+					
 						
 					// Paint all Gcodes
 					for (GCode gCode : lay.getGcodes()) {
+						long starttime=System.currentTimeMillis();
+						float sleeptime =0;
+						synchronized(g2){ 
+							if(!ffLayer && fftoGcode==0 && fftoLayer==0){
+								paintLabel(g2, lay,gCode);
+								sleeptime = ((useAccelTime?gCode.getTimeAccel():gCode.getTime())* 1000) / activespeedup;
+							}
+						}
 						float[] pos = gCode.getCurrentPosition();
-						float sleeptime = ((useAccelTime?gCode.getTimeAccel():gCode.getTime())* 1000) / activespeedup;
 						if (lastpos != null) {
 							if (gCode.isExtruding()) {
-								g2.setColor(lay.getNumber() % 7);								
-								sleeptime = printLine(g2, lastpos, pos,sleeptime);
-								 printLineHorizontal(g2, lastpos, pos,lay);
+								//g2.setColor(lay.getNumber() % 7);								
+								printLine(g2, lastpos, pos,sleeptime,starttime);
+								printLineHorizontal(g2, lastpos, pos,lay,gCode);
 							} else if (PAINTTRAVEL) {
 								g2.setColor(8);
 								g2.setStroke(0);
-								sleeptime = printLine(g2, lastpos, pos,sleeptime);
+								printLine(g2, lastpos, pos,sleeptime,starttime);
 								g2.setStroke(1);
 							}
-							if (gCode.getFanspeed()!=0){
-								//TODO draw a small fan 
-							}
 						}
+						mtime=mtime-gCode.getTimeAccel();
 						lastpos = pos;
 						//PRINT
 						if(print && gCode.isPrintable()){
@@ -494,13 +505,8 @@ public class GcodePainter implements Runnable {
 						}
 						//POST PROCESSING STARTS
 						
-						// Sleep for the time the gcode took
+						// Sleep for the remaining time up to the gcode time & handle commands
 						try {
-							if (activespeedup != speedup) {
-								activespeedup = speedup;
-								paintLabel(g2, lay);
-							}
-							
 							/**
 							 * Handle a user command
 							 */
@@ -512,7 +518,10 @@ public class GcodePainter implements Runnable {
 							if(!ffLayer && fftoGcode==0 && fftoLayer==0 ){
 								g2.repaint();
 								if(!print) {
-									Thread.sleep((int)sleeptime + pause);
+									long paintdur=System.currentTimeMillis()-starttime;
+									long sleep = Math.max(0,((long)sleeptime)-paintdur);
+									//System.out.println(sleep+ " VS "+sleeptime);
+									Thread.sleep((int)sleep + pause);
 								}else{
 									Thread.sleep(pause); //allow pause only if printing
 								}
@@ -557,7 +566,8 @@ public class GcodePainter implements Runnable {
 	 * @param lay
 	 * @return return true if jump back to layer loop
 	 */
-	private int handleCommand(GCode gCode, Layer lay){
+	private synchronized int handleCommand(GCode gCode, Layer lay){
+		Thread.interrupted(); //reset interrupted state to avoid problems with file dialog
 		switch (cmd) {
 		case EXIT:
 			cmd = Commands.NOOP;
@@ -604,14 +614,15 @@ public class GcodePainter implements Runnable {
 		case REPAINTLABEL:
 			cmd = Commands.NOOP;
 			printBed(g2, lay);
-			paintLabel(g2, lay);
+			paintLabel(g2, lay,gCode);
+			printDetails(g2,lay);
 			break;
 		case HELP:
 			cmd = Commands.NOOP;
 			paintHelp(g2);
 			g2.repaint();
 			try {
-				Thread.sleep(99999);
+				wait(99999);
 			} catch (Exception e) {
 			}
 		case REPAINTLAYERS:

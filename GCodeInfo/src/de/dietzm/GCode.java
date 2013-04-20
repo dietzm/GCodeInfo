@@ -4,7 +4,7 @@ package de.dietzm;
 public class GCode {
 	
 	public static enum GCDEF {
-		G0,G1,G2,G20,G21,G28,G4,G90,G91,G92,M0,M1,M101,M103,M104,M105,M106,M107,M108,M109,M113,M114,M140,M190,M82,M83,M84,UNKNOWN;
+		G0,G1,G2,G20,G21,G28,G4,G90,G91,G92,M0,M1,M92,M101,M103,M104,M105,M106,M107,M108,M109,M113,M114,M117,M140,M190,M82,M83,M84,UNKNOWN;
 	}
 	public static final float UNINITIALIZED = -99999.99f;
 	private String codeline;	
@@ -152,20 +152,119 @@ public class GCode {
 	}
 	
 	/**
-	 * Update the speed values (and the corresponding extrusion rate)
+	 * Update the extrusion values 
 	 * @param percent , negative value for slower
 	 */
-	public void changeTemp(float ext,float bed){
-		if(s_ext!=UNINITIALIZED) s_ext=ext;
-		if(s_bed!=UNINITIALIZED) s_bed=bed;
-		update();
+	public void changeExtrusion(int percent){
+		if(e!=UNINITIALIZED) {
+			e=e+(e/100*percent);
+			update();
+		}
+		
+	}
+	
+	/**
+	 * Update the layerheight (and the corresponding extrusion rate)
+	 * @param percent , negative value for slower
+	 */
+	public void changeLayerHeight(int percent){
+		if(z!=UNINITIALIZED){
+			z=z+(z/100*percent);
+			update();
+		}
+		if(e!=UNINITIALIZED){ 
+			e=e+(e/100*percent);
+			update();
+		}
+		
+	}
+
+	/**
+	 * Add offset to z (no extrusion rate change)
+	 * @param absolute value 
+	 */
+	public void changeZOffset(float value){
+		if(z!=UNINITIALIZED){
+			z=z+value;
+			update();
+		}
+		
+	}
+	
+	/**
+	 * Add offset to y (no extrusion rate change)
+	 * @param absolute value 
+	 */
+	public void changeYOffset(float value){
+		if(y!=UNINITIALIZED){
+			y=y+value;
+			update();
+		}
+		
+	}
+	
+	/**
+	 * Add offset to x (no extrusion rate change)
+	 * @param absolute value 
+	 */
+	public void changeXOffset(float value){
+		if(x!=UNINITIALIZED){
+			x=x+value;
+			update();
+		}
+		
+	}
+	
+	public void changeToComment(){
+		codeline=";"+codeline;
+	}
+	
+	/**
+	 * Update the fan speed 
+	 * @param absolute value (0 = off, 255=full speed)
+	 */
+	public void changeFan(int value){
+		if(s_fan!=UNINITIALIZED) {
+			s_fan=value;
+			update();
+		}
+		
+	}
+	
+	/**
+	 * Update the extruder temp values 
+	 * @param absolute values 
+	 */
+	public void changeExtTemp(float ext){
+		if(s_ext!=UNINITIALIZED) {
+			s_ext=ext;
+			update();
+		}
+		
+	}
+	
+	/**
+	 * Update the bed temp values 
+	 * @param absolute values for bed 
+	 */
+	public void changeBedTemp(float bed){
+		if(s_bed!=UNINITIALIZED){
+			s_bed=bed;
+			update();
+		}
+		
 	}
 	
 	private void update(){
-		codeline=gcode+getIfInit("X",x,3)+getIfInit("Y",y,3)+
+		codeline=(gcode!=GCDEF.UNKNOWN?gcode:"")+
+				getIfInit("X",x,3)+
+				getIfInit("Y",y,3)+
 				getIfInit("Z",z,3)+
-				getIfInit("F",f,3)+getIfInit("E",e,5)+
-				getIfInit("S",s_bed,0)+getIfInit("S",s_ext,0)+getIfInit("S",s_fan,0)+
+				getIfInit("F",f,3)+
+				getIfInit("E",e,5)+
+				getIfInit("S",s_bed,0)+
+				getIfInit("S",s_ext,0)+
+				getIfInit("S",s_fan,0)+
 				(comment!=null?comment:"");
 	}
 	
@@ -357,7 +456,7 @@ public class GCode {
 			break;	
 		case M83:
 		case G91: //Relative positioning
-			System.err.println("G90/M83 Relative Positioning is NOT supported.");
+			System.err.println("G91/M83 Relative Positioning is NOT supported.");
 			return false;
 		case G20: //Unit = inch
 			unit="in";
@@ -408,7 +507,9 @@ public class GCode {
 		case M105: //get extr temp
 		case M114: //get current position
 		case M0: //Stop
-		case M1: //Sleep 
+		case M1: //Sleep
+		case M117: //get zero position
+		case M92: //set axis steps per unit (just calibration) 
 			break;
 		case M103: //marlin turn all extr off
 		case M101://marlin turn all extr on

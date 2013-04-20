@@ -95,10 +95,10 @@ public class Model {
 			}
 			
 			//update Temperature if specified
-			if(gc.getExtemp() !=  GCode.UNINITIALIZED){
+			if(gc.getS_Ext() !=  GCode.UNINITIALIZED){
 				exttemp=gc.getExtemp();
 			//Update Bed Temperature if specified
-			}else if(gc.getBedtemp() !=  GCode.UNINITIALIZED){ 
+			}else if(gc.getS_Bed() !=  GCode.UNINITIALIZED){ 
 				bedtemp=gc.getBedtemp();
 			}
 			
@@ -613,6 +613,9 @@ public class Model {
 		// System.out.println("Add Layer:"+z);
 		//LayerOpen = true;
 		return lay;
+	}
+	public float getTimeaccel() {
+		return timeaccel;
 	}
 
 }

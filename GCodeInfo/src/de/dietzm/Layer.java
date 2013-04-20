@@ -59,8 +59,9 @@ public class Layer implements Comparable<Layer>{
 			traveldistance+= gcode.getDistance();
 		}
 		
-		if(fanspeed!=0) {
+		
 			gcode.setFanspeed(fanspeed); //Update follow on gcodes
+		if(fanspeed!=0) {
 			fantime+=gcode.getTime();
 		}
 		
