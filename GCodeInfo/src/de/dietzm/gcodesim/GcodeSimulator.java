@@ -25,9 +25,11 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collections;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import de.dietzm.Model;
 import de.dietzm.gcodesim.GcodePainter.Commands;
 
 
@@ -61,9 +63,11 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	 * 0.91 Show current speed and remaining print time. Fixed double buffering bug. 
 	 * 0.92 Fixed double buffering bug for MAC OS. Show modeldetails by default. Added Menubar 
 	 * 0.93 Fixed some multi-threading bugs. Some performance improvements. Icon added. zoom on resize. filedialog path and timer.
-	 * 0.94 Fixed temperatur bug
+	 * 0.94 Fixed temperatur bug , optimize label repaint,
+	 * 0.95 Experimental Edit Mode added (Modify menu) 
+	 * 
 	 */
-	public static final String VERSION = "v0.94";	
+	public static final String VERSION = "v0.95";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
@@ -131,7 +135,20 @@ public class GcodeSimulator extends Frame implements ActionListener {
 		    Menu about = new Menu ("About");
 		    addMenuItem(about, "About/Help", "h",KeyEvent.VK_H);
 		    		    
+		    
+		    Menu edit = new Menu ("Modify (Experimental)");
+		    edit.add("Experimental Edit Mode");
+		    edit.addSeparator();
+		    addMenuItem(edit, "Speedup Layer by 10%", "w",KeyEvent.VK_W);
+		    addMenuItem(edit, "Slowdown Layer by 10%", "e",KeyEvent.VK_E);
+		    addMenuItem(edit, "Increase extrusion by 10%", "z",KeyEvent.VK_Z);
+		    addMenuItem(edit, "Decrease extrusion by 10%", "u",KeyEvent.VK_U);
+		    addMenuItem(edit, "Delete layer", "g",KeyEvent.VK_G);
+		    addMenuItem(edit, "Save Modifications", "a",KeyEvent.VK_A);
+		    
+		    
 		    ml.add(control);
+		    ml.add(edit);
 		    ml.add(view);
 		    ml.add(about);
 		    
@@ -388,6 +405,29 @@ public class GcodeSimulator extends Frame implements ActionListener {
 					gp.togglePrint();
 				} else if (arg0.getKeyChar() == 'h') {
 					gp.showHelp();
+					
+				//EDIT MODE
+				} else if (arg0.getKeyChar() == 'g') {
+					Model.deleteLayer(Collections.singleton(gp.getCurrentLayer()));
+					gp.setCmd(Commands.REANALYSE);
+				} else if (arg0.getKeyChar() == 'w') {
+					Model.changeSpeed(Collections.singleton(gp.getCurrentLayer()),10);
+					gp.setCmd(Commands.REANALYSE);
+				} else if (arg0.getKeyChar() == 'e') {
+					Model.changeSpeed(Collections.singleton(gp.getCurrentLayer()),-10);
+					gp.setCmd(Commands.REANALYSE);
+				} else if (arg0.getKeyChar() == 'z') {
+					Model.changeExtrusion(Collections.singleton(gp.getCurrentLayer()),10);
+					gp.setCmd(Commands.REANALYSE);
+				} else if (arg0.getKeyChar() == 'u') {
+					Model.changeExtrusion(Collections.singleton(gp.getCurrentLayer()),-10);
+					gp.setCmd(Commands.REANALYSE);
+				} else if (arg0.getKeyChar() == 'a') {
+					try {
+						gp.model.saveModel(gp.model.getFilename()+"-new");
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
 				} else {
 					if(arg0.getKeyCode() != 0){ //ignore CTRL modifiers
 						gp.showHelp();

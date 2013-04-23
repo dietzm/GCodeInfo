@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -56,6 +57,11 @@ public class Model {
 		} catch (NumberFormatException e) {
 			//Use default price (30€)
 		}
+	}
+	
+	public Model(String file, ArrayList<GCode> gcall) throws Exception{
+		this(file);
+		gcodes=gcall;		
 	}
 	/**
 	 * Main method to walk through the GCODES and analyze them. 
@@ -616,6 +622,101 @@ public class Model {
 	}
 	public float getTimeaccel() {
 		return timeaccel;
+	}
+	public static void deleteLayer(Collection<Layer> lays) {
+		System.out.println("Delete Layer "+lays);
+		for (Layer layer : lays) {
+			ArrayList<GCode> gcodes = layer.getGcodes();
+			for (GCode gCode : gcodes) {
+				gCode.changeToComment();
+				gCode.parseGcode();
+			}
+		}
+	}
+	public static void changeFan(Collection<Layer> lays, int value) {
+		for (Layer layer : lays) {
+			ArrayList<GCode> gcodes = layer.getGcodes();
+			for (GCode gCode : gcodes) {
+				gCode.changeFan(value);
+				//todo... add fan value if not exits
+			}
+		}
+	}
+	public static void changeXOffset(Collection<Layer> lays, float value) {
+		System.out.println("Add X Offset "+value);
+		for (Layer layer : lays) {
+			ArrayList<GCode> gcodes = layer.getGcodes();
+			for (GCode gCode : gcodes) {
+				gCode.changeXOffset(value);
+			}
+		}
+	}
+	public static void changeYOffset(Collection<Layer> lays, float value) {
+		System.out.println("Add Y Offset "+value);
+		for (Layer layer : lays) {
+			ArrayList<GCode> gcodes = layer.getGcodes();
+			for (GCode gCode : gcodes) {
+				gCode.changeYOffset(value);
+			}
+		}
+	}
+	public static void changeZOffset(Collection<Layer> lays, float value) {
+		System.out.println("Add Z Offset "+value);
+		for (Layer layer : lays) {
+			ArrayList<GCode> gcodes = layer.getGcodes();
+			for (GCode gCode : gcodes) {
+				gCode.changeZOffset(value);
+			}
+		}
+	}
+	public static void changeLayerHeight(Collection<Layer> lays, int value) {
+		System.out.println("Change Layerheight by "+value+"%");
+		for (Layer layer : lays) {
+			ArrayList<GCode> gcodes = layer.getGcodes();
+			for (GCode gCode : gcodes) {
+				gCode.changeLayerHeight(value);
+			}
+		}
+	}
+	public static void changeBedTemp(Collection<Layer> lays, float value) {
+		System.out.println("Set Bed temp to "+value);
+		for (Layer layer : lays) {
+			ArrayList<GCode> gcodes = layer.getGcodes();
+		for (GCode gCode : gcodes) {
+				gCode.changeBedTemp(value);
+				//update temps, but always add a temp at the beginning of the layer
+				//TODO: if a temp definitions exists before G1/G2/G3 , do not insert a new one
+		}
+		}
+	}
+	public static void changeExtTemp(Collection<Layer> lays, float value) {
+		System.out.println("Set Extruder temp to "+value);
+		for (Layer layer : lays) {
+			ArrayList<GCode> gcodes = layer.getGcodes();
+		for (GCode gCode : gcodes) {
+			gCode.changeExtTemp(value);
+				//update temps, but always add a temp at the beginning of the layer
+				//TODO: if a temp definitions exists before G1/G2/G3 , do not insert a new one						
+		}
+		}
+	}
+	public static void changeExtrusion(Collection<Layer> lays, int value) {
+		System.out.println("Change Extrusion by "+value+"%");
+		for (Layer layer : lays) {
+			ArrayList<GCode> gcodes = layer.getGcodes();
+			for (GCode gCode : gcodes) {
+				gCode.changeExtrusion(value);
+			}
+		}
+	}
+	public static void changeSpeed(Collection<Layer> lays, int value) {
+		System.out.println("Change Speed by "+value+"%" );
+		for (Layer layer : lays) {
+			ArrayList<GCode> gcodes = layer.getGcodes();
+			for (GCode gCode : gcodes) {
+				gCode.changeSpeed(value,true);
+			}
+		}
 	}
 
 }

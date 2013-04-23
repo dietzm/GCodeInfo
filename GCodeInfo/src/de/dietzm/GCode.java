@@ -142,12 +142,13 @@ public class GCode {
 	}
 	
 	/**
-	 * Update the speed values (and the corresponding extrusion rate)
+	 * Update the speed values 
 	 * @param percent , negative value for slower
 	 */
-	public void changeSpeed(int percent){
+	public void changeSpeed(int percent,boolean printonly){
+		if(printonly && !isExtruding()) return;  //skip travel
 		if(f!=UNINITIALIZED) f=f+(f/100*percent);
-		if(e!=UNINITIALIZED) e=e+(e/100*percent);
+		//if(e!=UNINITIALIZED) e=e+(e/100*percent); 
 		update();
 	}
 	
@@ -266,6 +267,7 @@ public class GCode {
 				getIfInit("S",s_ext,0)+
 				getIfInit("S",s_fan,0)+
 				(comment!=null?comment:"");
+		parseGcode();
 	}
 	
 	/**
