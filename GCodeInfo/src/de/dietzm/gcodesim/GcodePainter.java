@@ -3,6 +3,7 @@ package de.dietzm.gcodesim;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Iterator;
 
 import de.dietzm.GCode;
 import de.dietzm.GCode.GCDEF;
@@ -56,6 +57,7 @@ public class GcodePainter implements Runnable {
 	 */
 	public synchronized void toggleSpeed(boolean faster){
 		if(faster && speedup >= 1){
+			if(speedup >= 99) return;
 			speedup++;
 		}else if(faster && speedup < 1){
 			speedup+=0.1;
@@ -172,20 +174,41 @@ public class GcodePainter implements Runnable {
 	}
 
 	void paintLabel(GraphicRenderer g2, Layer lay,GCode gc) {
-		// Paint boxes with infos about current layer
-		printLabelBox(g2, 0,12, String.valueOf(lay.getNumber()), "Layer #",lay);
-		printLabelBox(g2, 12,20, String.valueOf(lay.getZPosition()), "Z-Position",lay);
-		if(gc != null){
-			printLabelBox(g2, 32,22,String.valueOf(Math.round(gc.getSpeed())), "Current Speed",lay);
-			printLabelBox(g2, 91,9,(gc.getFanspeed()!=0?String.valueOf(Math.round(gc.getFanspeed()/25)):"-"), "Fan",lay);
+		
+		//On Layer change, skip for individual gcodes to save cycles
+		if(gc == null){
+			// Paint boxes with infos about current layer
+			printLabelBox(g2, 0,12, String.valueOf(lay.getNumber()), "Layer #",lay.getNumber());
+			printLabelBox(g2, 12,20, String.valueOf(lay.getZPosition()), "Z-Position",lay.getNumber());
+
+			printLabelBox(g2, 32,22,"", "Current Speed",lay.getNumber());
+			printLabelBox(g2, 94,6,getFanSpeed(lay.getFanspeed()), "Fan",lay.getNumber());	
+			
 		}else{
-			printLabelBox(g2, 32,22,"", "Current Speed",lay);
-			printLabelBox(g2, 91,9,(lay.getFanspeed()!=0?String.valueOf(Math.round(lay.getFanspeed()/25)):"-"), "Fan",lay);
+			printLabelBox(g2, 32,12,String.valueOf(Math.round(gc.getSpeed())), "XY Speed",lay.getNumber());
+			printLabelBox(g2, 44,14,getExtrSpeed(gc), "E Speed",lay.getNumber());
+			//printLabelBox(g2, 93,7,(gc.getFanspeed()!=0?String.valueOf(Math.round(gc.getFanspeed()/26)):"-"), "Fan",lay.getNumber());
+			printLabelBox(g2, 94,6,getFanSpeed(gc.getFanspeed()), "Fan",lay.getNumber());
 		}
-		printLabelBox(g2, 54,24, GCode.formatTimetoHHMMSS(mtime), "Remaining Time",lay);
-		printLabelBox(g2, 78,13,GCode.removeTrailingZeros(String.valueOf(GCode.round2digits(speedup)))+"x", "Speedup",lay);
+		printLabelBox(g2, 58,24, GCode.formatTimetoHHMMSS(mtime), "Remaining Time",lay.getNumber());
+		printLabelBox(g2, 82,12,GCode.removeTrailingZeros(String.valueOf(GCode.round2digits(speedup)))+"x", "Speedup",lay.getNumber());		
+		
+		
+//		if(pause == 0){
+
+//		}else{
+//			printLabelBox(g2, 78,13,"P", "Speedup",lay.getNumber());
+//		}
 		//printLabelBox(g2, 54,24, GCode.formatTimetoHHMMSS((useAccelTime?lay.getTimeAccel():lay.getTime())), "Layer Time",lay);
 		//printLabelBox(g2, 32,22, String.valueOf(lay.getSpeed(Speed.SPEED_PRINT_AVG)), "Avg. Speed",lay);
+	}
+
+	private String getFanSpeed(float fanf) {
+		String fan="";
+		for(int i = 0; i<fanf; i=i+100){
+			fan=fan+"I";
+		}
+		return fan;
 	}
 
 	private void printDetails(GraphicRenderer g2, Layer lay) {
@@ -244,16 +267,16 @@ public class GcodePainter implements Runnable {
 		}
 	}
 
-	private void printLabelBox(GraphicRenderer g2, int boxposp,int bsizepercent, String value, String labl,Layer lay) {
+	private void printLabelBox(GraphicRenderer g2, int boxposp,int bsizepercent, String value, String labl,int laynr) {
 		float boxsize=((bedsizeX*zoom+gap)/100)*bsizepercent;
 		float boxpos=((bedsizeX*zoom+gap)/100)*boxposp;
 		float boxheight=(bedsizeX*zoom)/12f;
 		float gap=zoom;
-		float size=2+10f*(zoom);
+		float size=2+9.6f*(zoom);
 		g2.clearrect(boxpos+2,bedsizeY*zoom+2, boxsize-3,boxheight-2);
 		g2.setColor(7);//white
 		g2.drawrect(boxpos,bedsizeY*zoom, boxsize,boxheight+1);
-		g2.setColor(lay.getNumber() % 7);
+		g2.setColor(laynr % 7);
 		g2.setFontSize(size);
 		g2.drawtext(value, boxpos, bedsizeY*zoom+size-gap,boxsize);
 		g2.setFontSize(size/3);
@@ -491,15 +514,14 @@ public class GcodePainter implements Runnable {
 						float sleeptime =0;
 						synchronized(g2){ 
 							if(!ffLayer && fftoGcode==0 && fftoLayer==0){
-								printLabelBox(g2, 32,22,String.valueOf(Math.round(gCode.getSpeed())), "Current Speed",lay);
-								printLabelBox(g2, 54,24, GCode.formatTimetoHHMMSS(mtime), "Remaining Time",lay);
+								paintLabel(g2, lay, gCode);
 								sleeptime = ((useAccelTime?gCode.getTimeAccel():gCode.getTime())* 1000) / speedup;
 							}
 						}
 						float[] pos = gCode.getCurrentPosition();
 						if (lastpos != null) {
 							if (gCode.isExtruding()) {
-								//g2.setColor(lay.getNumber() % 7);								
+								g2.setColor(lay.getNumber() % 7);								
 								printLine(g2, lastpos, pos,sleeptime,starttime);
 								printLineHorizontal(g2, lastpos, pos,lay,gCode);
 							} else if (PAINTTRAVEL) {
@@ -511,7 +533,7 @@ public class GcodePainter implements Runnable {
 						}
 						if(gCode.getS_Fan() != GCode.UNINITIALIZED){
 							//update Fan Label 
-							printLabelBox(g2, 91,9,(gCode.getFanspeed()!=0?String.valueOf(Math.round(gCode.getFanspeed()/25)):"-"), "Fan",lay);
+							printLabelBox(g2, 91,9,(gCode.getFanspeed()!=0?String.valueOf(Math.round(gCode.getFanspeed()/25)):"-"), "Fan",lay.getNumber());
 						}
 						mtime=mtime-gCode.getTimeAccel();
 						lastpos = pos;
@@ -540,10 +562,14 @@ public class GcodePainter implements Runnable {
 									long paintdur=System.currentTimeMillis()-starttime;
 									long sleep = Math.max(0,((long)sleeptime)-paintdur);
 									//System.out.println(sleep+ " VS "+sleeptime);
-									Thread.sleep((int)sleep + pause);
-								}else{
+									Thread.sleep((int)sleep);
+								}
+								if(pause != 0){
+									printLabelBox(g2, 82,12,"P", "Pause",lay.getNumber());
+									g2.repaint();
 									Thread.sleep(pause); //allow pause only if printing
 								}
+								
 							}else{
 								if(fftoGcode != 0 && fftoGcode == gCode.getLineindex()){
 									fftoGcode=0;
@@ -576,6 +602,12 @@ public class GcodePainter implements Runnable {
 		}
 	
 		
+	}
+
+	private String getExtrSpeed(GCode gCode) {
+		int exspeed = Math.round(gCode.getExtrusionSpeed());
+		String exvar = exspeed >=0 ? String.valueOf(exspeed) : "R";
+		return exvar;
 	}
 	
 	/**
@@ -614,10 +646,10 @@ public class GcodePainter implements Runnable {
 				fftoLayer=lay.getNumber()-1;
 				if(fftoLayer<=0) fftoLayer=model.getLayercount(true); //jump to last layer
 			}
-			try {
-				Thread.sleep(150); //wait to ensure that repaints are finished
-			} catch (Exception e) {
-			}
+//			try {
+//				Thread.sleep(0); //wait to ensure that repaints are finished
+//			} catch (Exception e) {
+//			}
 			return 1;
 		case DEBUG:
 			cmd = Commands.NOOP;

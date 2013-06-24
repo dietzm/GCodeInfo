@@ -17,8 +17,9 @@ public class GCodeUtil {
 	 * 0.96 use sorted map instead of sorting each time, Nice looking labels for current infos,  pageing for layer details, about/help dialog
 	 * 0.97 Use SpeedEntry, show speedtype travel/print, show layers for speed
 	 * 0.98 Add edit function to modify gcodes (experimental)
+	 * 0.99 CSV export 
 	 */
-	public static final String VERSION ="0.98";
+	public static final String VERSION ="0.99";
 
 	
 	
@@ -98,6 +99,10 @@ public class GCodeUtil {
 				printGCodeDetails(model, mode);
 			}
 		
+			//DEBUG
+			if(mode.contains("x")){
+				printGCodeDetailsCSV(model, mode);
+			}
 
 			long end = System.currentTimeMillis();
 			System.out.println("Gcode Analyse Time: "+ GCode.formatTimetoHHMMSS((end-start)/1000f) +" Load time:"+GCode.formatTimetoHHMMSS((load-start)/1000f));
@@ -186,6 +191,7 @@ public class GCodeUtil {
 		System.err.println("\tn = Show Non-Printed Layer Detail Info");
 		System.err.println("\ts = Show Printing Speed Details Info");
 		System.err.println("\tc = Show embedded comments (e.g. from slicer)");
+		System.err.println("\tx = Print Gcode details as CSV output");
 		
 		System.err.println("Edit Mode Usage: "+name+" [editmode e] [option] [layers]  gcodefile ");
 		System.err.println("\te speed=-10 = Reduce Speed by 10 percent");
@@ -296,6 +302,31 @@ public class GCodeUtil {
 					}
 				
 			}
+		}
+	}
+	
+	private static void printGCodeDetailsCSV(Model model, String mode) {
+
+		System.out.println("***************************************************************************");
+		System.out.println("****************************** GCODE Details ******************************");
+		System.out.println("***************************************************************************");
+		
+		/**
+		 * Print Layer details
+		 */
+		ArrayList<Layer> layers = new ArrayList<Layer>(model.getLayer().values());
+		//Collections.sort(layers);		
+		System.out.println("Layer;Speed;Extrusion;Distance;Time;Fanspeed");
+		for (Iterator<Layer> iterator = layers.iterator(); iterator.hasNext();) {
+			Layer lay = iterator.next();
+			//float layperc =  GCode.round2digits(lay.getTime()/(model.getTime()/100));
+				//System.out.println("--------------------------------------------------");
+					//System.out.println(lay.getLayerDetailReport()+"\n Percent of time:"+layperc+"%");
+					for (GCode gc : lay.getGcodes()) {
+						System.out.println(lay.getNumber()+";"+gc.toCSV());
+					}
+				
+			
 		}
 	}
 

@@ -4,7 +4,7 @@ package de.dietzm;
 public class GCode {
 	
 	public static enum GCDEF {
-		G0,G1,G2,G20,G21,G28,G4,G90,G91,G92,M0,M1,M92,M101,M103,M104,M105,M106,M107,M108,M109,M113,M114,M117,M140,M190,M82,M83,M84,UNKNOWN;
+		G0,G1,G2,G3,G20,G21,G28,G4,G90,G91,G92,M0,M1,M92,M101,M103,M104,M105,M106,M107,M108,M109,M113,M114,M117,M140,M190,M82,M83,M84,UNKNOWN;
 	}
 	public static final float UNINITIALIZED = -99999.99f;
 	private String codeline;	
@@ -76,6 +76,8 @@ public class GCode {
 	public static float round3digits(float num){
 		return Math.round((num)*1000f)/1000f;
 	}
+	
+	
 	
 	
 	public GCode(String line,int linenr){
@@ -328,7 +330,7 @@ public class GCode {
 	 * @return true is extruding
 	 */
 	public boolean isExtruding(){
-		return ( e != UNINITIALIZED && e > 0 );
+		return ( e != UNINITIALIZED && extrusion > 0 );
 	}
 	
 	/**
@@ -409,6 +411,9 @@ public class GCode {
 					break;
 				}
 			}
+			break;
+		case G3:
+			System.err.println("Unsupported Gcode G3. Ignoring it.");
 			break;
 		case G4: //Dwell
 			//TODO add to duration
@@ -516,11 +521,11 @@ public class GCode {
 		case M103: //marlin turn all extr off
 		case M101://marlin turn all extr on
 		case M113: //set extruder speed / turn off
-			System.err.println("Not supported Gcode:"+gcode);
-			return false;
+			System.err.println("Unsupported Gcode M101/M103/M113 found. Ignoring it.");
+			break;
 		case M108:
-			System.err.println("Deprecated Gcode M108");
-			return false;
+			System.err.println("Deprecated Gcode M108. Ignoring it.");
+			break;
 		default:
 			System.err.println("Unknown Gcode "+lineindex+": "+ codelinevar.substring(0,Math.min(15,codelinevar.length()))+"....");
 			return false;
@@ -605,6 +610,16 @@ public class GCode {
 	public float getTimeAccel() {
 		return this.timeaccel;
 	}
+	
+	
+	/**
+	 * Get Extrusion speed (mm/min)
+	 * @return
+	 */
+	public float getExtrusionSpeed(){
+		return (extrusion/timeaccel)*60f;
+	}
+	
 
 	public void setX(float x) {
 		this.x = x;
@@ -625,6 +640,16 @@ public class GCode {
 		var+="\tDistance:"+distance;
 		var+="\tPosition:"+currentPosition[0]+"x"+currentPosition[1]+"x"+currentPosition[2];
 		var+="\tTime:"+time;
+		return var;
+	}
+	
+
+	public String toCSV() {		
+		String var = String.valueOf(getSpeed());
+		var+=";"+extrusion;
+		var+=";"+distance;
+		var+=";"+time;
+		var+=";"+fanspeed;
 		return var;
 	}
 	

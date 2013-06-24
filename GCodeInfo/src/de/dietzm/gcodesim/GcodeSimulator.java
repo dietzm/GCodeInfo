@@ -65,9 +65,10 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	 * 0.93 Fixed some multi-threading bugs. Some performance improvements. Icon added. zoom on resize. filedialog path and timer.
 	 * 0.94 Fixed temperatur bug , optimize label repaint,
 	 * 0.95 Experimental Edit Mode added (Modify menu) 
-	 * 
+	 * 0.96 Display Extrusion speed, pause and changed fan output. Fixed grey spots bug.
+	 * 0.97 More resilient against errors (Ignore some unknown Gcodes instead of failing) 
 	 */
-	public static final String VERSION = "v0.95";	
+	public static final String VERSION = "v0.97";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
@@ -345,7 +346,7 @@ public class GcodeSimulator extends Frame implements ActionListener {
 				float currsize = gp.getSize(false)[1];
 				
 				if(currsize!=size){
-					System.out.println("Size:"+size+" Curr:"+currsize);
+					//System.out.println("Size:"+size+" Curr:"+currsize);
 					//float fac = size/currsize;
 					float fac = (size-(55+(size/12)))/GcodePainter.bedsizeY;
 					//float z = gp.getZoom();
