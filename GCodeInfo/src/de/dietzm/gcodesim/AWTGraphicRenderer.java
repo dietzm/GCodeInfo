@@ -51,9 +51,10 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 	}
 	
 	Graphics2D g = null;
-	Color[] colors = new Color[] { Color.red, Color.blue, Color.yellow, Color.cyan, Color.green,
-			Color.magenta, Color.orange , Color.white, Color.darkGray};
-	
+	final Color[] colors = new Color[] { Color.red, Color.cyan, Color.yellow, Color.magenta, Color.green,
+			Color.orange, Color.pink , Color.white, Color.darkGray};
+//	Color[] colors = new Color[] { new Color(0xffAAAA), new Color(0xffBAAA), new Color(0xffCAAA), new Color(0xffDAAA), 
+//			new Color(0xffEAAA),	new Color(0xffFAAA), new Color(0xffFFAA) , Color.white, Color.darkGray};
 	//Stroke 0=travel 1=print
 	private BasicStroke stroke[] = {
 			new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND, 1,new float[] { 1, 2 }, 0),
@@ -75,6 +76,21 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 		g.setFont(Font.decode(Font.SANS_SERIF));
 		this.frame=frame;
 		
+		//Experiment with more colors 
+//		colors = new Color[302];
+//		int rgb = 0x994444;
+//		for (int i = 0; i < colors.length; i++) {
+//					colors[i]=new Color(rgb);
+//					System.out.println(rgb);
+//					if(i % 2 == 0){
+//						rgb+=0x000005;
+//					}else{
+//						rgb+=0x000500;
+//					}
+//		}
+//		colors[colors.length-2]=Color.white;
+//		colors[colors.length-1]=Color.darkGray;
+		
 	}
 
 	public void setFontSize(float font){
@@ -92,6 +108,21 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 	@Override
 	public void drawline(float x, float y, float x1, float y1) {
 		g.draw(new Line2D.Float(x,y,x1,y1));
+	}
+	
+	public void drawArc(int x,int y,int width, int height,int theta, int delta){
+		g.drawArc(x, y, width, height, theta, delta);
+	}
+	
+	int[] pos = new int[2];
+	public synchronized void setPos(int x, int y){
+//		System.out.println("POS: X:"+x+" Y:"+y );
+	pos[0]=x;
+	pos[1]=y;
+	}
+	
+	public synchronized int[] getPos(){
+		return pos;
 	}
 
 	@Override
@@ -158,9 +189,19 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 //		  int[] imgData = ((DataBufferInt)offimg2.getRaster().getDataBuffer()).getData();
 //		   System.arraycopy(frame,0,imgData,0,frame.length);
 	}
-	public synchronized void drawImage(Graphics g){		
-		g.drawImage(offimg, 6, 55, frame);	
-		//notifyAll();
+	public synchronized void drawImage(Graphics gp){
+
+		gp.drawImage(offimg, 6, 55, frame);
+
+		//Paint current print point (nozzle)
+		gp.setColor(g.getColor());
+		gp.fillOval((int)getPos()[0]+4,(int)getPos()[1]+53,4,4);
+		gp.setColor(Color.white);
+		gp.drawOval((int)getPos()[0]-2,(int)getPos()[1]+47,16,16);
+		gp.drawOval((int)getPos()[0]+0,(int)getPos()[1]+49,12,12);
+		gp.drawOval((int)getPos()[0]+2,(int)getPos()[1]+51,8,8);
+		//gp.drawOval((int)getPos()[0]+4,(int)getPos()[1]+53,4,4);
+
 	}
 
 	@Override

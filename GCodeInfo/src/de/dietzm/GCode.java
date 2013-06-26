@@ -13,6 +13,11 @@ public class GCode {
 	private float f=UNINITIALIZED; //Speed
 	private float x=UNINITIALIZED;
 	private float y=UNINITIALIZED;
+	private float ix=0;
+	private float jy=0;
+	private float kz=0;
+	private float r=UNINITIALIZED;
+	
 	private float z=UNINITIALIZED;
 	private float s_ext=UNINITIALIZED;
 	private float s_bed=UNINITIALIZED;
@@ -304,6 +309,22 @@ public class GCode {
 	public float getX() {
 		return x;
 	}
+	public float getIx() {
+		return ix;
+	}
+
+	public float getJy() {
+		return jy;
+	}
+
+	public float getKz() {
+		return kz;
+	}
+	
+	public float getR() {
+		return r;
+	}
+
 
 	public float getY() {
 		return y;
@@ -412,8 +433,45 @@ public class GCode {
 				}
 			}
 			break;
+		case G2:
 		case G3:
-			System.err.println("Unsupported Gcode G3. Ignoring it.");
+			//System.out.println("G1 ->"+code);
+			for (int i = 1; i < segments.length; i++) {
+				//System.out.println("segment:"+segments[i]);
+				id = segments[i].charAt(0);
+				switch (id) {
+				case 'E':
+					e = parseSegment(segments[i]);
+					break;
+				case 'X':
+					x = parseSegment(segments[i]);
+					break;
+				case 'Y':
+					y = parseSegment(segments[i]);
+					break;
+				case 'Z':
+					z = parseSegment(segments[i]);	
+					break;
+				case 'F':
+					f = parseSegment(segments[i]);
+					break;
+				case 'I':
+					ix = parseSegment(segments[i]);
+					break;
+				case 'J':
+					jy = parseSegment(segments[i]);
+					break;
+				case 'K':
+					kz = parseSegment(segments[i]);
+					break;
+				case 'R':
+					r = parseSegment(segments[i]);
+					break;
+				default:
+					break;
+				}
+			}
+			System.err.println("Experimental support of Gcode G2/G3.");
 			break;
 		case G4: //Dwell
 			//TODO add to duration

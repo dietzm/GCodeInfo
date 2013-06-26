@@ -66,9 +66,11 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	 * 0.94 Fixed temperatur bug , optimize label repaint,
 	 * 0.95 Experimental Edit Mode added (Modify menu) 
 	 * 0.96 Display Extrusion speed, pause and changed fan output. Fixed grey spots bug.
-	 * 0.97 More resilient against errors (Ignore some unknown Gcodes instead of failing) 
+	 * 0.97 More resilient against errors (Ignore some unknown Gcodes instead of failing)
+	 * 0.98 Support for center format G2/G3 Gcodes (Arc) - Radius format not supported yet
+	 * 0.99 clicked on speedup label, toggles pause. Replaced blue with a lighter pink to improve readability. Paint nozzle location.
 	 */
-	public static final String VERSION = "v0.97";	
+	public static final String VERSION = "v0.99";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
@@ -238,6 +240,7 @@ public class GcodeSimulator extends Frame implements ActionListener {
 			@Override
 			public boolean accept(File arg0, String arg1) {
 				if(arg1.toLowerCase().endsWith(".gcode")) return true;
+				if(arg1.toLowerCase().endsWith(".gc")) return true;
 				return false;
 			}
 		});
@@ -272,11 +275,13 @@ public class GcodeSimulator extends Frame implements ActionListener {
 					if (gp.getZoom() < 8 && mwrot > 0)	gp.setZoom(gp.getZoom() + mwrot/10f);
 					updateSize(showdetails);
 				}else{
-					//Speedup
-					if( mwrot > 0){
-						gp.toggleSpeed(false);
-					}else{
-						gp.toggleSpeed(true);
+					//Speedup (only if in left box
+					if(arg0.getPoint().x < GcodePainter.bedsizeX * gp.getZoom()+gp.gap ){
+						if( mwrot > 0){
+							gp.toggleSpeed(false);
+						}else{
+							gp.toggleSpeed(true);
+						}
 					}
 					
 				}
@@ -313,6 +318,13 @@ public class GcodeSimulator extends Frame implements ActionListener {
 				}else if(arg0.getButton() == MouseEvent.BUTTON2){
 						gp.showHelp();
 				}else{
+					int speedboxpos = (int)(((GcodePainter.bedsizeX*gp.getZoom()+gp.gap)/100)*82)+6;
+					int speedboxsize=(int)((GcodePainter.bedsizeX*gp.getZoom()+gp.gap)/100)*12;
+					int mousex=arg0.getPoint().x;
+					//if clicked on speedup label, toggle pause
+					if(mousex >= speedboxpos && mousex <= speedboxpos+speedboxsize && arg0.getPoint().y > GcodePainter.bedsizeY*gp.getZoom()+55){
+						gp.togglePause();
+					}
 					if(arg0.getPoint().x > GcodePainter.bedsizeX * gp.getZoom()+gp.gap ){
 						gp.toggleType();
 					}else{
@@ -457,6 +469,13 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	public void paint(Graphics g) {
 		//g.drawImage(awt.getImage(), 4, 28, this);
 		awt.drawImage(g);
+//		//Paint current print point
+//		g.fillOval((int)awt.getPos()[0]+4,(int)awt.getPos()[1]+53,4,4);
+//		g.setColor(Color.white);
+//		g.drawOval((int)awt.getPos()[0]-2,(int)awt.getPos()[1]+47,16,16);
+//		g.drawOval((int)awt.getPos()[0]+0,(int)awt.getPos()[1]+49,12,12);
+//		g.drawOval((int)awt.getPos()[0]+2,(int)awt.getPos()[1]+51,8,8);
+//		g.drawOval((int)awt.getPos()[0]+4,(int)awt.getPos()[1]+53,4,4);
 		super.paint(g);
 	}
 	

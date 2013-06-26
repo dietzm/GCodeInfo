@@ -109,7 +109,7 @@ public class Model {
 			}
 			
 
-			if (gc.getGcode() == GCDEF.G1 || gc.getGcode() == GCDEF.G0 ) {
+			if (gc.getGcode() == GCDEF.G1 || gc.getGcode() == GCDEF.G0 || gc.getGcode() == GCDEF.G2 || gc.getGcode() == GCDEF.G3) {
 				gc.setExtemp(exttemp); //Make sure all gcodes know the current temp
 				gc.setBedtemp(bedtemp);
 				//Detect Layer change and create new layers.
@@ -120,7 +120,40 @@ public class Model {
 				}	
 				float move = 0;
 				//Move G1 - X/Y at the same time
-				if (gc.getX() != GCode.UNINITIALIZED && gc.getY() != GCode.UNINITIALIZED) {
+				if (gc.getGcode() == GCDEF.G2 || gc.getGcode() == GCDEF.G3){
+					//center I&J relative to x&y
+					float cx = (xpos+gc.getIx());
+					float cy = (ypos+gc.getJy());
+					float newxpos = gc.getX() != GCode.UNINITIALIZED ? gc.getX():xpos;
+					float newypos = gc.getY() != GCode.UNINITIALIZED ? gc.getY():ypos;
+					//triangle
+					float bx=(newxpos-cx);
+					float by=(newypos-cy);
+					float ax=(xpos-cx);
+					float ay=(ypos-cy);
+					//Java drawarc is based on a bonding box
+					//Left upper edge of the bounding box
+					float xmove = Math.abs(cx-xpos);
+					float ymove = Math.abs(cy-ypos);
+					//assume a circle (no oval)
+					float radius = ((float) Math.sqrt((xmove * xmove) + (ymove * ymove)));
+					double angle1 ,angle2 ;
+					//Calculate right angle
+					if(gc.getGcode() == GCDEF.G2){
+						angle1 = Math.atan2(by,bx) * (180/Math.PI);
+						angle2 = Math.atan2(ay,ax) * (180/Math.PI);
+					}else{
+						angle2 = Math.atan2(by,bx) * (180/Math.PI);
+						angle1 = Math.atan2(ay,ax) * (180/Math.PI);
+					}
+					double angle=(int) (angle2-angle1);
+					
+					xpos=newxpos;
+					ypos=newypos;
+					//Bogenlaenge
+					move = (float) (Math.PI * radius * angle / 180);
+					gc.setDistance(move);
+				}else if (gc.getX() != GCode.UNINITIALIZED && gc.getY() != GCode.UNINITIALIZED) {
 					float xmove = Math.abs(xpos - gc.getX());
 					float ymove = Math.abs(ypos - gc.getY());
 					if (xmove + ymove == 0)

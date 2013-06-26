@@ -3,7 +3,6 @@ package de.dietzm.gcodesim;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Iterator;
 
 import de.dietzm.GCode;
 import de.dietzm.GCode.GCDEF;
@@ -13,6 +12,7 @@ import de.dietzm.Model;
 public class GcodePainter implements Runnable {
 	public static enum Commands {RESTART,NEXTLAYER,REPAINTLABEL,DEBUG,EXIT,OPENFILE,NOOP,PRINT,REPAINTLAYERS,PREVIOUSLAYER,HELP,REANALYSE}; 
 	
+	public final static int colNR = 7;
 	private boolean useAccelTime=true;
 	boolean ffLayer=false; //Fast Forward Layer
 	int fftoGcode=0 , fftoLayer=0; //Fast forward to gcode linenumber # / to layer
@@ -143,7 +143,7 @@ public class GcodePainter implements Runnable {
 	int detailstype=0;
 	
 	public GcodePainter(GraphicRenderer g){
-		this.g2=g;		
+		this.g2=g;	
 	}
 	
 	public GcodePainter(GraphicRenderer g, boolean modeldetails, float zoomlevel){
@@ -212,7 +212,7 @@ public class GcodePainter implements Runnable {
 	}
 
 	private void printDetails(GraphicRenderer g2, Layer lay) {
-		g2.setColor(lay.getNumber() % 7);
+		g2.setColor(lay.getNumber() % colNR);
 		float boxheight=(bedsizeX*zoom)/12f;
 		int linegap=(int)(5*zoom);
 		float size=2+10f*(zoom);
@@ -271,20 +271,20 @@ public class GcodePainter implements Runnable {
 		float boxsize=((bedsizeX*zoom+gap)/100)*bsizepercent;
 		float boxpos=((bedsizeX*zoom+gap)/100)*boxposp;
 		float boxheight=(bedsizeX*zoom)/12f;
-		float gap=zoom;
+		float gapz=zoom;
 		float size=2+9.6f*(zoom);
 		g2.clearrect(boxpos+2,bedsizeY*zoom+2, boxsize-3,boxheight-2);
-		g2.setColor(7);//white
+		g2.setColor(colNR);//white
 		g2.drawrect(boxpos,bedsizeY*zoom, boxsize,boxheight+1);
-		g2.setColor(laynr % 7);
+		g2.setColor(laynr % colNR);
 		g2.setFontSize(size);
-		g2.drawtext(value, boxpos, bedsizeY*zoom+size-gap,boxsize);
+		g2.drawtext(value, boxpos, bedsizeY*zoom+size-gapz,boxsize);
 		g2.setFontSize(size/3);
-		g2.drawtext(labl, boxpos, bedsizeY*zoom+boxheight-gap*2,boxsize);
+		g2.drawtext(labl, boxpos, bedsizeY*zoom+boxheight-gapz*2,boxsize);
 	}
 
 	public void paintLoading(GraphicRenderer g) {
-		g.setColor(0);
+		g.setColor(colNR);
 		//TODO
 		g.setFontSize(50);
 		
@@ -315,7 +315,7 @@ public class GcodePainter implements Runnable {
 		g.fillrect(xbox,ybox , boxsize+30, boxsize+80);
 		g.drawrect(xbox-3,ybox-3 , boxsize+36, boxsize+86);
 		float gap = 5*zoom;
-		g.setColor(7);
+		g.setColor(colNR);
 		
 		g2.drawtext("Gcode Simulator "+GcodeSimulator.VERSION,xbox+3 , ybox+gap);
 		g2.drawtext("________________________",xbox+3 , ybox+gap+1);
@@ -346,7 +346,7 @@ public class GcodePainter implements Runnable {
 		}
 
 	void printBed(GraphicRenderer g2) {
-		g2.setColor(7);
+		g2.setColor(colNR);
 		g2.drawrect(0, 0, bedsizeX * zoom, bedsizeY * zoom); // Draw print bed
 		g2.drawrect(bedsizeX * zoom , 0, gap, bedsizeY * zoom); // Draw level bar border
 		
@@ -367,7 +367,7 @@ public class GcodePainter implements Runnable {
 		
 		//Draw grid
 		g2.setStroke(2);
-		g2.setColor(8);
+		g2.setColor(colNR+1);
 		for (int i = 10; i < bedsizeX; i=i+10) {
 			g2.drawline(i*zoom,0,i*zoom,bedsizeY*zoom);
 			g2.drawline(0,i*zoom,bedsizeX*zoom,i*zoom);	
@@ -380,7 +380,7 @@ public class GcodePainter implements Runnable {
 		//Draw zero position on bed
 		if(Xoffset != 0 || Yoffset != 0){
 			g2.setStroke(0);
-			g2.setColor(7);
+			g2.setColor(colNR);
 			g2.drawline(Xoffset*zoom-10, Yoffset*zoom, Xoffset*zoom+100, Yoffset*zoom);
 			g2.drawline(Xoffset*zoom, Yoffset*zoom+10, Xoffset*zoom, Yoffset*zoom-100);
 			g2.setStroke(1);
@@ -392,7 +392,7 @@ public class GcodePainter implements Runnable {
 	protected void paintLevelBar(GraphicRenderer g2, Layer lay) {
 		//Print level bar
 		g2.setStroke(1);
-		g2.setColor(lay.getNumber() % 7);
+		g2.setColor(lay.getNumber() % colNR);
 		float factor = (bedsizeY * zoom - 2) / (model.getDimension()[2] * 10);
 		g2.fillrect(bedsizeX * zoom, bedsizeY * zoom - (int) ((lay.getZPosition() * 10) * factor), gap,
 				(int) (lay.getLayerheight() * 10 * factor)); // Draw level indicator
@@ -416,6 +416,7 @@ public class GcodePainter implements Runnable {
 				float stepx = distx / maxdist;
 				float stepy = disty / maxdist;
 				for (int i = 0; i < maxdist; i++) {
+					g2.setPos((int)(x1 + ((i + 1) * stepx)),(int)( y1+ ((i + 1) * stepy)));
 					g2.drawline(x1 + (i * stepx), y1 + (i * stepy), x1 + ((i + 1) * stepx), y1
 							+ ((i + 1) * stepy));
 					try {
@@ -438,12 +439,76 @@ public class GcodePainter implements Runnable {
 		return time; // not slept, sleep in the main loop
 	}
 	
+	float printArc(GraphicRenderer g2,float[] lastpos,float[] pos, Layer lay,GCode gc){
+		
+		//center I&J relative to x&y
+		float cx = (lastpos[0]+gc.getIx());
+		float cy = (lastpos[1]+gc.getJy());
+	
+		//triangle
+		float bx=(pos[0]-cx);
+		float by=(pos[1]-cy);
+		float ax=(lastpos[0]-cx);
+		float ay=(lastpos[1]-cy);
+		//Java drawarc is based on a bonding box
+		//Left upper edge of the bounding box
+		float xmove = Math.abs(cx-lastpos[0]);
+		float ymove = Math.abs(cy-lastpos[1]);
+		//assume a circle (no oval)
+		float radius = ((float) Math.sqrt((xmove * xmove) + (ymove * ymove)));
+		double angle1 ,angle2 ;
+		//Calculate right angle
+		if(gc.getGcode() == GCDEF.G2){
+			angle1 = Math.atan2(by,bx) * (180/Math.PI);
+			angle2 = Math.atan2(ay,ax) * (180/Math.PI);
+		}else{
+			angle2 = Math.atan2(by,bx) * (180/Math.PI);
+			angle1 = Math.atan2(ay,ax) * (180/Math.PI);
+		}
+		double angle=(int) (angle2-angle1);
+		
+		//Bogenlaenge
+		//double length = Math.PI * radius * angle / 180;
+		
+		//Upper top bounding box edge needed for drawArc()
+		float utx = cx - radius;
+		float uty = cy + radius;
+		
+		//Debug
+//		System.out.println("aX:"+ax);
+//		System.out.println("aY:"+ay);
+//		System.out.println("bX:"+bx);
+//		System.out.println("bY:"+by);
+//		System.out.println("STARTPOS: X"+lastpos[0]+" Y"+lastpos[1]+" Gcode:"+gc.getCodeline());
+//		System.out.println("ENDPOS: X"+pos[0]+" Y"+pos[1]);
+//		System.out.println("Zoom:"+zoom);
+//		System.out.println("Center CX:"+cx+" CY:"+cy);
+//		System.out.println("Upper-top UTX:"+utx+" UTY:"+uty);
+//		System.out.println("RAD:"+radius);
+//		
+//		System.out.println("A1:"+angle1+" A2:"+angle2);
+//		System.out.println("Offset:"+Xoffset+" "+Yoffset);
+//		System.out.println("Length:"+length);
+		
+	//	g2.setColor(2);	
+	//	g2.drawrect(((cx+Xoffset)*zoom), (bedsizeY * zoom) -((cy+Yoffset)*zoom), (int)1, (int)1);
+	//	g2.setColor(3);
+	//	g2.drawrect(((utx+Xoffset)*zoom),(bedsizeY * zoom) - ((uty+Yoffset)*zoom), (int)radius*2*zoom, (int)radius*2*zoom);
+		g2.drawArc((int)((utx+Xoffset)*zoom), (int)((bedsizeY * zoom) -((uty+Yoffset)*zoom)), (int)(radius*2*zoom), (int)(radius*2*zoom), (int)angle1,(int)angle);
+		//TODO: split arc in multiple sections to have a smoother paint
+		return 0;
+	}
+	
+	
+	
 	
 	void printLineHorizontal(GraphicRenderer g2, float[] lastpos, float[] pos, Layer lay,GCode gc) {
-		g2.setColor(lay.getNumber() % 7);
+		g2.setColor(lay.getNumber() % colNR);
 		g2.setStroke(1);
 		float zoomsmall= zoom/zoommod;
-
+//		System.out.println("--STARTPOS: X"+lastpos[0]+" Y"+lastpos[1]+" Gcode:"+gc.getCodeline());
+//		System.out.println("--ENDPOS: X"+pos[0]+" Y"+pos[1]);
+//		System.out.println("Offset:"+Xoffset+" "+Yoffset+" Zoom:"+zoom +" small:"+zoomsmall);
 		float x1 = ((lastpos[0] + Xoffset) * zoomsmall) + (bedsizeX * zoom + gap) ;
 		float y1 = (bedsizeX * zoomsmall) - ((lastpos[1] + Yoffset) * zoomsmall)+ (bedsizeX * zoom + gap);
 		float x2 = (pos[0] + Xoffset) * zoomsmall+ (bedsizeX * zoom + gap);
@@ -519,15 +584,24 @@ public class GcodePainter implements Runnable {
 							}
 						}
 						float[] pos = gCode.getCurrentPosition();
+						g2.setPos((int)((pos[0]+Xoffset)*zoom), (int)((bedsizeY * zoom) - (pos[1]+Yoffset)*zoom));
 						if (lastpos != null) {
 							if (gCode.isExtruding()) {
-								g2.setColor(lay.getNumber() % 7);								
-								printLine(g2, lastpos, pos,sleeptime,starttime);
+								g2.setColor(lay.getNumber() % colNR);		
+								if(gCode.getGcode() == GCDEF.G2 ||gCode.getGcode() == GCDEF.G3 ){
+									printArc(g2, lastpos, pos, lay, gCode);
+								}else{
+									printLine(g2, lastpos, pos,sleeptime,starttime);
+								}
 								printLineHorizontal(g2, lastpos, pos,lay,gCode);
 							} else if (PAINTTRAVEL) {
-								g2.setColor(8);
+								g2.setColor(colNR+1);
 								g2.setStroke(0);
-								printLine(g2, lastpos, pos,sleeptime,starttime);
+								if(gCode.getGcode() == GCDEF.G2 ||gCode.getGcode() == GCDEF.G3 ){
+									printArc(g2, lastpos, pos, lay, gCode);
+								}else{
+									printLine(g2, lastpos, pos,sleeptime,starttime);
+								}
 								g2.setStroke(1);
 							}
 						}
