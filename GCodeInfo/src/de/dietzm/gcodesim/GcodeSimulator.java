@@ -69,8 +69,9 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	 * 0.97 More resilient against errors (Ignore some unknown Gcodes instead of failing)
 	 * 0.98 Support for center format G2/G3 Gcodes (Arc) - Radius format not supported yet
 	 * 0.99 clicked on speedup label, toggles pause. Replaced blue with a lighter pink to improve readability. Paint nozzle location.
+	 * 0.99a Bug: click on speedup label, toggles pause but did also switch layer
 	 */
-	public static final String VERSION = "v0.99";	
+	public static final String VERSION = "v0.99a";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
@@ -324,8 +325,7 @@ public class GcodeSimulator extends Frame implements ActionListener {
 					//if clicked on speedup label, toggle pause
 					if(mousex >= speedboxpos && mousex <= speedboxpos+speedboxsize && arg0.getPoint().y > GcodePainter.bedsizeY*gp.getZoom()+55){
 						gp.togglePause();
-					}
-					if(arg0.getPoint().x > GcodePainter.bedsizeX * gp.getZoom()+gp.gap ){
+					}else if(arg0.getPoint().x > GcodePainter.bedsizeX * gp.getZoom()+gp.gap ){
 						gp.toggleType();
 					}else{
 						if(arg0.isAltDown() || arg0.isControlDown()){
