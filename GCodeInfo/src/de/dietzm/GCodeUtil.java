@@ -159,11 +159,11 @@ public class GCodeUtil {
 	private static Collection<Layer> parseLayerArgument(Model model, String layersarg) {
 		Collection<Layer> lays;
 		if(layersarg.equalsIgnoreCase("all")){
-			lays=model.getLayer().values();
+			lays=model.getLayer();
 		}else{
 			String[] layersarg1 = layersarg.split(",");
 			lays= new ArrayList<Layer>();
-			for (Layer lay1 : model.getLayer().values()) {
+			for (Layer lay1 : model.getLayer()) {
 				for (String lan : layersarg1) {
 					if(lan.equals(String.valueOf(lay1.getNumber()))){
 						lays.add(lay1);
@@ -258,7 +258,7 @@ public class GCodeUtil {
 		/**
 		 * Print Layer details
 		 */
-		ArrayList<Layer> layers = new ArrayList<Layer>(model.getLayer().values());
+		ArrayList<Layer> layers = new ArrayList<Layer>(model.getLayer());
 		//Collections.sort(layers);
 		
 		for (Iterator<Layer> iterator = layers.iterator(); iterator.hasNext();) {
@@ -289,7 +289,7 @@ public class GCodeUtil {
 		/**
 		 * Print Layer details
 		 */
-		ArrayList<Layer> layers = new ArrayList<Layer>(model.getLayer().values());
+		ArrayList<Layer> layers = new ArrayList<Layer>(model.getLayer());
 		//Collections.sort(layers);		
 		for (Iterator<Layer> iterator = layers.iterator(); iterator.hasNext();) {
 			Layer lay = iterator.next();
@@ -314,7 +314,7 @@ public class GCodeUtil {
 		/**
 		 * Print Layer details
 		 */
-		ArrayList<Layer> layers = new ArrayList<Layer>(model.getLayer().values());
+		ArrayList<Layer> layers = new ArrayList<Layer>(model.getLayer());
 		//Collections.sort(layers);		
 		System.out.println("Layer;Speed;Extrusion;Distance;Time;Fanspeed");
 		for (Iterator<Layer> iterator = layers.iterator(); iterator.hasNext();) {

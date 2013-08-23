@@ -21,7 +21,5 @@ public interface GraphicRenderer {
 	public void setFontSize(float font);
 	public String browseFileDialog();
 	public void drawtext(String text, float x, float y, float w);
-	//Printer
-	public boolean print(GCode code);
 
 }

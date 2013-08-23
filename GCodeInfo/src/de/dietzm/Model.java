@@ -30,7 +30,9 @@ public class Model {
 	private float extrusion=0;
 	private String filename;
 	private ArrayList<GCode> gcodes = new ArrayList<GCode>();
-	private SortedMap<Float, Layer> layer = new TreeMap<Float, Layer>();
+	//private SortedMap<Float, Layer> layer = new TreeMap<Float, Layer>();
+	private ArrayList<Layer> layer = new ArrayList<Layer>();
+	
 	private int layercount = 0, notprintedLayers = 0;
 	private SortedMap<Float, SpeedEntry> SpeedAnalysisT = new TreeMap<Float, SpeedEntry>();
 	private float time, distance,traveldistance,timeaccel;
@@ -115,7 +117,20 @@ public class Model {
 				//Detect Layer change and create new layers.
 				if(gc.getZ() != GCode.UNINITIALIZED && gc.getZ() != currLayer.getZPosition()){
 					//endLayer(currLayer);	//finish old layer
-					if(currLayer.isPrinted()) lastprinted=currLayer;
+					if(currLayer.isPrinted()){
+						lastprinted=currLayer;
+					}else if(lastprinted!=currLayer){
+						//Assume zlift
+						//Append non printed layers to last printed one 
+						//Z-lift would otherwise cause thousands of layers
+						for (GCode gco : currLayer.getGcodes()) {
+							lastprinted.addGcodes(gco);
+						}
+						layercount--;
+						layer.remove(currLayer);
+						//Minor problem is that the beginning of a new layer is sometimes without extrusion before the first z-lift
+						//this leads to assigning this to the previous printed layer. 
+					}					
 					currLayer = startLayer(gc.getZ(),lastprinted);//Start new layer
 				}	
 				float move = 0;
@@ -220,8 +235,8 @@ public class Model {
 			currLayer.addGcodes(gc);
 		}
 		//System.out.println("Summarize Layers");
-		for (Layer closelayer : layer.values()) {
-			endLayer(closelayer);	//finish old layer			
+		for (Layer closelayer : layer) {
+			endLayer(closelayer);	//finish old layer
 		}
 		//End last layer
 		//endLayer(currLayer);
@@ -448,17 +463,17 @@ public class Model {
 		return gcodes;
 	}
 
-	public SortedMap<Float, Layer> getLayer() {
+	public ArrayList<Layer> getLayer() {
 		return layer;
 	}
 	
 	public Layer getLayer(int number) {
-		//TODO: inefficient ! use quicksearch instead
-		for (Layer lay : layer.values()) {
-			if(lay.getNumber()==number){
-				return lay;
-			}
-		}
+		layer.get(number);
+//		for (Layer lay : layer.values()) {
+//			if(lay.getNumber()==number){
+//				return lay;
+//			}
+//		}
 		return null;
 	}
 
@@ -521,9 +536,9 @@ public class Model {
 			GCode gc=new GCode(line,idx++);
 			if(!gc.parseGcode()){
 				errorcnt++;
-				if(errorcnt-success > 5){
+				if(errorcnt-success > 10){
 					System.err.println("Too many errors while reading GCODE file.");
-					System.exit(2);
+					return false;
 				}
 			}else{
 				success++;
@@ -534,10 +549,6 @@ public class Model {
 		gcread.close();
 		if(errorcnt != 0){
 			System.err.println("Detected "+errorcnt+" error(s) during parsing of Gcode file. Results might be wrong.");
-			if(idx/errorcnt < 50){
-				codes.clear();
-				return false;
-			}
 		}
 		return true;
 	}
@@ -617,7 +628,7 @@ public class Model {
 		return var;
 	}
 	public String getModelLayerSummaryReport(){
-		ArrayList<Layer> layers = new ArrayList<Layer>(getLayer().values());
+		ArrayList<Layer> layers = new ArrayList<Layer>(getLayer());
 		//Collections.sort(layers);
 		//TODO: use stringbuffer instead of string concatenation 
 		String var="---------- Printed Layer Summary ------------\n";
@@ -633,22 +644,24 @@ public class Model {
 		//if (LayerOpen)
 		//	return null;
 		
-		Layer lay = layer.get(z);
-		if (lay == null) {
-			int fanspeed=0;
-			float lh = z;
-			if (prevLayer != null && prevLayer.isPrinted()) {
-				lh = (z - prevLayer.getZPosition());
-				fanspeed=prevLayer.getFanspeed();
-			} 
-			lay = new Layer(z, layercount,GCode.round2digits(lh));
-			lay.setUnit(unit); //remember last unit
-			lay.setFanspeed(fanspeed);
-			layer.put(z, lay);
-			layercount++;
-		}else{
-			//System.out.println("Layer already exists:"+z);
-		}
+		//Z-Lift support
+		if(prevLayer != null && z == prevLayer.getZPosition()) return prevLayer;
+				
+		//Layer lay = layer.get(z);
+		Layer lay=null;
+		int fanspeed=0;
+		float lh = z;
+		if (prevLayer != null && prevLayer.isPrinted()) {
+			lh = (z - prevLayer.getZPosition());
+			fanspeed=prevLayer.getFanspeed();
+		} 
+		lay = new Layer(z, layercount,GCode.round2digits(lh));
+		lay.setUnit(unit); //remember last unit
+		lay.setFanspeed(fanspeed);
+		//layer.put(z, lay);
+		layer.add(lay);
+		layercount++;
+
 		// System.out.println("Add Layer:"+z);
 		//LayerOpen = true;
 		return lay;

@@ -160,7 +160,7 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 		return offimg.getWidth();
 	}
 
-	@Override
+
 	public boolean print(GCode code) {
 		if (sio == null) {
 			try {
@@ -179,7 +179,7 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 		}
 		try {
 			System.out.println("Print:[" + code.getCodeline() + "]");
-			String result = sio.addToPrintQueue(code);
+			boolean result = sio.addToPrintQueue(code,true);
 			System.out.println("RESULT:[" + result + "]");
 		} catch (Exception e) {
 			// TODO Auto-generated catch block

@@ -70,8 +70,12 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	 * 0.98 Support for center format G2/G3 Gcodes (Arc) - Radius format not supported yet
 	 * 0.99 clicked on speedup label, toggles pause. Replaced blue with a lighter pink to improve readability. Paint nozzle location.
 	 * 0.99a Bug: click on speedup label, toggles pause but did also switch layer
+	 * 1.01 Added more Gcodes 
+	 * 1.02 Added step by step execution (debug mode), Added fast forward/rewind, Show current Gcode when in pause (debug mode), Added increase/decrease in large steps (10x),
+	 * 1.03 Fixed large problem with printing (layers were reordered by Z-pos) , better support of z-Lift
+	 * 1.04 Network receiver added (Android). confirm on stop printing.  prevent other buttons on print
 	 */
-	public static final String VERSION = "v0.99a";	
+	public static final String VERSION = "v1.04";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
@@ -378,6 +382,14 @@ public class GcodeSimulator extends Frame implements ActionListener {
 					gp.toggleSpeed(true);
 				} else if (arg0.getKeyChar() == '-') {
 					gp.toggleSpeed(false);
+				} else if (arg0.getKeyChar() == '/') {
+					gp.toggleSpeed(true,10);
+				} else if (arg0.getKeyChar() == '*') {
+					gp.toggleSpeed(false,10);
+				} else if (arg0.getKeyChar() == ' ') {
+					gp.doStep(true);
+				} else if (arg0.getKeyChar() == KeyEvent.VK_BACK_SPACE) {
+					gp.doStep(false);
 				} else if (arg0.getKeyChar() == 'n') { // next layer
 					gp.setCmd(Commands.NEXTLAYER);
 				} else if (arg0.getKeyChar() == 'b') { // layer before

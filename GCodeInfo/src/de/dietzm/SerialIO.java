@@ -13,7 +13,16 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class SerialIO implements SerialPortEventListener{
+import de.dietzm.gcodesim.Printer;
+
+public class SerialIO implements SerialPortEventListener, Printer{
+
+	@Override
+	public void setPrintMode(boolean isprinting) {
+		// TODO Auto-generated method stub
+		
+	}
+
 
 	InputStream inputStream =null;
 	OutputStream outputStream = null;
@@ -24,10 +33,16 @@ public class SerialIO implements SerialPortEventListener{
 		connect(port);
 	}
 	
-	public String addToPrintQueue(GCode code) throws Exception {
+	public boolean addToPrintQueue(GCode code,boolean manual){
 		System.out.println("About to add code "+code.hashCode()+" to print queue:"+printQueue.size());
-		printQueue.put(code);
-		return "";
+		try {
+			printQueue.put(code);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return false;
+		}
+		return true;
 	}
 	
 	private synchronized String printAndWaitQueue() throws Exception {
@@ -99,7 +114,7 @@ public class SerialIO implements SerialPortEventListener{
 	public static void main(String[] args) throws Exception {
 		SerialIO sio=new SerialIO("/dev/ttyUSB0");
 		while(true){
-			sio.addToPrintQueue(new GCode("M114\n", 1));
+			sio.addToPrintQueue(new GCode("M114\n", 1),true);
 			Thread.sleep(1000);
 		}
 		

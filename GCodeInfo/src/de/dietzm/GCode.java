@@ -4,7 +4,7 @@ package de.dietzm;
 public class GCode {
 	
 	public static enum GCDEF {
-		G0,G1,G2,G3,G20,G21,G28,G4,G90,G91,G92,M0,M1,M92,M101,M103,M104,M105,M106,M107,M108,M109,M113,M114,M117,M140,M190,M82,M83,M84,UNKNOWN;
+		G0,G1,G2,G3,G20,G21,G28,G4,G90,G91,G92,G161,G162,M0,M1,M6,M18,M70,M72,M73,M92,M101,M103,M104,M105,M106,M107,M108,M109,M113,M114,M117,M132,M140,M190,M204,M82,M83,M84,UNKNOWN;
 	}
 	public static final float UNINITIALIZED = -99999.99f;
 	private String codeline;	
@@ -88,6 +88,11 @@ public class GCode {
 	public GCode(String line,int linenr){
 		codeline=line.trim();
 		lineindex=linenr;
+	}
+
+	public GCode(String line){
+		codeline=line.trim();
+		lineindex=0;
 	}
 	public float getS_Bed() {
 		return s_bed;
@@ -387,6 +392,10 @@ public class GCode {
 			//is a comment
 			comment=codelinevar.substring(idx);
 			codelinevar=codelinevar.substring(0, idx);
+		}else if((idx = codelinevar.indexOf("(")) != -1){
+			//is a comment
+			comment=codelinevar.substring(idx);
+			codelinevar=codelinevar.substring(0, idx);
 		}
 
 		if(codelinevar.isEmpty()){
@@ -535,6 +544,8 @@ public class GCode {
 				s_ext=parseSegment(segments[1]);
 			}
 			break;
+		case G161:
+		case G162:
 		case G28:
 			if (segments.length == 1) { //no param means home all axis
 				x = y = z = 0;
@@ -569,20 +580,31 @@ public class GCode {
 			}
 			break;
 		case M84: //disable all motors
+		case M18://Stop motor
 		case M105: //get extr temp
 		case M114: //get current position
 		case M0: //Stop
 		case M1: //Sleep
 		case M117: //get zero position
 		case M92: //set axis steps per unit (just calibration) 
+		case M132: //set pid
+		case M6: //replicatorG tool change
 			break;
 		case M103: //marlin turn all extr off
 		case M101://marlin turn all extr on
 		case M113: //set extruder speed / turn off
-			System.err.println("Unsupported Gcode M101/M103/M113 found. Ignoring it.");
+		//	System.err.println("Unsupported Gcode M101/M103/M113 found. Ignoring it.");
+			break;
+		case M70: //replicatorG
+		case M72://replicatorG
+		case M73: //replicatorG
+			//System.err.println("Unsupported Gcode M70/M72/M73 found. Ignoring it.");
 			break;
 		case M108:
 			System.err.println("Deprecated Gcode M108. Ignoring it.");
+			break;
+		case M204:
+			System.err.println("M204 Acceleration control is ignored.");
 			break;
 		default:
 			System.err.println("Unknown Gcode "+lineindex+": "+ codelinevar.substring(0,Math.min(15,codelinevar.length()))+"....");
