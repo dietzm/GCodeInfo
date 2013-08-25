@@ -1,13 +1,18 @@
 package de.dietzm.gcodesim;
 
+import java.awt.Button;
 import java.awt.Color;
+import java.awt.Dialog;
 import java.awt.FileDialog;
+import java.awt.FlowLayout;
 import java.awt.Frame;
 import java.awt.Graphics;
+import java.awt.Label;
 import java.awt.Menu;
 import java.awt.MenuBar;
 import java.awt.MenuItem;
 import java.awt.MenuShortcut;
+import java.awt.TextField;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -21,15 +26,19 @@ import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.ConnectException;
+import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.Timer;
 import java.util.TimerTask;
 
 import de.dietzm.Model;
+import de.dietzm.SerialIO;
 import de.dietzm.gcodesim.GcodePainter.Commands;
 
 
@@ -41,9 +50,6 @@ import de.dietzm.gcodesim.GcodePainter.Commands;
 
 @SuppressWarnings("serial")
 public class GcodeSimulator extends Frame implements ActionListener {
-
-
-
 
 	/**
 	 * 0.55 Added x/y Offset when gcodes are out of range
@@ -74,8 +80,10 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	 * 1.02 Added step by step execution (debug mode), Added fast forward/rewind, Show current Gcode when in pause (debug mode), Added increase/decrease in large steps (10x),
 	 * 1.03 Fixed large problem with printing (layers were reordered by Z-pos) , better support of z-Lift
 	 * 1.04 Network receiver added (Android). confirm on stop printing.  prevent other buttons on print
+	 * 1.05+1.06 Android improvements
+	 * 1.07 Gcodepainter cleanup, paint GCode when printing, switch background color when printing, network send
 	 */
-	public static final String VERSION = "v1.04";	
+	public static final String VERSION = "v1.07";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
@@ -97,7 +105,24 @@ public class GcodeSimulator extends Frame implements ActionListener {
 		setBackground(Color.black);
 		
 		addListeners();
-		gp.start(filename,in);				
+
+		
+		try {
+			SerialIO	sio = new SerialIO();
+			gp.setPrintercon(sio);
+			sio.connect("/dev/ttyUSB0");			
+			} catch (NoClassDefFoundError er) {
+				//er.printStackTrace();
+				System.out.println("Opening COM Port FAILED ! RXTX Jar Missing.  " + er);
+			} catch (Exception e) {
+				e.printStackTrace();
+				System.out.println("Opening COM Port FAILED ! " + e);
+			} catch (UnsatisfiedLinkError ule){
+				//ule.printStackTrace();
+				System.out.println("Opening COM Port FAILED ! RXTX Jar Missing.  " + ule);
+			}
+		
+		gp.start(filename,in);	
 	}
 	
 	
@@ -115,6 +140,7 @@ public class GcodeSimulator extends Frame implements ActionListener {
 		    MenuBar ml = new MenuBar ();
 		    Menu datei = new Menu ("File");
 		    addMenuItem(datei, "Load File", "f",KeyEvent.VK_F);
+		    addMenuItem(datei, "Network Send", "x",KeyEvent.VK_X);
 		    addMenuItem(datei, "Exit", "q",KeyEvent.VK_Q);
 
 		    ml.add(datei);		    
@@ -123,10 +149,15 @@ public class GcodeSimulator extends Frame implements ActionListener {
 		    addMenuItem(control, "Pause", "p",KeyEvent.VK_P);
 		    control.addSeparator();
 		    addMenuItem(control, "Increase Speed", "+",KeyEvent.VK_PLUS);
+		    addMenuItem(control, "Increase Speed by 10", "/",KeyEvent.VK_SLASH);
 		    addMenuItem(control, "Decrease Speed", "-",KeyEvent.VK_MINUS);
+		    addMenuItem(control, "Decrease Speed by 10", "*",KeyEvent.VK_ASTERISK);
 		    control.addSeparator();
 		    addMenuItem(control, "Next Layer", "n",KeyEvent.VK_N);
 		    addMenuItem(control, "Previous Layer", "b",KeyEvent.VK_B);
+		    control.addSeparator();
+		    addMenuItem(control, "Step Forward", " ",KeyEvent.VK_SPACE);
+		    addMenuItem(control, "Step Backward", "\b",KeyEvent.VK_BACK_SPACE);
 		    control.addSeparator();
 		    addMenuItem(control, "Restart", "r",KeyEvent.VK_R);
 		    
@@ -194,6 +225,74 @@ public class GcodeSimulator extends Frame implements ActionListener {
 		char a = arg0.getActionCommand().charAt(0);
 		//Forward Event to keylistener (don't duplicate code)
 		getKeyListeners()[0].keyTyped(new KeyEvent(this, 0, 0, 0, (int)a,a));
+	}
+	
+	public void showNetworkIPDialog(){
+		final Dialog in = new Dialog(this,"Network Send",true);
+		in.setLayout(new FlowLayout());
+		in.setBackground(Color.lightGray);
+		final TextField tf2 = new TextField(15);
+		final Label status = new Label("                                                    ");
+		tf2.setText("192.168.0.50");
+//		tf2.setSize(200,20);
+		Button btn1 = new Button("Ok");
+		
+		in.addWindowListener(new WindowListener() {			
+			@Override
+			public void windowOpened(WindowEvent arg0) {}			
+			@Override
+			public void windowIconified(WindowEvent arg0) {	}			
+			@Override
+			public void windowDeiconified(WindowEvent arg0) {}			
+			@Override
+			public void windowDeactivated(WindowEvent arg0) {}			
+			@Override
+			public void windowClosing(WindowEvent arg0) {
+				in.setVisible(false);				
+			}			
+			@Override
+			public void windowClosed(WindowEvent arg0) {
+				in.setVisible(false);				
+			}			
+			@Override
+			public void windowActivated(WindowEvent arg0) {	}
+		});
+		ActionListener action= new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				try {
+					NetworkPrinter netp = new NetworkPrinter();
+					status.setText("Sending file ... please wait");
+					in.repaint();
+					netp.sendToReceiver(tf2.getText(), gp.model);
+					status.setText("Sending file ... done");
+					in.repaint();
+					in.setVisible(false);
+				}catch (UnknownHostException uh){
+					status.setText("Invalid IP address:"+uh.getMessage());
+					in.repaint();
+					//uh.printStackTrace();
+				}catch(ConnectException ce) {
+					status.setText("Connect error:"+ce.getMessage());
+					in.repaint();
+					//ce.printStackTrace();
+				}catch (IOException e2) {
+					status.setText("Error:"+e2.getMessage());
+					in.repaint();
+					//e2.printStackTrace();
+				}
+				
+			}
+		};
+		btn1.addActionListener(action);
+		tf2.addActionListener(action);
+		in.add(new Label("Enter IP Address"));
+		in.add(tf2);
+		in.add(btn1);
+		in.add(status);
+		in.setSize(330,120);
+		in.setVisible(true);
 	}
 
 	static String openFileBrowser(Frame gs) {
@@ -428,6 +527,8 @@ public class GcodeSimulator extends Frame implements ActionListener {
 					gp.togglePause();
 				} else if (arg0.getKeyChar() == 's') {
 					gp.togglePrint();
+				} else if (arg0.getKeyChar() == 'x') {
+					showNetworkIPDialog();
 				} else if (arg0.getKeyChar() == 'h') {
 					gp.showHelp();
 					

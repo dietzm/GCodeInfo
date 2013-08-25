@@ -48,7 +48,7 @@ public class Model {
 	public long getReadbytes() {
 		return readbytes;
 	}
-	public Model(String file) throws IOException {
+	public Model(String file)  {
 		this.filename = file;
 		//read env variables
 		try {
@@ -61,7 +61,7 @@ public class Model {
 		}
 	}
 	
-	public Model(String file, ArrayList<GCode> gcall) throws Exception{
+	public Model(String file, ArrayList<GCode> gcall){
 		this(file);
 		gcodes=gcall;		
 	}

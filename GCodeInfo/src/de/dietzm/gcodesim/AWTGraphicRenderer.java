@@ -19,6 +19,7 @@ import de.dietzm.SerialIO;
 
 public class AWTGraphicRenderer implements GraphicRenderer {
 
+	Color[] backcol = new Color[]{Color.BLACK,new Color(0,90,120),Color.red};
 	final Color[] colors = new Color[] { Color.red, Color.cyan, Color.yellow, Color.magenta, Color.green,
 			Color.orange, Color.pink, Color.white, Color.darkGray };
 
@@ -76,7 +77,8 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 	}
 
 	@Override
-	public void clearrect(float x, float y, float w, float h) {
+	public void clearrect(float x, float y, float w, float h,int colitem) {
+		g.setBackground(backcol[colitem]);
 		g.clearRect((int) x, (int) y, (int) w, (int) h);
 	}
 
@@ -161,33 +163,7 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 	}
 
 
-	public boolean print(GCode code) {
-		if (sio == null) {
-			try {
-				sio = new SerialIO("/dev/ttyUSB0");
-			} catch (NoClassDefFoundError er) {
-				er.printStackTrace();
-				setColor(7);
-				drawtext("Opening COM Port FAILED ! RXTX Jar Missing.  " + er, 10, 100, 600);
-				return false;
-			} catch (Exception e) {
-				e.printStackTrace();
-				setColor(7);
-				drawtext("Opening COM Port FAILED ! " + e, 10, 100, 600);
-				return false;
-			}
-		}
-		try {
-			System.out.println("Print:[" + code.getCodeline() + "]");
-			boolean result = sio.addToPrintQueue(code,true);
-			System.out.println("RESULT:[" + result + "]");
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return false;
-		}
-		return true;
-	}
+
 
 	public synchronized void repaint() {
 		// cloneImage();

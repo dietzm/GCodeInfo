@@ -17,6 +17,35 @@ import de.dietzm.gcodesim.Printer;
 
 public class SerialIO implements SerialPortEventListener, Printer{
 
+	
+	States state = new States();
+	
+	
+	public class States{
+		public boolean connected=false;
+		public boolean fan=false;
+		public boolean pause=false;
+		public boolean debug=false;
+		public float extemp=0;
+		public float bedtemp=0;
+		public float distance=1;
+		public boolean printing=false;
+		public float[] lastpos = new float[]{0f,0f,0f};
+		public float lastE=0;
+		public int baud=115200;
+//		public boolean absolute
+		
+		public float getX(){
+			return lastpos[0];
+		}
+		public float getY(){
+			return lastpos[1];
+		}
+		public float getZ(){
+			return lastpos[2];
+		}
+	}
+	
 	@Override
 	public void setPrintMode(boolean isprinting) {
 		// TODO Auto-generated method stub
@@ -29,11 +58,32 @@ public class SerialIO implements SerialPortEventListener, Printer{
 	StringBuffer result = new StringBuffer();
 	LinkedBlockingQueue<GCode> printQueue = new LinkedBlockingQueue<GCode>(1);
 	
-	public SerialIO(String port) throws Exception{
-		connect(port);
+	public SerialIO() throws Exception{
+		
 	}
 	
+
+	
 	public boolean addToPrintQueue(GCode code,boolean manual){
+		if(!state.connected){
+		//	cons.appendText("Not connected");
+			try {
+				Thread.sleep(500); //test only
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			return true;
+		}
+		if(manual && state.printing){
+		//	cons.appendText("Stop printing first");
+			return false;
+		}
+		if(!manual && !state.printing){
+		//	cons.appendText("Printing stopped");
+			return false;
+		}
+		
 		System.out.println("About to add code "+code.hashCode()+" to print queue:"+printQueue.size());
 		try {
 			printQueue.put(code);
@@ -112,7 +162,8 @@ public class SerialIO implements SerialPortEventListener, Printer{
 	 * @param args
 	 */
 	public static void main(String[] args) throws Exception {
-		SerialIO sio=new SerialIO("/dev/ttyUSB0");
+		SerialIO sio=new SerialIO();
+		sio.connect("/dev/ttyUSB0");
 		while(true){
 			sio.addToPrintQueue(new GCode("M114\n", 1),true);
 			Thread.sleep(1000);
@@ -121,7 +172,7 @@ public class SerialIO implements SerialPortEventListener, Printer{
 	}
 
 	
-	private void connect(String port) throws NoSuchPortException{
+	public void connect(String port) throws NoSuchPortException{
 		CommPortIdentifier cp = CommPortIdentifier.getPortIdentifier(port);
 		SerialPort serialPort=null;
 

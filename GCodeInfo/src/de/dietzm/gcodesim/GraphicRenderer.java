@@ -14,7 +14,7 @@ public interface GraphicRenderer {
 	public void drawArc(int x,int y,int width, int height,int theta, int delta);
 	public void fillrect(float x,float y, float w,float h);
 	public void drawtext(String text,float x, float y);
-	public void clearrect(float x,float y, float w,float h);
+	public void clearrect(float x,float y, float w,float h,int colitem);
 	public int getWidth();
 	public int getHeight();
 	public void repaint();
