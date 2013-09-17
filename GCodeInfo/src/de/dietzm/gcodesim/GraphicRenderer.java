@@ -21,5 +21,7 @@ public interface GraphicRenderer {
 	public void setFontSize(float font);
 	public String browseFileDialog();
 	public void drawtext(String text, float x, float y, float w);
+	
+	public void setTitle(String txt);
 
 }

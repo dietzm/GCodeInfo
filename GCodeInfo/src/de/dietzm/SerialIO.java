@@ -51,6 +51,19 @@ public class SerialIO implements SerialPortEventListener, Printer{
 		// TODO Auto-generated method stub
 		
 	}
+	public boolean isPrinting(){
+		return state.printing;
+	}
+	public boolean isPause(){
+		return state.pause;
+	}
+	public int getLastPrintedLine(){
+		return 0;
+	}
+	
+	public GCode getCurrentGCode(){
+		return null;
+	}
 
 
 	InputStream inputStream =null;
@@ -99,8 +112,8 @@ public class SerialIO implements SerialPortEventListener, Printer{
 		GCode code = printQueue.take();
 		if(code==null) return null;
 		long starttime = System.currentTimeMillis();
-		System.out.println("Print gcode "+code.getCodeline() +" Hash:"+code.hashCode());
-		outputStream.write((code.getCodeline()+"\n").getBytes());
+		System.out.println("Print gcode "+code.getCodelineToPrint() +" Hash:"+code.hashCode());
+		outputStream.write((code.getCodelineToPrint()+"\n").getBytes());
 		while (true) {
 			result.setLength(0);
 			wait(10000);

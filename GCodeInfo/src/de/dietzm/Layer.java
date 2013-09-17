@@ -78,20 +78,19 @@ public class Layer implements Comparable<Layer>{
 				maxprintspeed=Math.max(maxprintspeed,sp);
 				minprintspeed=Math.min(minprintspeed,sp);
 
-				//Update temp only if extruding (temp changes at the end of the layer should not change layer temp)
-				if(gcode.getBedtemp() != GCode.UNINITIALIZED){
-					bedtemp=gcode.getBedtemp();
-				}
-				if(gcode.getExtemp() != GCode.UNINITIALIZED){
-					exttemp=gcode.getExtemp();
-				}
 			}else{
 				//Travel only
 				avgtravelspeed+= sp*gcode.getDistance();
 			}
 		}
 		
-	
+//		//Update temp only if extruding (temp changes at the end of the layer should not change layer temp)
+//		if(gcode.isInitialized(Constants.SB_MASK)){
+//			bedtemp=gcode.getBedtemp();
+//		}
+//		if(gcode.isInitialized(Constants.SE_MASK)){
+//			exttemp=gcode.getExtemp();
+//		}
 		
 		//ignore retracts
 		//if ( gcode.getExtrusion() > 0){
@@ -177,6 +176,14 @@ public class Layer implements Comparable<Layer>{
 
 	public float getExttemp() {
 		return exttemp;
+	}
+	
+	protected void setExttemp(float ext) {
+		exttemp=ext;
+	}
+	
+	protected void setBedtemp(float bet) {
+		bedtemp=bet;
 	}
 	
 	public ArrayList<GCode> getGcodes() {
@@ -290,54 +297,116 @@ public class Layer implements Comparable<Layer>{
 	
 	public String getLayerSpeedReport() {
 		ArrayList<Float> speeds = new ArrayList<Float>(SpeedAnalysisT.keySet());
-		//Collections.sort(speeds);
-		//TODO: use stringbuffer instead of string concatenation 
-		String var2="---------- Layer #"+number+" Speed Distribution ------------";
+		StringBuffer var2 = new StringBuffer();
+		var2.append("---------- Layer #");
+		var2.append(number);
+		var2.append(" Speed Distribution ------------");
 		for (Iterator<Float> iterator = speeds.iterator(); iterator.hasNext();) {
 			float speedval =  iterator.next();
 			SpeedEntry tim = SpeedAnalysisT.get(speedval);
-			var2=var2+"\n\tSpeed "+speedval+
-					" \t"+tim.getType()+
-					" \tDistance:"+GCode.round2digits(tim.getDistance()/(distance/100))+"%"+ 
-					"  \tTime:"+GCode.round2digits(tim.getTime())+"sec/"
-					+GCode.round2digits(tim.getTime()/(time/100))+"%";
-			
+			var2.append("\n    Speed ");
+			var2.append(speedval);
+			var2.append("    ");
+			var2.append(tim.getType());
+			var2.append("     Distance:");
+			var2.append(GCode.round2digits(tim.getDistance()/(distance/100)));
+			var2.append("%");
+			var2.append("      Time:");
+			var2.append(GCode.round2digits(tim.getTime()));
+			var2.append("sec/");
+			var2.append(GCode.round2digits(tim.getTime()/(time/100)));
+			var2.append("%");			
 		}
-		return var2;
+		return var2.toString();
 	}
 	public String getLayerDetailReport() {
 //		System.out.println("fan:"+fantime+" "+(gcodes.size()/100f));
-		//TODO: use stringbuffer instead of string concatination 
-		String var = "#"+number+
-				" Height: "+zPosition+unit+
-				"\n LayerHeight: "+Layerheight+unit+
-				"\n Is Printed: "+isPrinted()+
-				"\n Print Time: "+GCode.formatTimetoHHMMSS(time)+
-				"\n Print Time (Accel): "+GCode.formatTimetoHHMMSS(timeaccel)+
-				"\n Distance (All/travel): "+GCode.round2digits(distance)+"/"+GCode.round2digits(traveldistance)+
-				unit+"\n Extrusion: "+GCode.round2digits(extrusion)+
-				unit+"\n Bed Temperatur:"+bedtemp+"°"+
-				"\n Extruder Temperatur:"+exttemp+"°"+
-				"\n Cooling Time (Fan): "+GCode.round2digits(fantime/(time/100f))+"%"+
-				"\n GCodes: "+gcodes.size()+ 
-				"\n GCode Linenr: "+gcodes.get(0).getLineindex()+
-				"\n Dimension: "+GCode.round2digits(dimension[0])+unit+" x "+GCode.round2digits(dimension[1])+unit+" x"+GCode.round2digits(dimension[2])+unit+
-				"\n Avg.Speed(All): "+getSpeed(Speed.SPEED_ALL_AVG)+
-				unit+"/s\n Avg.Speed(Print): "+getSpeed(Speed.SPEED_PRINT_AVG)+
-				unit+"/s\n Avg.Speed(Travel): "+getSpeed(Speed.SPEED_TRAVEL_AVG)+
-				unit+"/s\n Max.Speed(Print): "+getSpeed(Speed.SPEED_PRINT_MAX)+
-				unit+"/s\n Min.Speed(Print): "+getSpeed(Speed.SPEED_PRINT_MIN)+unit+"/s";
-		return var;
+		StringBuffer var = new StringBuffer(); 
+				var.append("#");
+				var.append(number);
+				var.append(" Height: ");
+				var.append(zPosition);
+				var.append(unit);
+				var.append("\n LayerHeight: ");
+				var.append(Layerheight);
+				var.append(unit);
+				var.append("\n Is Printed: ");
+				var.append(isPrinted());
+				var.append("\n Print Time: ");
+				GCode.formatTimetoHHMMSS(time,var);
+				var.append("\n Print Time (Accel): ");
+				GCode.formatTimetoHHMMSS(timeaccel,var);
+				var.append("\n Distance (All/travel): ");
+				var.append(GCode.round2digits(distance));
+				var.append("/");
+				var.append(GCode.round2digits(traveldistance));
+				var.append(unit);
+				var.append("\n Extrusion: ");
+				var.append(GCode.round2digits(extrusion));
+				var.append(unit);
+				var.append("\n Bed Temperatur:");
+				var.append(bedtemp);
+				var.append("°");
+				var.append("\n Extruder Temperatur:");
+				var.append(exttemp);
+				var.append("°");
+				var.append("\n Cooling Time (Fan): ");
+				var.append(GCode.round2digits(fantime/(time/100f)));
+				var.append("%");
+				var.append("\n GCodes: ");
+				var.append(gcodes.size()); 
+				var.append("\n GCode Linenr: ");
+				var.append(gcodes.get(0).getLineindex());
+				var.append("\n Dimension: ");
+				var.append(GCode.round2digits(dimension[0]));
+				var.append(unit);
+				var.append(" x ");
+				var.append(GCode.round2digits(dimension[1]));
+				var.append(unit);
+				var.append(" x");
+				var.append(GCode.round2digits(dimension[2]));
+				var.append(unit);
+				var.append("\n Avg.Speed(All): ");
+				var.append(getSpeed(Speed.SPEED_ALL_AVG));
+				var.append(unit);
+				var.append("/s\n Avg.Speed(Print): ");
+				var.append(getSpeed(Speed.SPEED_PRINT_AVG));
+				var.append(unit);
+				var.append("/s\n Avg.Speed(Travel): ");
+				var.append(getSpeed(Speed.SPEED_TRAVEL_AVG));
+				var.append(unit);
+				var.append("/s\n Max.Speed(Print): ");
+				var.append(getSpeed(Speed.SPEED_PRINT_MAX));
+				var.append(unit);
+				var.append("/s\n Min.Speed(Print): ");
+				var.append(getSpeed(Speed.SPEED_PRINT_MIN));
+				var.append(unit);
+				var.append("/s");
+		return var.toString();
 	}
 	
 	public String getLayerSummaryReport() {
 		//TODO: use stringbuffer instead of string concatenation 
-		String var = "#"+number+
-				"\t H:"+zPosition+"/"+Layerheight+unit+
-				"\t T:"+GCode.removeTrailingZeros(Float.toString(exttemp))+"/"+GCode.removeTrailingZeros(Float.toString(bedtemp))+"°"+
-				"\t Speed: "+getSpeed(Speed.SPEED_PRINT_AVG)+unit+"/s"+
-				"\t Time: "+GCode.formatTimetoHHMMSS(time);
-		return var;
+		StringBuffer var = new StringBuffer(); 
+		var.append("#");
+		var.append(number);
+		var.append("   H:");
+		var.append(zPosition);
+		var.append("/");
+		var.append(Layerheight);
+		var.append(unit);
+		var.append("   T:");
+		var.append(GCode.removeTrailingZeros(Float.toString(exttemp)));
+		var.append("/");
+		var.append(GCode.removeTrailingZeros(Float.toString(bedtemp)));
+		var.append("°");
+		var.append("   Speed: ");
+		var.append(getSpeed(Speed.SPEED_PRINT_AVG));
+		var.append(unit);
+		var.append("/s");
+		var.append("   Time: ");
+		GCode.formatTimetoHHMMSS(time,var);
+		return var.toString();
 	}
 	
 

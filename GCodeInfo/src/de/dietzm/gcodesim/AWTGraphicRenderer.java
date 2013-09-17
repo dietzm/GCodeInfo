@@ -13,7 +13,6 @@ import java.awt.Toolkit;
 import java.awt.geom.Line2D;
 import java.awt.image.BufferedImage;
 
-import de.dietzm.GCode;
 import de.dietzm.SerialIO;
 
 
@@ -28,9 +27,11 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 	Graphics2D g = null;
 	private final GraphicsConfiguration gfxConf = GraphicsEnvironment.getLocalGraphicsEnvironment()
 			.getDefaultScreenDevice().getDefaultConfiguration();
-	BufferedImage offimg;// , offimg2;
+	BufferedImage offimg , offimg2;
 	int[] pos = new int[2];
 	SerialIO sio = null;
+	String titletxt = null;	
+	long titletime=0;
 
 	// Color[] colors = new Color[] { new Color(0xffAAAA), new Color(0xffBAAA),
 	// new Color(0xffCAAA), new Color(0xffDAAA),
@@ -44,9 +45,11 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 
 	public AWTGraphicRenderer(int bedsizeX, int bedsizeY, Frame frame) {
 		Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
-		offimg = gfxConf.createCompatibleImage((int) d.getWidth(), (int) d.getWidth());
-		// offimg2=
-		// gfxConf.createCompatibleImage((int)d.getWidth(),(int)d.getWidth());
+		int wmax = (int)Math.min(d.getWidth(),1900);
+		int hmax = (int)Math.min(d.getHeight(),1200);
+		//System.out.println("Window: w:"+wmax+" h:"+hmax);
+		offimg = gfxConf.createCompatibleImage(wmax, hmax);
+		offimg2= gfxConf.createCompatibleImage(wmax,hmax);
 		g = (Graphics2D) offimg.getGraphics();
 		g.setBackground(Color.black);
 		g.setFont(Font.decode(Font.SANS_SERIF));
@@ -107,8 +110,14 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 		g.drawArc(x, y, width, height, theta, delta);
 	}
 
-	public synchronized void drawImage(Graphics gp) {
+	/**
+	 * Draw the buffer to the real surface
+	 * @param gp
+	 */
+	public synchronized void drawImage(Graphics gp1) {
 
+		Graphics2D gp = (Graphics2D) offimg2.getGraphics();
+		
 		gp.drawImage(offimg, 6, 55, frame);
 
 		// Paint current print point (nozzle)
@@ -119,7 +128,15 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 		gp.drawOval((int) getPos()[0] + 0, (int) getPos()[1] + 49, 12, 12);
 		gp.drawOval((int) getPos()[0] + 2, (int) getPos()[1] + 51, 8, 8);
 		// gp.drawOval((int)getPos()[0]+4,(int)getPos()[1]+53,4,4);
-
+		if(titletxt!=null && System.currentTimeMillis()-titletime > 1500){
+			if(System.currentTimeMillis()-titletime > 3000){
+			titletime = System.currentTimeMillis();
+			}
+			gp.setColor(Color.GREEN);
+			gp.setFont(gp.getFont().deriveFont(26f));
+			gp.drawString(titletxt, 20 ,90);
+		}
+		gp1.drawImage(offimg2, 0,0, frame);
 	}
 
 	@Override
@@ -193,5 +210,9 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 
 	public void setStroke(int idx) {
 		g.setStroke(stroke[idx]);
+	}
+	
+	public void setTitle(String txt){
+		titletxt=txt;
 	}
 }

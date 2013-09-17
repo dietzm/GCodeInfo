@@ -82,8 +82,10 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	 * 1.04 Network receiver added (Android). confirm on stop printing.  prevent other buttons on print
 	 * 1.05+1.06 Android improvements
 	 * 1.07 Gcodepainter cleanup, paint GCode when printing, switch background color when printing, network send
+	 * 1.08 Mode indicator (print vs simulate) , Framerate counter (disabled)
+	 * 1.10 Significantly reduced memory footprint, reworked printing code (decouple render from print), avoid creating many objects
 	 */
-	public static final String VERSION = "v1.07";	
+	public static final String VERSION = "v1.10";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
@@ -228,7 +230,7 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	}
 	
 	public void showNetworkIPDialog(){
-		final Dialog in = new Dialog(this,"Network Send",true);
+		final Dialog in = new Dialog(this,"Send to GCode Simulator for Android",true);
 		in.setLayout(new FlowLayout());
 		in.setBackground(Color.lightGray);
 		final TextField tf2 = new TextField(15);

@@ -9,4 +9,9 @@ public interface Printer {
 	public boolean addToPrintQueue(GCode code,boolean manual);
 	public void setPrintMode(boolean isprinting);
 	
+	public boolean isPrinting();
+	public boolean isPause();
+	public GCode getCurrentGCode();
+	
+	
 }

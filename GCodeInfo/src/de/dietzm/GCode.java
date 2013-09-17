@@ -1,41 +1,47 @@
 package de.dietzm;
 
+import java.io.UnsupportedEncodingException;
+
+import de.dietzm.Constants.GCDEF;
+
 
 public class GCode {
 	
-	public static enum GCDEF {
-		G0,G1,G2,G3,G20,G21,G28,G4,G90,G91,G92,G161,G162,M0,M1,M6,M18,M70,M72,M73,M92,M101,M103,M104,M105,M106,M107,M108,M109,M113,M114,M117,M132,M140,M190,M204,M82,M83,M84,UNKNOWN;
-	}
-	public static final float UNINITIALIZED = -99999.99f;
-	private String codeline;	
-	//Parsed values, not changed by analyse 
-	private float e=UNINITIALIZED; //Extruder 1
-	private float f=UNINITIALIZED; //Speed
-	private float x=UNINITIALIZED;
-	private float y=UNINITIALIZED;
-	private float ix=0;
-	private float jy=0;
-	private float kz=0;
-	private float r=UNINITIALIZED;
-	
-	private float z=UNINITIALIZED;
-	private float s_ext=UNINITIALIZED;
-	private float s_bed=UNINITIALIZED;
-	private float s_fan=UNINITIALIZED;
-	private GCDEF gcode;
+	private static final String ENCODING = "ISO-8859-1";
+    private byte[] data; //Store String in a more memory efficient way
+	private short gcode;
 	private int lineindex;
-	private String comment;
+	private short commentidx=-1;
+		
+	//Parsed values, not changed by analyse 
+	private float e=Float.MAX_VALUE;
+	private float f=Float.MAX_VALUE; //Speed
+	private float x=Float.MAX_VALUE;
+	private float y=Float.MAX_VALUE;
+	private float z=Float.MAX_VALUE;
+	//Store additional values in separate class to avoid memory consumption if not needed
+	private Extended ext =null;
+	private class Extended{ 
+		private float ix=Float.MAX_VALUE;
+		private float jy=Float.MAX_VALUE;
+		private float kz=Float.MAX_VALUE;
+		private float r=Float.MAX_VALUE;	
+		private float s_ext=Float.MAX_VALUE;
+		private float s_bed=Float.MAX_VALUE;
+		private float s_fan=Float.MAX_VALUE;
+		private String unit = null; //default is mm
+	}
 	
 	//Dynamic values updated by analyse	
-	private float extrusion;	
 	private float time;
-	private float timeaccel; //track acceleration as extra time (+/-)
-	private float extemp,bedtemp,fanspeed; //remember
-	private String unit = null; //default is mm
-	float[] currentPosition;
-	float distance;
+	private float timeaccel; //track acceleration as extra time 
+	private float distance;
+	private float extrusion;
+	private short fanspeed; //remember with less accuracy (just for display)
+	private float curX,curY;
 	
-	public float getFanspeed() {
+	//private float extemp,bedtemp;	
+	public short getFanspeed() {
 		return fanspeed;
 	}
 
@@ -45,24 +51,32 @@ public class GCode {
 	 * @param fanspeed
 	 */
 	public void setFanspeed(float fanspeed) {
-		this.fanspeed = fanspeed;
+		this.fanspeed = (short)fanspeed;
 	}
 
 	public float getExtemp() {
-		return extemp;
+		if(!isInitialized(Constants.SE_MASK)) return -255;
+		return ext.s_ext;
 	}
 
 	public float getBedtemp() {
-		return bedtemp;
+		if(!isInitialized(Constants.SB_MASK)) return -255;
+		return ext.s_bed;
 	}
 
 
 	
-	public String getCodeline() {
-		return codeline;
+	public MemoryEfficientString getCodeline() {
+		return new MemoryEfficientString(data);
 	}
 	
-	public static String formatTimetoHHMMSS(float secs)
+	/**
+	 * pass Stringbuffer to avoid allocation
+	 * @param secs
+	 * @param buf
+	 * @return
+	 */
+	public static String formatTimetoHHMMSS(float secs, StringBuffer buf)
 	{		
 		int secsIn = Math.round(secs);
 		int hours =  secsIn / 3600,
@@ -70,13 +84,28 @@ public class GCode {
 		minutes = remainder / 60,
 		seconds = remainder % 60;
 
-	return ( (hours < 10 ? "" : "") + hours
-	+ ":" + (minutes < 10 ? "0" : "") + minutes
-	+ ":" + (seconds< 10 ? "0" : "") + seconds );
-
+		if(buf==null){
+			buf = new StringBuffer();
+		}
+		buf.append(hours);
+		buf.append(":");
+		buf.append((minutes < 10 ? "0" : ""));
+		buf.append(minutes);
+		buf.append(":");
+		buf.append((seconds< 10 ? "0" : ""));
+		buf.append(seconds);
+		
+	return buf.toString();
 	}
 	public static float round2digits(float num){
 		return Math.round((num)*100f)/100f;
+	}
+	
+	public MemoryEfficientString getCodelineToPrint(){
+		if(commentidx != -1){
+			return subSequence(0, commentidx);
+		}
+		return new MemoryEfficientString(data);
 	}
 	public static float round3digits(float num){
 		return Math.round((num)*1000f)/1000f;
@@ -86,24 +115,41 @@ public class GCode {
 	
 	
 	public GCode(String line,int linenr){
-		codeline=line.trim();
 		lineindex=linenr;
+		/**
+		 * Store a memory efficient copy only
+		 */
+
+		 try {
+		      data = line.getBytes(ENCODING);
+		    } catch (UnsupportedEncodingException e) {
+		      throw new RuntimeException("Unexpected: " + ENCODING + " not supported!");
+		    }
+		 
+		parseGcode(line.trim());
+		
 	}
 
 	public GCode(String line){
-		codeline=line.trim();
-		lineindex=0;
+		this(line,0);
 	}
 	public float getS_Bed() {
-		return s_bed;
+		return ext.s_bed;
 	}
 
 	public String getComment() {
-		return comment;
+		return subSequence(commentidx,data.length).toString();
 	}
 	
-	public float[] getCurrentPosition() {
-		return currentPosition;
+	/**
+	 * 
+	 * @param pos pass a position object to avoid object creation
+	 * @return
+	 */
+	public Position getCurrentPosition(Position pos) {
+		pos.x=curX;
+		pos.y=curY;
+		return pos;
 	}
 	public float getDistance() {
 		return distance;
@@ -114,7 +160,7 @@ public class GCode {
 	}
 	
 	public float getS_Ext() {
-		return s_ext;
+		return ext.s_ext;
 	}
 
 	public float getExtrusion() {
@@ -125,11 +171,11 @@ public class GCode {
 		return f;
 	}
 	public float getS_Fan() {
-		return s_fan;
+		return ext.s_fan;
 	}
 
-	public GCDEF getGcode() {
-		return gcode;
+	public Constants.GCDEF getGcode() {
+		return GCDEF.getGCDEF(gcode);
 	}
 
 	public int getLineindex() {
@@ -142,8 +188,8 @@ public class GCode {
 	
 	
 	
-	public float[] getPosition(float[] reference){
-		return new float[] {x==UNINITIALIZED?reference[0]:x,y==UNINITIALIZED?reference[1]:y,z==UNINITIALIZED?reference[2]:z};
+	public Position getPosition(Position reference){
+		return new Position( isInitialized(Constants.X_MASK)?x:reference.x,isInitialized(Constants.Y_MASK)?y:reference.y);
 	}
 	/**
 	 * Speed in mm/s based on distance/time
@@ -159,7 +205,7 @@ public class GCode {
 	 */
 	public void changeSpeed(int percent,boolean printonly){
 		if(printonly && !isExtruding()) return;  //skip travel
-		if(f!=UNINITIALIZED) f=f+(f/100*percent);
+		if(isInitialized(Constants.F_MASK)) f=f+(f/100*percent);
 		//if(e!=UNINITIALIZED) e=e+(e/100*percent); 
 		update();
 	}
@@ -169,7 +215,7 @@ public class GCode {
 	 * @param percent , negative value for slower
 	 */
 	public void changeExtrusion(int percent){
-		if(e!=UNINITIALIZED) {
+		if(isInitialized(Constants.E_MASK)) {
 			e=e+(e/100*percent);
 			update();
 		}
@@ -181,11 +227,11 @@ public class GCode {
 	 * @param percent , negative value for slower
 	 */
 	public void changeLayerHeight(int percent){
-		if(z!=UNINITIALIZED){
+		if(isInitialized(Constants.Z_MASK)){
 			z=z+(z/100*percent);
 			update();
 		}
-		if(e!=UNINITIALIZED){ 
+		if(isInitialized(Constants.E_MASK)){ 
 			e=e+(e/100*percent);
 			update();
 		}
@@ -197,7 +243,7 @@ public class GCode {
 	 * @param absolute value 
 	 */
 	public void changeZOffset(float value){
-		if(z!=UNINITIALIZED){
+		if(isInitialized(Constants.Z_MASK)){
 			z=z+value;
 			update();
 		}
@@ -209,7 +255,7 @@ public class GCode {
 	 * @param absolute value 
 	 */
 	public void changeYOffset(float value){
-		if(y!=UNINITIALIZED){
+		if(isInitialized(Constants.Y_MASK)){
 			y=y+value;
 			update();
 		}
@@ -221,7 +267,7 @@ public class GCode {
 	 * @param absolute value 
 	 */
 	public void changeXOffset(float value){
-		if(x!=UNINITIALIZED){
+		if(isInitialized(Constants.X_MASK)){
 			x=x+value;
 			update();
 		}
@@ -229,7 +275,8 @@ public class GCode {
 	}
 	
 	public void changeToComment(){
-		codeline=";"+codeline;
+		MemoryEfficientString mes = getCodeline();
+		data= new MemoryEfficientString(";"+mes).getBytes();
 	}
 	
 	/**
@@ -237,8 +284,8 @@ public class GCode {
 	 * @param absolute value (0 = off, 255=full speed)
 	 */
 	public void changeFan(int value){
-		if(s_fan!=UNINITIALIZED) {
-			s_fan=value;
+		if(isInitialized(Constants.SF_MASK)) {
+			ext.s_fan=Float.valueOf(value);
 			update();
 		}
 		
@@ -248,9 +295,9 @@ public class GCode {
 	 * Update the extruder temp values 
 	 * @param absolute values 
 	 */
-	public void changeExtTemp(float ext){
-		if(s_ext!=UNINITIALIZED) {
-			s_ext=ext;
+	public void changeExtTemp(float extr){
+		if(isInitialized(Constants.SE_MASK)) {
+			ext.s_ext=extr;
 			update();
 		}
 		
@@ -261,25 +308,26 @@ public class GCode {
 	 * @param absolute values for bed 
 	 */
 	public void changeBedTemp(float bed){
-		if(s_bed!=UNINITIALIZED){
-			s_bed=bed;
+		if(isInitialized(Constants.SB_MASK)){
+			ext.s_bed=bed;
 			update();
 		}
 		
 	}
 	
 	private void update(){
-		codeline=(gcode!=GCDEF.UNKNOWN?gcode:"")+
-				getIfInit("X",x,3)+
-				getIfInit("Y",y,3)+
-				getIfInit("Z",z,3)+
-				getIfInit("F",f,3)+
-				getIfInit("E",e,5)+
-				getIfInit("S",s_bed,0)+
-				getIfInit("S",s_ext,0)+
-				getIfInit("S",s_fan,0)+
-				(comment!=null?comment:"");
-		parseGcode();
+		GCDEF gd = GCDEF.getGCDEF(gcode);
+		String newgc = (gd!=Constants.GCDEF.UNKNOWN?gd:"")+
+				getIfInit("X",x,3,Constants.X_MASK)+
+				getIfInit("Y",y,3,Constants.Y_MASK)+
+				getIfInit("Z",z,3,Constants.Z_MASK)+
+				getIfInit("F",f,3,Constants.F_MASK)+
+				getIfInit("E",e,5,Constants.E_MASK)+
+				getIfInit("S",ext.s_bed,0,Constants.SB_MASK)+
+				getIfInit("S",ext.s_ext,0,Constants.SE_MASK)+
+				getIfInit("S",ext.s_fan,0,Constants.SF_MASK)+
+				(commentidx!=-1?getComment():"");
+		parseGcode(newgc);
 	}
 	
 	/**
@@ -289,8 +337,8 @@ public class GCode {
 	 * @param digits
 	 * @return
 	 */
-	private String getIfInit(String prefix,float val,int digits){
-		if(val==UNINITIALIZED) return "";
+	private String getIfInit(String prefix,float val,int digits,int mask){
+		if(!isInitialized(mask)) return "";
 		if(digits==0){
 			String var = String.format(" "+prefix+"%.1f", val);
 			return removeTrailingZeros(var); //remove trailing zero
@@ -299,6 +347,11 @@ public class GCode {
 		return String.format(" "+prefix+"%."+digits+"f", val);		
 	}
 
+	/**
+	 * Heavyweight
+	 * @param var
+	 * @return
+	 */
 	public static String removeTrailingZeros(String var) {
 		return var.replaceAll("[0]*$", "").replaceAll("\\.$", "");
 	}
@@ -308,26 +361,26 @@ public class GCode {
 	}
 
 	public String getUnit() {
-		return unit;
+		return ext.unit;
 	}
 
 	public float getX() {
 		return x;
 	}
 	public float getIx() {
-		return ix;
+		return ext.ix;
 	}
 
 	public float getJy() {
-		return jy;
+		return ext.jy;
 	}
 
 	public float getKz() {
-		return kz;
+		return ext.kz;
 	}
 	
 	public float getR() {
-		return r;
+		return ext.r;
 	}
 
 
@@ -348,7 +401,7 @@ public class GCode {
 	 * @return true is extruding
 	 */
 	public boolean isExtrudeOrRetract(){
-		return ( e != UNINITIALIZED && e != 0 );
+		return ( isInitialized(Constants.E_MASK) && e != 0 );
 	}
 
 	/**
@@ -356,7 +409,7 @@ public class GCode {
 	 * @return true is extruding
 	 */
 	public boolean isExtruding(){
-		return ( e != UNINITIALIZED && extrusion > 0 );
+		return ( isInitialized(Constants.E_MASK) && extrusion > 0 );
 	}
 	
 	/**
@@ -364,7 +417,21 @@ public class GCode {
 	 * @return
 	 */
 	public boolean isPrintable(){
-		 return gcode != GCDEF.UNKNOWN; 
+		 return !Constants.GCDEF.INVALID.equals(gcode) ; 
+	}
+	
+	/**
+	 * returns true if it starts with G or M (should be trimmed and uppercase already)
+	 * @return boolean gcode
+	 */
+	private static boolean isValid(String codeline){
+		 if(codeline == null || codeline.isEmpty()) return false;
+		 if (codeline.startsWith("G")) return true;
+		 if (codeline.startsWith("M")) return true;
+		 if (codeline.startsWith("T")) return true;
+		 //if (codeline.startsWith("g")) return true;
+		 //if (codeline.startsWith("m")) return true;
+		 return false;
 	}
 	
 	/**
@@ -372,69 +439,78 @@ public class GCode {
 	 * @return
 	 */
 	public boolean isComment(){
-		 return gcode == GCDEF.UNKNOWN && getComment() != null; 
+		 return Constants.GCDEF.INVALID.equals(gcode) && commentidx != -1; 
+	}
+
+	/**
+	 * Is it a gcode which is buffered by the firmware
+	 * @return boolean true if buffered gcodes
+	 */
+	public boolean isBuffered(){
+		//if(gcode==null) return false;
+		if (Constants.GCDEF.G0.equals(gcode) || Constants.GCDEF.G1.equals(gcode) || Constants.GCDEF.G2.equals(gcode)  || Constants.GCDEF.M106.equals(gcode) || Constants.GCDEF.M107.equals(gcode)   ||Constants.GCDEF.G29.equals(gcode) || Constants.GCDEF.G30.equals(gcode) || Constants.GCDEF.G31.equals(gcode) || Constants.GCDEF.G32.equals(gcode)){
+			return true;
+		}
+		return false;
 	}
 
 	/**
 	 * Parse the GCode and initialize variables
 	 * @return return false if something went wrong
 	 */
-	public boolean parseGcode() {
-		String codelinevar=codeline;
-		gcode=GCDEF.UNKNOWN;
-		//codeline=null;
-		int idx;
-		if((idx = codelinevar.indexOf(';')) != -1){
-			//is a comment
-			comment=codelinevar.substring(idx);
-			codelinevar=codelinevar.substring(0, idx);
-		}else if((idx = codelinevar.indexOf("(<")) != -1){
-			//is a comment
-			comment=codelinevar.substring(idx);
-			codelinevar=codelinevar.substring(0, idx);
-		}else if((idx = codelinevar.indexOf("(")) != -1){
-			//is a comment
-			comment=codelinevar.substring(idx);
-			codelinevar=codelinevar.substring(0, idx);
-		}
+	public boolean parseGcode(String codelinetmp) {
+		String codelinevar=codelinetmp;
+	
+		GCDEF tmpgcode = Constants.GCDEF.UNKNOWN;
 
-		if(codelinevar.isEmpty()){
+		//Find comments and strip them, init the comment filed 
+		codelinevar = stripComment(codelinevar);
+		codelinevar = codelinevar.toUpperCase();
+		//Is Gcode valid ? plain Comments are marked as invalid as well
+		if(!isValid(codelinevar)){
+			gcode=Constants.GCDEF.INVALID.getId();
 			return true;
 		}
-		codelinevar=codelinevar.toUpperCase();
-		Character id;
 		
-		
+	
+		Character id;		
 		String[] segments = codelinevar.split(" ");
 		String gcodestr=segments[0].trim();
 		
+		
 		try {
-			gcode = GCDEF.valueOf(gcodestr);
+			tmpgcode = Constants.GCDEF.valueOf(gcodestr);
 		} catch (Exception e1) {
-			
 		}
-				
-		switch (gcode) {
+		
+		gcode = tmpgcode.getId();
+	//	System.out.println("G1 ->"+gcode);	
+		switch (tmpgcode) {
 		case G0:
 		case G1:
-			//System.out.println("G1 ->"+code);
+			
 			for (int i = 1; i < segments.length; i++) {
 				//System.out.println("segment:"+segments[i]);
 				id = segments[i].charAt(0);
 				switch (id) {
 				case 'E':
-					e = parseSegment(segments[i]);
+					setInitialized(Constants.E_MASK);
+					 e= parseSegment(segments[i]);
 					break;
 				case 'X':
+					setInitialized(Constants.X_MASK);
 					x = parseSegment(segments[i]);
 					break;
 				case 'Y':
+					setInitialized(Constants.Y_MASK);
 					y = parseSegment(segments[i]);
 					break;
 				case 'Z':
+					setInitialized(Constants.Z_MASK);
 					z = parseSegment(segments[i]);	
 					break;
 				case 'F':
+					setInitialized(Constants.F_MASK);
 					f = parseSegment(segments[i]);
 					break;
 				default:
@@ -450,31 +526,45 @@ public class GCode {
 				id = segments[i].charAt(0);
 				switch (id) {
 				case 'E':
+					setInitialized(Constants.E_MASK);
 					e = parseSegment(segments[i]);
 					break;
 				case 'X':
+					setInitialized(Constants.X_MASK);
 					x = parseSegment(segments[i]);
 					break;
 				case 'Y':
+					setInitialized(Constants.Y_MASK);
 					y = parseSegment(segments[i]);
 					break;
 				case 'Z':
+					
+					setInitialized(Constants.Z_MASK);
 					z = parseSegment(segments[i]);	
 					break;
 				case 'F':
+					setInitialized(Constants.F_MASK);
 					f = parseSegment(segments[i]);
 					break;
 				case 'I':
-					ix = parseSegment(segments[i]);
+					
+					setInitialized(Constants.IX_MASK);
+					ext.ix = parseSegment(segments[i]);
 					break;
 				case 'J':
-					jy = parseSegment(segments[i]);
+					
+					setInitialized(Constants.JY_MASK);
+					ext.jy = parseSegment(segments[i]);
 					break;
 				case 'K':
-					kz = parseSegment(segments[i]);
+					
+					setInitialized(Constants.KZ_MASK);
+					ext.kz = parseSegment(segments[i]);
 					break;
 				case 'R':
-					r = parseSegment(segments[i]);
+					
+					setInitialized(Constants.R_MASK);
+					ext.r = parseSegment(segments[i]);
 					break;
 				default:
 					break;
@@ -492,18 +582,23 @@ public class GCode {
 				id = segments[i].charAt(0);
 				switch (id) {
 				case 'E':
+					setInitialized(Constants.E_MASK);
 					e = parseSegment(segments[i]);
 					break;
 				case 'X':
+					setInitialized(Constants.X_MASK);
 					x = parseSegment(segments[i]);
 					break;
 				case 'Y':
+					setInitialized(Constants.Y_MASK);
 					y = parseSegment(segments[i]);
 					break;
 				case 'Z':
+					setInitialized(Constants.Z_MASK);
 					z = parseSegment(segments[i]);	
 					break;
 				case 'F':
+					setInitialized(Constants.F_MASK);
 					f = parseSegment(segments[i]);
 					break;
 				default:
@@ -515,13 +610,15 @@ public class GCode {
 		case M190: //set bed temp and wait
 			id = segments[1].charAt(0);
 			if (id=='S'){
-				s_bed=parseSegment(segments[1]);
+				setInitialized(Constants.SB_MASK);
+				ext.s_bed=parseSegment(segments[1]);
 			}
 			break;
 		case M104: //set extruder temp and NOT wait
 			id = segments[1].charAt(0);
 			if (id=='S'){
-				s_ext=parseSegment(segments[1]);
+				setInitialized(Constants.SE_MASK);
+				ext.s_ext=parseSegment(segments[1]);
 			}
 			break;
 		case G90: //Absolute positioning
@@ -533,33 +630,43 @@ public class GCode {
 			System.err.println("G91/M83 Relative Positioning is NOT supported.");
 			return false;
 		case G20: //Unit = inch
-			unit="in";
+			if(ext==null) ext=new Extended();
+			ext.unit="in";
 			break;
 		case G21: //Unit = inch
-			unit="mm";
+			if(ext==null) ext=new Extended();
+			ext.unit="mm";
 			break;
 		case M109: //set extruder temp and wait
 			id = segments[1].charAt(0);
 			if (id=='S'){
-				s_ext=parseSegment(segments[1]);
+				setInitialized(Constants.SE_MASK);
+				ext.s_ext=parseSegment(segments[1]);
 			}
 			break;
 		case G161:
 		case G162:
 		case G28:
 			if (segments.length == 1) { //no param means home all axis
+				setInitialized(Constants.X_MASK);
+				setInitialized(Constants.Y_MASK);
+				setInitialized(Constants.Z_MASK);
 				x = y = z = 0;
 			} else {
 				for (int i = 1; i < segments.length; i++) {
+					
 					id = segments[i].charAt(0);
 					switch (id) {
 					case 'X':
+						setInitialized(Constants.X_MASK);
 						x = 0;
 						break;
 					case 'Y':
+						setInitialized(Constants.Y_MASK);
 						y = 0;
 						break;
 					case 'Z':
+						setInitialized(Constants.Z_MASK);
 						z = 0;
 						break;
 					}
@@ -567,15 +674,18 @@ public class GCode {
 			}
 			break;
 		case M107: //reset fan speed (off)
-			s_fan=0;
+			setInitialized(Constants.SF_MASK);
+			ext.s_fan=0;
 			break;
 		case M106: //reset fan speed (off)
 			if (segments.length == 1) { //no param means turn on fan full ?
-				s_fan=255;
+				setInitialized(Constants.SF_MASK);
+				ext.s_fan=255;
 			} else {
 				id = segments[1].charAt(0);
 				if (id=='S'){
-					s_fan=parseSegment(segments[1]);
+					setInitialized(Constants.SF_MASK);
+					ext.s_fan=parseSegment(segments[1]);
 				}
 			}
 			break;
@@ -611,67 +721,76 @@ public class GCode {
 			return false;
 		}
 		//update used values
-		bedtemp=s_bed;
-		extemp=s_ext;
-		fanspeed=s_fan;
+	//	if(isInitialized(Constants.SB_MASK))		bedtemp=ext.s_bed;
+	//	if(isInitialized(Constants.SE_MASK))		extemp=ext.s_ext;
+		if(isInitialized(Constants.SF_MASK))		fanspeed=(short)ext.s_fan;
 		
 		
 		return true;
 	}
 
+	/**
+	 * Find comments and strip them, init the comment filed
+	 * @param clv
+	 * @return
+	 */
+	private String stripComment(String clv) {
+		int idx;
+		if((idx = clv.indexOf(';')) != -1){
+			//is a comment
+			commentidx=(short)idx;
+			clv=clv.substring(0, idx);
+		}else if((idx = clv.indexOf("(<")) != -1){
+			//is a comment
+			commentidx=(short)idx;
+			clv=clv.substring(0, idx);
+		}else if((idx = clv.indexOf("(")) != -1){
+			//is a comment
+			commentidx=(short)idx;
+			clv=clv.substring(0, idx);
+		}
+		return clv.trim();
+	}
+
 	private float parseSegment(String segment){
 		String num = segment.substring(1);
 		return Float.parseFloat(num);
+		//return new Float(num);
 	}
 
-	/**
-	 * Set the bedtemp to remember the configured temp.
-	 * This does NOT change the s_bed variable and will not written to gcode on save
-	 * @param fanspeed
-	 */
-	public void setBedtemp(float bedtemp) {
-		this.bedtemp = bedtemp;
-	}
+//	/**
+//	 * Set the bedtemp to remember the configured temp.
+//	 * This does NOT change the s_bed variable and will not written to gcode on save
+//	 * @param fanspeed
+//	 */
+//	public void setBedtemp(float bedtemp) {
+//		this.bedtemp = bedtemp;
+//	}
 
 
 
-	public void setCurrentPosition(float[] currentPosition) {
-		this.currentPosition = currentPosition;
+	public void setCurrentPosition(Position currentPosition) {
+		curX=currentPosition.x;
+		curY=currentPosition.y;
 	}
 
 	public void setDistance(float distance) {
 		this.distance = distance;
 	}
 
-	public void setE(float e) {
-		this.e = e;
-	}
-
-	/**
-	 * Set the exttemp to remember the configured temp.
-	 * This does NOT change the s_ext variable and will not written to gcode on save
-	 * @param fanspeed
-	 */
-	public void setExtemp(float extemp) {
-		this.extemp = extemp;
-	}
+//	/**
+//	 * Set the exttemp to remember the configured temp.
+//	 * This does NOT change the s_ext variable and will not written to gcode on save
+//	 * @param fanspeed
+//	 */
+//	public void setExtemp(float extemp) {
+//		this.extemp = extemp;
+//	}
 	
 	public void setExtrusion(float extrusion) {
 		this.extrusion = extrusion;
 	}
 	
-	public void setF(float f) {
-		this.f = f;
-	}
-	
-
-	
-	
-
-	public void setGcode(GCDEF gcode) {
-		this.gcode = gcode;
-	}
-
 	public void setLineindex(int lineindex) {
 		this.lineindex = lineindex;
 	}
@@ -701,24 +820,12 @@ public class GCode {
 	}
 	
 
-	public void setX(float x) {
-		this.x = x;
-	}
-
-	public void setY(float y) {
-		this.y = y;
-	}
-
-	public void setZ(float z) {
-		this.z = z;
-	}
-
 	@Override
 	public String toString() {		
-		String var = lineindex+":  "+codeline;
+		String var = lineindex+":  "+datatoString();
 		var+="\tExtrusion:"+extrusion;
 		var+="\tDistance:"+distance;
-		var+="\tPosition:"+currentPosition[0]+"x"+currentPosition[1]+"x"+currentPosition[2];
+		var+="\tPosition:"+curX+"x"+curY;
 		var+="\tTime:"+time;
 		return var;
 	}
@@ -733,8 +840,64 @@ public class GCode {
 		return var;
 	}
 	
+	public void setInitialized(short mask){
+		if(mask > Constants.Z_MASK && ext==null)ext=new Extended();
+	}
 	
+	/**
+	 * check if a particular field is initialized
+	 * Only check one field at once
+	 * @param mask
+	 * @return boolean
+	 */
+	public boolean isInitialized(int mask){
+		switch (mask) {
+		case Constants.E_MASK:
+			return e != Float.MAX_VALUE;
+		case Constants.X_MASK:
+			return x != Float.MAX_VALUE;
+		case Constants.Y_MASK:
+			return y != Float.MAX_VALUE;
+		case Constants.Z_MASK:
+			return z != Float.MAX_VALUE;
+		case Constants.F_MASK:
+			return f != Float.MAX_VALUE;
+		case Constants.SE_MASK:
+			return ext != null && ext.s_ext != Float.MAX_VALUE;
+		case Constants.SB_MASK:
+			return ext != null && ext.s_bed != Float.MAX_VALUE;
+		case Constants.SF_MASK:
+			return ext != null && ext.s_fan != Float.MAX_VALUE;		
+		case Constants.IX_MASK:
+			return ext != null && ext.ix != Float.MAX_VALUE;		
+		case Constants.JY_MASK:
+			return ext != null && ext.jy != Float.MAX_VALUE;		
+		case Constants.KZ_MASK:
+			return ext != null && ext.kz != Float.MAX_VALUE;		
+		case Constants.R_MASK:
+			return ext != null && ext.r != Float.MAX_VALUE;		
+		default:
+			break;
+		}
+		return false;
+	}
 	
-	
+	  private MemoryEfficientString subSequence(int start, int end) {
+		  if (start < 0 || end > (data.length)) {
+		    throw new IllegalArgumentException("Illegal range " +
+		      start + "-" + end + " for sequence of length " + data.length);
+		  }
+		  byte[] newdata = new byte[end-start];
+		  System.arraycopy(data,start,newdata,0,end-start);
+		  return new MemoryEfficientString(newdata);
+		}
+	  
+	  private String datatoString() {
+		  try {
+		    return new String(data, 0, data.length, ENCODING);
+		  } catch (UnsupportedEncodingException e) {
+		    throw new RuntimeException("Unexpected: " + ENCODING + " not supported");
+		  }
+		}
 
 }

@@ -14,7 +14,7 @@ import java.util.Iterator;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import de.dietzm.GCode.GCDEF;
+import de.dietzm.Constants.GCDEF;
 import de.dietzm.Layer.Speed;
 
 public class Model {
@@ -22,8 +22,8 @@ public class Model {
 	private static double PRICE_PER_G=30/1000d; //Euro per gram 
 	private boolean isguessed=false; 
 	private static boolean ACCELERATION = true;
-	private float avgbedtemp=-1,avgextemp=-1;
-	private float avgLayerHeight = -1;
+	private float avgbedtemp=0,avgextemp=0;
+	private float avgLayerHeight = 0;
 	private float avgspeed=0,avgtravelspeed=0,maxprintspeed=0,minprintspeed=Float.MAX_VALUE;
 	private float boundaries[] = { 0, 9999, 0, 9999, 0 }; // Xmax,Xmin,Ymax,Ymin,Zmax
 	private float dimension[] = { 0, 0, 0 }; // X,y,z
@@ -79,22 +79,23 @@ public class Model {
 		float epos=0;
 		float f_old=1000;
 		float f_new=f_old;
-		float bedtemp=0,exttemp=0;
+		float bedtemp=0, extemp=0;
+
 	
 		
 		for (GCode gc : getGcodes()) {
 			//Initialize Axis  
-			if(gc.getGcode() == GCDEF.G28 || gc.getGcode() == GCDEF.G92){
-					if(gc.getE() != GCode.UNINITIALIZED) epos=gc.getE();
-					if(gc.getX() != GCode.UNINITIALIZED) xpos=gc.getX();
-					if(gc.getY() != GCode.UNINITIALIZED) ypos=gc.getY();
-					if(gc.getZ() != GCode.UNINITIALIZED) zpos=gc.getZ();
+			if(gc.getGcode() == Constants.GCDEF.G28 || gc.getGcode() == Constants.GCDEF.G92){
+					if(gc.isInitialized(Constants.E_MASK)) epos=gc.getE();
+					if(gc.isInitialized(Constants.X_MASK)) xpos=gc.getX();
+					if(gc.isInitialized(Constants.Y_MASK)) ypos=gc.getY();
+					if(gc.isInitialized(Constants.Z_MASK)) zpos=gc.getZ();
 			}
 			
 			//Update Speed if specified
 			//TODO Clarify if default speed is the last used speed or not
-			if(gc.getF() != GCode.UNINITIALIZED){
-				if(gc.getX() == GCode.UNINITIALIZED && gc.getY()==GCode.UNINITIALIZED && gc.getZ()==GCode.UNINITIALIZED || !ACCELERATION){
+			if(gc.isInitialized(Constants.F_MASK)){
+				if(!gc.isInitialized(Constants.X_MASK) && !gc.isInitialized(Constants.Y_MASK) && !gc.isInitialized(Constants.Z_MASK) || !ACCELERATION){
 					f_old=gc.getF(); //no movement no acceleration
 					f_new=gc.getF(); //faccel is the same
 				}else{
@@ -102,20 +103,20 @@ public class Model {
 				}
 			}
 			
-			//update Temperature if specified
-			if(gc.getS_Ext() !=  GCode.UNINITIALIZED){
-				exttemp=gc.getExtemp();
-			//Update Bed Temperature if specified
-			}else if(gc.getS_Bed() !=  GCode.UNINITIALIZED){ 
-				bedtemp=gc.getBedtemp();
-			}
+//			//update Temperature if specified
+//			if(gc.isInitialized(Constants.SE_MASK)){
+//				exttemp=gc.getExtemp();
+//			//Update Bed Temperature if specified
+//			}else if(gc.isInitialized(Constants.SB_MASK)){ 
+//				bedtemp=gc.getBedtemp();
+//			}
 			
 
-			if (gc.getGcode() == GCDEF.G1 || gc.getGcode() == GCDEF.G0 || gc.getGcode() == GCDEF.G2 || gc.getGcode() == GCDEF.G3) {
-				gc.setExtemp(exttemp); //Make sure all gcodes know the current temp
-				gc.setBedtemp(bedtemp);
+			if (gc.getGcode() == Constants.GCDEF.G1 || gc.getGcode() == Constants.GCDEF.G0 || gc.getGcode() == Constants.GCDEF.G2 || gc.getGcode() == Constants.GCDEF.G3) {
+				currLayer.setBedtemp(bedtemp);
+				currLayer.setExttemp(extemp);
 				//Detect Layer change and create new layers.
-				if(gc.getZ() != GCode.UNINITIALIZED && gc.getZ() != currLayer.getZPosition()){
+				if(gc.isInitialized(Constants.Z_MASK) && gc.getZ() != currLayer.getZPosition()){
 					//endLayer(currLayer);	//finish old layer
 					if(currLayer.isPrinted()){
 						lastprinted=currLayer;
@@ -132,15 +133,17 @@ public class Model {
 						//this leads to assigning this to the previous printed layer. 
 					}					
 					currLayer = startLayer(gc.getZ(),lastprinted);//Start new layer
+					currLayer.setBedtemp(bedtemp);
+					currLayer.setExttemp(extemp);
 				}	
 				float move = 0;
 				//Move G1 - X/Y at the same time
-				if (gc.getGcode() == GCDEF.G2 || gc.getGcode() == GCDEF.G3){
+				if (gc.getGcode() == Constants.GCDEF.G2 || gc.getGcode() == Constants.GCDEF.G3){
 					//center I&J relative to x&y
 					float cx = (xpos+gc.getIx());
 					float cy = (ypos+gc.getJy());
-					float newxpos = gc.getX() != GCode.UNINITIALIZED ? gc.getX():xpos;
-					float newypos = gc.getY() != GCode.UNINITIALIZED ? gc.getY():ypos;
+					float newxpos = gc.isInitialized(Constants.X_MASK) ? gc.getX():xpos;
+					float newypos = gc.isInitialized(Constants.Y_MASK) ? gc.getY():ypos;
 					//triangle
 					float bx=(newxpos-cx);
 					float by=(newypos-cy);
@@ -154,7 +157,7 @@ public class Model {
 					float radius = ((float) Math.sqrt((xmove * xmove) + (ymove * ymove)));
 					double angle1 ,angle2 ;
 					//Calculate right angle
-					if(gc.getGcode() == GCDEF.G2){
+					if(gc.getGcode() == Constants.GCDEF.G2){
 						angle1 = Math.atan2(by,bx) * (180/Math.PI);
 						angle2 = Math.atan2(ay,ax) * (180/Math.PI);
 					}else{
@@ -168,7 +171,7 @@ public class Model {
 					//Bogenlaenge
 					move = (float) (Math.PI * radius * angle / 180);
 					gc.setDistance(move);
-				}else if (gc.getX() != GCode.UNINITIALIZED && gc.getY() != GCode.UNINITIALIZED) {
+				}else if (gc.isInitialized(Constants.X_MASK) && gc.isInitialized(Constants.Y_MASK)) {
 					float xmove = Math.abs(xpos - gc.getX());
 					float ymove = Math.abs(ypos - gc.getY());
 					if (xmove + ymove == 0)
@@ -177,29 +180,29 @@ public class Model {
 					ypos = gc.getY();
 					move = (float) Math.sqrt((xmove * xmove) + (ymove * ymove));
 					gc.setDistance(move);
-				} else if (gc.getX() != GCode.UNINITIALIZED) {
+				} else if (gc.isInitialized(Constants.X_MASK)) {
 					move = Math.abs(xpos - gc.getX());
 					xpos = gc.getX();
 					gc.setDistance(move);
-				} else if (gc.getY() != GCode.UNINITIALIZED) {
+				} else if (gc.isInitialized(Constants.Y_MASK)) {
 					move = Math.abs(ypos - gc.getY());
 					ypos = gc.getY();
 					gc.setDistance(move);
-				} else if (gc.getE() != GCode.UNINITIALIZED) {
+				} else if (gc.isInitialized(Constants.E_MASK)) {
 					//Only E means we need to measure the time
 					move = Math.abs(epos - gc.getE());
-				} else	if (gc.getZ() != GCode.UNINITIALIZED) {
+				} else	if (gc.isInitialized(Constants.Z_MASK)) {
 					//Only Z means we need to measure the time
 					//TODO if Z + others move together, Z might take longest. Need to add time 
 					move = Math.abs(zpos - gc.getZ());
 					
 				}	
 				//update Z pos when Z changed 
-				if (gc.getZ() != GCode.UNINITIALIZED) {
+				if (gc.isInitialized(Constants.Z_MASK)) {
 					zpos = gc.getZ();
 				}
 				//Update epos and extrusion, not add time because the actual move time is already added
-				 if(gc.getE() != GCode.UNINITIALIZED ){
+				 if(gc.isInitialized(Constants.E_MASK)){
 					    gc.setExtrusion(gc.getE()-epos);
 						epos=gc.getE();
 				 }
@@ -216,21 +219,27 @@ public class Model {
 				 f_old=f_new; //acceleration done. assign new speed
 					
 				 //Calculate print size
-				 if(gc.getE() != GCode.UNINITIALIZED && gc.getE() > 0) { 
+				 if(gc.isInitialized(Constants.E_MASK) && gc.getE() > 0) { 
 					currLayer.addPosition(xpos, ypos,zpos);					
 				 }
 			}
 			
 			//Assume that unit is only set once 
-			if(gc.getGcode() == GCDEF.G20 || gc.getGcode() == GCDEF.G21){
+			if(gc.getGcode() == Constants.GCDEF.G20 || gc.getGcode() == Constants.GCDEF.G21){
 				currLayer.setUnit(gc.getUnit());
 			}
 		
-			if(gc.getFanspeed() != GCode.UNINITIALIZED){
+			if(gc.isInitialized(Constants.SF_MASK)){
 				currLayer.setFanspeed((int)gc.getFanspeed());
 			}
-			
-			gc.setCurrentPosition(new float[]{xpos,ypos,zpos});	
+			//update Temperature if specified
+			if(gc.isInitialized(Constants.SE_MASK)){
+				extemp=gc.getExtemp();
+			//Update Bed Temperature if specified
+			}else if(gc.isInitialized(Constants.SB_MASK)){ 
+				bedtemp=gc.getBedtemp();
+			} 
+			gc.setCurrentPosition( new Position(xpos,ypos));	
 			//Add Gcode to Layer
 			currLayer.addGcodes(gc);
 		}
@@ -270,13 +279,10 @@ public class Model {
 			
 			extrusion=extrusion+lay.getExtrusion();
 			
-			if(avgLayerHeight == -1) avgLayerHeight=lay.getLayerheight(); //first printed layer
-			if(avgextemp == -1) avgextemp=lay.getExttemp(); //first printed layer
-			if(avgbedtemp == -1) avgbedtemp=lay.getBedtemp();//first printed layer
-			avgbedtemp= GCode.round2digits((avgbedtemp + lay.getBedtemp()) / 2);
-			avgextemp= GCode.round2digits((avgextemp + lay.getExttemp()) / 2);
-			avgLayerHeight = GCode.round2digits((avgLayerHeight + lay
-					.getLayerheight()) / 2);
+			avgLayerHeight=avgLayerHeight +lay.getLayerheight(); //first printed layer
+			avgbedtemp= avgbedtemp + lay.getBedtemp();
+			avgextemp= avgextemp + lay.getExttemp();
+//			System.out.println("Layer:"+lay.getNumber()+"Bedtemp:"+lay.getBedtemp()+" AVG:"+avgbedtemp);
 		}
 
 		//Summarize Speed values
@@ -319,18 +325,18 @@ public class Model {
 	}
 
 	public float getAvgbedtemp() {
-		return avgbedtemp;
+		return GCode.round2digits(avgbedtemp/getLayercount(true));
 	}
 
 	public float getAvgextemp() {
-		return avgextemp;
+		return GCode.round2digits(avgextemp/getLayercount(true));
 	}
 	
 	public Material guessMaterial(){
-		if(avgextemp <= 205 && avgextemp > 140){
+		if(getAvgextemp() <= 205 && getAvgextemp() > 140){
 			return Material.PLA;
 		}
-		if(avgextemp < 290 && avgextemp > 205){
+		if(getAvgextemp() < 290 && getAvgextemp() > 205){
 			return Material.ABS;
 		}
 		return Material.UNKNOWN;
@@ -432,7 +438,7 @@ public class Model {
 	
 
 	public float getAvgLayerHeight() {
-		return avgLayerHeight;
+		return GCode.round2digits(avgLayerHeight/(float)getLayercount(true));
 	}
 	
 	public float[] getBoundaries() {
@@ -534,17 +540,18 @@ public class Model {
 		int errorcnt=0, success=0;
 		while((line=gcread.readLine())!=null){
 			GCode gc=new GCode(line,idx++);
-			if(!gc.parseGcode()){
-				errorcnt++;
-				if(errorcnt-success > 10){
-					System.err.println("Too many errors while reading GCODE file.");
-					return false;
-				}
+			if(gc.getGcode() == GCDEF.UNKNOWN){
+					errorcnt++;
+					if(errorcnt-success > 10){
+						System.err.println("Too many errors while reading GCODE file.");
+						return false;
+					}	
 			}else{
 				success++;
 			}
 			codes.add(gc);
 			readbytes+=line.getBytes().length;
+			
 		}
 		gcread.close();
 		if(errorcnt != 0){
@@ -557,7 +564,7 @@ public class Model {
 		BufferedWriter gcwr= new BufferedWriter(fwr);
 		
 		for (GCode gc : gcodes) {
-			gcwr.write(gc.getCodeline());
+			gcwr.write(gc.getCodeline().toString());
 			gcwr.write("\n");
 		}
 		gcwr.close();
@@ -580,65 +587,144 @@ public class Model {
 		float[] sizes = getDimension();
 		float[] bound = getBoundaries();
 		String mm_in = getUnit();
-		String var =("Filename:  "+getFilename()+"\n");
-		var+=("Layers visited:  "+getLayercount(false)+"\n");
-		var+=("Layers printed:  "+getLayercount(true)+"\n");
-		var+=("Avg.Layerheight: "+getAvgLayerHeight()+mm_in+"\n");
-		var+=("Size:            "+sizes[0]+mm_in+" x "+sizes[1]+mm_in+" H"+sizes[2]+mm_in+"\n");
-		var+=("Position on bed: "+GCode.round2digits(bound[1])+"/"+GCode.round2digits(bound[0])+mm_in+" x "+GCode.round2digits(bound[3])+"/"+GCode.round2digits(bound[2])+mm_in+" H"+GCode.round2digits(bound[4])+mm_in+"\n");
-		var+=("XY Distance:     "+getDistance()+mm_in+"\n");
-		var+=("Extrusion:       "+getExtrusion()+mm_in+"\n");
-		var+=("Bed Temperatur:  "+getAvgbedtemp()+"°\n");
-		var+=("Ext Temperatur:  "+getAvgextemp()+"°\n");
-		var+=("Avg.Speed(All):    "+getSpeed(Speed.SPEED_ALL_AVG)+mm_in+"/s\n");
-		var+=("Avg.Speed(Print):  "+getSpeed(Speed.SPEED_PRINT_AVG)+mm_in+"/s\n");
-		var+=("Avg.Speed(Travel): "+getSpeed(Speed.SPEED_TRAVEL_AVG)+mm_in+"/s\n");
-		var+=("Max.Speed(Print):  "+getSpeed(Speed.SPEED_PRINT_MAX)+mm_in+"/s\n");
-		var+=("Min.Speed(Print):  "+getSpeed(Speed.SPEED_PRINT_MIN)+mm_in+"/s\n");
-		var+=("Gcode Lines:     "+getGcodecount()+"\n");
-		var+=("Overall Time (w/o Acceleration):   "+GCode.formatTimetoHHMMSS(time)+ " ("+time+"sec)\n");
-		var+=("Overall Time (w/ Acceleration):    "+GCode.formatTimetoHHMMSS(timeaccel)+ " ("+timeaccel+"sec)\n");
-		return var;
+		StringBuffer varb = new StringBuffer();
+		
+		varb.append("Filename:  ");
+		varb.append(getFilename());
+		varb.append(Constants.newlinec);
+		varb.append("Layers visited:  ");
+		varb.append(getLayercount(false));
+		varb.append(Constants.newlinec);
+		varb.append("Layers printed:  ");
+		varb.append(getLayercount(true));
+		varb.append(Constants.newlinec);
+		varb.append("Avg.Layerheight: ");
+		varb.append(+getAvgLayerHeight());
+		varb.append(mm_in);
+		varb.append(Constants.newlinec);
+		varb.append("Size:            ");
+		varb.append(sizes[0]);
+		varb.append(mm_in);
+		varb.append(" x ");
+		varb.append(sizes[1]);
+		varb.append(mm_in);
+		varb.append(" H");
+		varb.append(sizes[2]);
+		varb.append(mm_in);
+		varb.append(Constants.newlinec);
+		varb.append("Position on bed: ");
+		varb.append(+GCode.round2digits(bound[1]));
+		varb.append("/");
+		varb.append(GCode.round2digits(bound[0]));
+		varb.append(mm_in);
+		varb.append(" x ");
+		varb.append(GCode.round2digits(bound[3]));
+		varb.append("/"+GCode.round2digits(bound[2]));
+		varb.append(mm_in);
+		varb.append(" H");
+		varb.append(GCode.round2digits(bound[4]));
+		varb.append(mm_in);
+		varb.append(Constants.newlinec);
+		
+		varb.append("XY Distance:     ");
+		varb.append(getDistance());
+		varb.append(mm_in);
+		varb.append(Constants.newlinec);
+		
+		varb.append("Extrusion:       ");
+		varb.append(getExtrusion());
+		varb.append(mm_in);
+		varb.append(Constants.newlinec);
+		varb.append("Bed Temperatur:  ");
+		varb.append(getAvgbedtemp());
+		varb.append("°\n");
+		varb.append("Ext Temperatur:  ");
+		varb.append(getAvgextemp());
+		varb.append("°\n");
+		varb.append("Avg.Speed(All):    ");
+		varb.append(getSpeed(Speed.SPEED_ALL_AVG));
+		varb.append(mm_in);
+		varb.append("/s\n");
+		varb.append("Avg.Speed(Print):  ");
+		varb.append(getSpeed(Speed.SPEED_PRINT_AVG));
+		varb.append(mm_in);
+		varb.append("/s\n");
+		varb.append("Avg.Speed(Travel): ");
+		varb.append(getSpeed(Speed.SPEED_TRAVEL_AVG));
+		varb.append(mm_in);
+		varb.append("/s\n");
+		varb.append("Max.Speed(Print):  ");
+		varb.append(getSpeed(Speed.SPEED_PRINT_MAX));
+		varb.append(mm_in);
+		varb.append("/s\n");
+		varb.append("Min.Speed(Print):  ");
+		varb.append(getSpeed(Speed.SPEED_PRINT_MIN));
+		varb.append(mm_in);
+		varb.append("/s\n");
+		varb.append("Gcode Lines:     ");
+		varb.append(getGcodecount());
+		varb.append(Constants.newlinec);
+		varb.append("Overall Time (w/o Acceleration):   ");
+		GCode.formatTimetoHHMMSS(time,varb);
+		varb.append(" (");
+		varb.append(time);
+		varb.append("sec)\n");
+		varb.append("Overall Time (w/ Acceleration):    ");
+		GCode.formatTimetoHHMMSS(timeaccel,varb);
+		varb.append(" (");
+		varb.append(timeaccel);
+		varb.append("sec)\n");
+		return varb.toString();
 	}
 	public String getModelSpeedReport(){
-		String var="---------- Model Speed Distribution ------------";
+		StringBuffer var= new StringBuffer(); 
+		var.append("---------- Model Speed Distribution ------------");
 		//TODO: use stringbuffer instead of string concatenation 
 		ArrayList<Float> speeds = new ArrayList<Float>(getSpeedAnalysisT().keySet());
 		for (Iterator<Float> iterator = speeds.iterator(); iterator.hasNext();) {
 			float speedval =  iterator.next();
 			SpeedEntry tim = getSpeedAnalysisT().get(speedval);
-			var=var+"\n\tSpeed "+speedval+
-					"  \t"+tim.getType()+
-					"  \tTime:"+GCode.round2digits(tim.getTime())+"sec   \t\t"
-					+GCode.round2digits(tim.getTime()/(time/100))+"%"+
-					"  \t Layers:[";	
+			var.append("\n  Speed ");
+			var.append(speedval);
+			var.append("    ");
+			var.append(tim.getType());
+			var.append("    Time:");
+			var.append(GCode.round2digits(tim.getTime()));
+			var.append("sec       ");
+			var.append(GCode.round2digits(tim.getTime()/(time/100)));
+			var.append("%");
+			var.append("     Layers:[");	
 			int max=4;
 			//print the layer nr but only max of 4 (too much of info)
 			for (Iterator<Integer> layrs = tim.getLayers().iterator(); layrs.hasNext();) {
-					var=var+" "+layrs.next();
+				var.append(" ");
+				var.append(layrs.next());
 					max--;
 					if(max==0){
-						var+=" ...";
+						var.append(" ...");
 						break;
 					}
 			}
-			var+=" ]";
+			var.append(" ]");
 		}
 
-		return var;
+		return var.toString();
 	}
 	public String getModelLayerSummaryReport(){
 		ArrayList<Layer> layers = new ArrayList<Layer>(getLayer());
-		//Collections.sort(layers);
-		//TODO: use stringbuffer instead of string concatenation 
-		String var="---------- Printed Layer Summary ------------\n";
+		StringBuffer var= new StringBuffer();
+		var.append("---------- Printed Layer Summary ------------\n");
 		for (Iterator<Layer> iterator = layers.iterator(); iterator.hasNext();) {
 			Layer lay = iterator.next();
 			if(!lay.isPrinted()) continue;
 			float layperc =  GCode.round2digits(lay.getTime()/(getTime()/100));
-			var=var+"\t"+lay.getLayerSummaryReport() + " \t "+layperc+ "%\n"; 
+			var.append("  ");
+			var.append(lay.getLayerSummaryReport());
+			var.append("    ");
+			var.append(layperc);
+			var.append("%\n"); 
 		}
-		return var;
+		return var.toString();
 	}
 	Layer startLayer(float z, Layer prevLayer) {
 		//if (LayerOpen)
@@ -650,14 +736,22 @@ public class Model {
 		//Layer lay = layer.get(z);
 		Layer lay=null;
 		int fanspeed=0;
+		float bedtemp=0;
+		float extemp=0;
 		float lh = z;
-		if (prevLayer != null && prevLayer.isPrinted()) {
-			lh = (z - prevLayer.getZPosition());
+		if (prevLayer != null ) {
+			if(prevLayer.isPrinted()){
+				lh = (z - prevLayer.getZPosition());
+			}
 			fanspeed=prevLayer.getFanspeed();
+			bedtemp=prevLayer.getBedtemp();
+			extemp=prevLayer.getExttemp();
 		} 
 		lay = new Layer(z, layercount,GCode.round2digits(lh));
 		lay.setUnit(unit); //remember last unit
 		lay.setFanspeed(fanspeed);
+		lay.setBedtemp(bedtemp);
+		lay.setExttemp(extemp);
 		//layer.put(z, lay);
 		layer.add(lay);
 		layercount++;
@@ -675,7 +769,7 @@ public class Model {
 			ArrayList<GCode> gcodes = layer.getGcodes();
 			for (GCode gCode : gcodes) {
 				gCode.changeToComment();
-				gCode.parseGcode();
+				gCode.parseGcode(gCode.getCodeline().toString());
 			}
 		}
 	}
