@@ -1,4 +1,4 @@
-package de.dietzm;
+package de.dietzm.gcodes;
 
 import java.io.UnsupportedEncodingException;
 
@@ -15,9 +15,15 @@ public class MemoryEfficientString implements CharSequence {
 	    }
 	  }
 	  
-	  protected MemoryEfficientString(byte[] data) {
+	  public MemoryEfficientString(byte[] data) {
 		  this.data = data;
 	}
+	  
+	  public MemoryEfficientString(byte[] data1,byte[] data2) {
+		   data = new byte[data1.length+data2.length];
+		  System.arraycopy(data1,0,data,0,data1.length);
+		  System.arraycopy(data2,0,data,data1.length,data2.length);
+		}
 
 	  public char charAt(int index) {
 	    if (index >= data.length) {
@@ -59,4 +65,12 @@ public class MemoryEfficientString implements CharSequence {
 		}
 	  
 	  
+	  public static String toString(byte[] data) {
+		  try {
+		    return new String(data, 0, data.length, ENCODING);
+		  } catch (UnsupportedEncodingException e) {
+		    throw new RuntimeException("Unexpected: " + ENCODING + " not supported");
+		  }
+		}
+	  	  
 }

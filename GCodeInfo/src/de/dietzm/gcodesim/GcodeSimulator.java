@@ -84,8 +84,10 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	 * 1.07 Gcodepainter cleanup, paint GCode when printing, switch background color when printing, network send
 	 * 1.08 Mode indicator (print vs simulate) , Framerate counter (disabled)
 	 * 1.10 Significantly reduced memory footprint, reworked printing code (decouple render from print), avoid creating many objects
+	 * 1.11 fixed boundary calculation, Add makeware specific extrusion code ( A instead of E)
+	 * 1.12 GCode creation through factory. Add makeware specific extrusion code ( B instead of E), removed experimental modifications, fixed temp for first layer, fixed comments
 	 */
-	public static final String VERSION = "v1.10";	
+	public static final String VERSION = "v1.12";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
@@ -109,20 +111,7 @@ public class GcodeSimulator extends Frame implements ActionListener {
 		addListeners();
 
 		
-		try {
-			SerialIO	sio = new SerialIO();
-			gp.setPrintercon(sio);
-			sio.connect("/dev/ttyUSB0");			
-			} catch (NoClassDefFoundError er) {
-				//er.printStackTrace();
-				System.out.println("Opening COM Port FAILED ! RXTX Jar Missing.  " + er);
-			} catch (Exception e) {
-				e.printStackTrace();
-				System.out.println("Opening COM Port FAILED ! " + e);
-			} catch (UnsatisfiedLinkError ule){
-				//ule.printStackTrace();
-				System.out.println("Opening COM Port FAILED ! RXTX Jar Missing.  " + ule);
-			}
+
 		
 		gp.start(filename,in);	
 	}
@@ -189,7 +178,7 @@ public class GcodeSimulator extends Frame implements ActionListener {
 		    
 		    
 		    ml.add(control);
-		    ml.add(edit);
+		   // ml.add(edit);
 		    ml.add(view);
 		    ml.add(about);
 		    
@@ -528,6 +517,20 @@ public class GcodeSimulator extends Frame implements ActionListener {
 				} else if (arg0.getKeyChar() == 'p') {
 					gp.togglePause();
 				} else if (arg0.getKeyChar() == 's') {
+					try {
+						SerialIO	sio = new SerialIO();
+						gp.setPrintercon(sio);
+						sio.connect("/dev/ttyUSB0");			
+						} catch (NoClassDefFoundError er) {
+							//er.printStackTrace();
+							System.out.println("Opening COM Port FAILED ! RXTX Jar Missing.  " + er);
+						} catch (Exception e) {
+							e.printStackTrace();
+							System.out.println("Opening COM Port FAILED ! " + e);
+						} catch (UnsatisfiedLinkError ule){
+							//ule.printStackTrace();
+							System.out.println("Opening COM Port FAILED ! RXTX Jar Missing.  " + ule);
+						}
 					gp.togglePrint();
 				} else if (arg0.getKeyChar() == 'x') {
 					showNetworkIPDialog();

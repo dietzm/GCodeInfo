@@ -16,6 +16,8 @@ import java.util.TreeMap;
 
 import de.dietzm.Constants.GCDEF;
 import de.dietzm.Layer.Speed;
+import de.dietzm.gcodes.GCode;
+import de.dietzm.gcodes.GCodeFactory;
 
 public class Model {
 
@@ -74,6 +76,10 @@ public class Model {
 		Layer lastprinted =currLayer;
 		//Current Positions & Speed
 		float xpos=0;
+		float lastxpos=0;
+		float lastypos=0;
+		float lastzpos=0;
+		boolean pos_changed=false;
 		float ypos=0;
 		float zpos=0;
 		float epos=0;
@@ -84,6 +90,9 @@ public class Model {
 	
 		
 		for (GCode gc : getGcodes()) {
+			lastxpos=xpos;
+			lastypos=ypos;
+			lastzpos=zpos;
 			//Initialize Axis  
 			if(gc.getGcode() == Constants.GCDEF.G28 || gc.getGcode() == Constants.GCDEF.G92){
 					if(gc.isInitialized(Constants.E_MASK)) epos=gc.getE();
@@ -103,18 +112,11 @@ public class Model {
 				}
 			}
 			
-//			//update Temperature if specified
-//			if(gc.isInitialized(Constants.SE_MASK)){
-//				exttemp=gc.getExtemp();
-//			//Update Bed Temperature if specified
-//			}else if(gc.isInitialized(Constants.SB_MASK)){ 
-//				bedtemp=gc.getBedtemp();
-//			}
-			
-
 			if (gc.getGcode() == Constants.GCDEF.G1 || gc.getGcode() == Constants.GCDEF.G0 || gc.getGcode() == Constants.GCDEF.G2 || gc.getGcode() == Constants.GCDEF.G3) {
-				currLayer.setBedtemp(bedtemp);
-				currLayer.setExttemp(extemp);
+				if(currLayer.getGcodes().size() < 5){ //only set layer temp, if not already printed too much 
+					currLayer.setBedtemp(bedtemp);
+					currLayer.setExttemp(extemp);
+				}
 				//Detect Layer change and create new layers.
 				if(gc.isInitialized(Constants.Z_MASK) && gc.getZ() != currLayer.getZPosition()){
 					//endLayer(currLayer);	//finish old layer
@@ -203,8 +205,9 @@ public class Model {
 				}
 				//Update epos and extrusion, not add time because the actual move time is already added
 				 if(gc.isInitialized(Constants.E_MASK)){
+					 	float oldepos=gc.getE();
 					    gc.setExtrusion(gc.getE()-epos);
-						epos=gc.getE();
+					    epos=oldepos;
 				 }
 				 
 				 gc.setTime(move / (f_new / 60)); //Set time w/o acceleration
@@ -219,8 +222,12 @@ public class Model {
 				 f_old=f_new; //acceleration done. assign new speed
 					
 				 //Calculate print size
-				 if(gc.isInitialized(Constants.E_MASK) && gc.getE() > 0) { 
-					currLayer.addPosition(xpos, ypos,zpos);					
+				 if(gc.isInitialized(Constants.E_MASK) && gc.getE() > 0) {
+					 if(pos_changed){ //make sure that the start position is used for the boundary calculation
+						 currLayer.addPosition(lastxpos,lastypos,lastzpos);
+					 }
+					currLayer.addPosition(xpos, ypos,zpos);				
+					pos_changed=true;
 				 }
 			}
 			
@@ -239,7 +246,7 @@ public class Model {
 			}else if(gc.isInitialized(Constants.SB_MASK)){ 
 				bedtemp=gc.getBedtemp();
 			} 
-			gc.setCurrentPosition( new Position(xpos,ypos));	
+			gc.setCurrentPosition( new Position(xpos,ypos));	//TODO reuse position object
 			//Add Gcode to Layer
 			currLayer.addGcodes(gc);
 		}
@@ -272,9 +279,9 @@ public class Model {
 			boundaries[2] = Math.max(lay.getBoundaries()[2], boundaries[2]);
 			boundaries[3] = Math.min(lay.getBoundaries()[3], boundaries[3]);
 			boundaries[4] = Math.max(lay.getBoundaries()[4], boundaries[4]);
-			dimension[0] = GCode.round2digits(boundaries[0] - boundaries[1]);
-			dimension[1] = GCode.round2digits(boundaries[2] - boundaries[3]);
-			dimension[2] = GCode.round2digits(boundaries[4]);
+			dimension[0] = Constants.round2digits(boundaries[0] - boundaries[1]);
+			dimension[1] = Constants.round2digits(boundaries[2] - boundaries[3]);
+			dimension[2] = Constants.round2digits(boundaries[4]);
 			
 			
 			extrusion=extrusion+lay.getExtrusion();
@@ -325,11 +332,11 @@ public class Model {
 	}
 
 	public float getAvgbedtemp() {
-		return GCode.round2digits(avgbedtemp/getLayercount(true));
+		return Constants.round2digits(avgbedtemp/getLayercount(true));
 	}
 
 	public float getAvgextemp() {
-		return GCode.round2digits(avgextemp/getLayercount(true));
+		return Constants.round2digits(avgextemp/getLayercount(true));
 	}
 	
 	public Material guessMaterial(){
@@ -345,7 +352,7 @@ public class Model {
 	public String guessPrice(float diameter){
 		String var 	= "";
 		if(diameter==0) {
-			System.err.println("Unable to guess diameter, show results for 3mm. Set Environment var FILAMENT_DIAMETER to overwite.\n");
+		//TODO	System.err.println("Unable to guess diameter, show results for 3mm. Set Environment var FILAMENT_DIAMETER to overwite.\n");
 			diameter=3;
 		}
 		
@@ -364,9 +371,9 @@ public class Model {
 		double priceg = weigth*PRICE_PER_G;
 		
 		var 	   +="Material"+(isguessed?"(guessed):":":")+guessMaterial()+" "+diameter+"mm\n";
-		var		   +="Mass:   "+GCode.round2digits((float)mm3/1000)+"cm3\n";
-		var		   +="Weight: "+GCode.round2digits((float)weigth)+"g\n";
-		var		   +="Price:  "+GCode.round2digits((float)priceg)+"€\n";
+		var		   +="Mass:   "+Constants.round2digits((float)mm3/1000)+"cm3\n";
+		var		   +="Weight: "+Constants.round2digits((float)weigth)+"g\n";
+		var		   +="Price:  "+Constants.round2digits((float)priceg)+"€\n";
 		
 		
 		return var;
@@ -438,7 +445,7 @@ public class Model {
 	
 
 	public float getAvgLayerHeight() {
-		return GCode.round2digits(avgLayerHeight/(float)getLayercount(true));
+		return Constants.round2digits(avgLayerHeight/(float)getLayercount(true));
 	}
 	
 	public float[] getBoundaries() {
@@ -451,11 +458,11 @@ public class Model {
 	}
 
 	public float getDistance() {
-		return GCode.round2digits(distance);
+		return Constants.round2digits(distance);
 	}
 
 	public float getExtrusion() {
-		return GCode.round2digits(extrusion);
+		return Constants.round2digits(extrusion);
 	}
 
 	public String getFilename() {
@@ -497,11 +504,11 @@ public class Model {
 	public float getSpeed(Speed type) {
 		switch (type) {
 		case SPEED_ALL_AVG:
-			return GCode.round2digits(avgspeed/distance);
+			return Constants.round2digits(avgspeed/distance);
 		case SPEED_TRAVEL_AVG:
-			return GCode.round2digits((avgtravelspeed/traveldistance));
+			return Constants.round2digits((avgtravelspeed/traveldistance));
 		case SPEED_PRINT_AVG:
-			return GCode.round2digits((avgspeed-avgtravelspeed)/(distance-traveldistance));
+			return Constants.round2digits((avgspeed-avgtravelspeed)/(distance-traveldistance));
 		case SPEED_PRINT_MAX:
 			return maxprintspeed;
 		case SPEED_PRINT_MIN:
@@ -517,7 +524,7 @@ public class Model {
 	}
 
 	public float getTime() {
-		return GCode.round2digits(time);
+		return Constants.round2digits(time);
 	}
 
 	public String getUnit() {
@@ -539,7 +546,8 @@ public class Model {
 		int idx=1;
 		int errorcnt=0, success=0;
 		while((line=gcread.readLine())!=null){
-			GCode gc=new GCode(line,idx++);
+			//GCode gc=new GCodeMemSave(line,idx++);
+			GCode gc = GCodeFactory.getGCode(line, idx++);
 			if(gc.getGcode() == GCDEF.UNKNOWN){
 					errorcnt++;
 					if(errorcnt-success > 10){
@@ -565,29 +573,31 @@ public class Model {
 		
 		for (GCode gc : gcodes) {
 			gcwr.write(gc.getCodeline().toString());
-			gcwr.write("\n");
+			//gcwr.write("\n");
 		}
 		gcwr.close();
 		fwr.close();
 	}
 	
 	public String getModelComments(){
-		String var ="--------- Slicer Comments------------\n";
+		StringBuilder buf = new StringBuilder(500);
+		buf.append("--------- Slicer Comments------------\n");
 		for (GCode gCode : gcodes) {
 			//Ignore comments behind gcodes
 			if (gCode.isComment()){
 				//System.out.println(gCode.getComment());
-				var+=gCode.getComment()+"\n";
+				buf.append(gCode.getComment());
+				//buf.append(Constants.newlinec);
 			}
 		}
-		return var;
+		return buf.toString();
 	}
 	public String getModelDetailReport(){
 		float time = getTime();
 		float[] sizes = getDimension();
 		float[] bound = getBoundaries();
 		String mm_in = getUnit();
-		StringBuffer varb = new StringBuffer();
+		StringBuilder varb = new StringBuilder(500);
 		
 		varb.append("Filename:  ");
 		varb.append(getFilename());
@@ -613,16 +623,16 @@ public class Model {
 		varb.append(mm_in);
 		varb.append(Constants.newlinec);
 		varb.append("Position on bed: ");
-		varb.append(+GCode.round2digits(bound[1]));
+		varb.append(+Constants.round2digits(bound[1]));
 		varb.append("/");
-		varb.append(GCode.round2digits(bound[0]));
+		varb.append(Constants.round2digits(bound[0]));
 		varb.append(mm_in);
 		varb.append(" x ");
-		varb.append(GCode.round2digits(bound[3]));
-		varb.append("/"+GCode.round2digits(bound[2]));
+		varb.append(Constants.round2digits(bound[3]));
+		varb.append("/"+Constants.round2digits(bound[2]));
 		varb.append(mm_in);
 		varb.append(" H");
-		varb.append(GCode.round2digits(bound[4]));
+		varb.append(Constants.round2digits(bound[4]));
 		varb.append(mm_in);
 		varb.append(Constants.newlinec);
 		
@@ -665,21 +675,20 @@ public class Model {
 		varb.append(getGcodecount());
 		varb.append(Constants.newlinec);
 		varb.append("Overall Time (w/o Acceleration):   ");
-		GCode.formatTimetoHHMMSS(time,varb);
+		Constants.formatTimetoHHMMSS(time,varb);
 		varb.append(" (");
 		varb.append(time);
 		varb.append("sec)\n");
 		varb.append("Overall Time (w/ Acceleration):    ");
-		GCode.formatTimetoHHMMSS(timeaccel,varb);
+		Constants.formatTimetoHHMMSS(timeaccel,varb);
 		varb.append(" (");
 		varb.append(timeaccel);
 		varb.append("sec)\n");
 		return varb.toString();
 	}
 	public String getModelSpeedReport(){
-		StringBuffer var= new StringBuffer(); 
+		StringBuilder var= new StringBuilder(); 
 		var.append("---------- Model Speed Distribution ------------");
-		//TODO: use stringbuffer instead of string concatenation 
 		ArrayList<Float> speeds = new ArrayList<Float>(getSpeedAnalysisT().keySet());
 		for (Iterator<Float> iterator = speeds.iterator(); iterator.hasNext();) {
 			float speedval =  iterator.next();
@@ -689,15 +698,15 @@ public class Model {
 			var.append("    ");
 			var.append(tim.getType());
 			var.append("    Time:");
-			var.append(GCode.round2digits(tim.getTime()));
+			var.append(Constants.round2digits(tim.getTime()));
 			var.append("sec       ");
-			var.append(GCode.round2digits(tim.getTime()/(time/100)));
-			var.append("%");
+			var.append(Constants.round2digits(tim.getTime()/(time/100)));
+			var.append('%');
 			var.append("     Layers:[");	
 			int max=4;
 			//print the layer nr but only max of 4 (too much of info)
 			for (Iterator<Integer> layrs = tim.getLayers().iterator(); layrs.hasNext();) {
-				var.append(" ");
+				var.append(' ');
 				var.append(layrs.next());
 					max--;
 					if(max==0){
@@ -712,12 +721,12 @@ public class Model {
 	}
 	public String getModelLayerSummaryReport(){
 		ArrayList<Layer> layers = new ArrayList<Layer>(getLayer());
-		StringBuffer var= new StringBuffer();
+		StringBuilder var= new StringBuilder();
 		var.append("---------- Printed Layer Summary ------------\n");
 		for (Iterator<Layer> iterator = layers.iterator(); iterator.hasNext();) {
 			Layer lay = iterator.next();
 			if(!lay.isPrinted()) continue;
-			float layperc =  GCode.round2digits(lay.getTime()/(getTime()/100));
+			float layperc =  Constants.round2digits(lay.getTime()/(getTime()/100));
 			var.append("  ");
 			var.append(lay.getLayerSummaryReport());
 			var.append("    ");
@@ -747,7 +756,7 @@ public class Model {
 			bedtemp=prevLayer.getBedtemp();
 			extemp=prevLayer.getExttemp();
 		} 
-		lay = new Layer(z, layercount,GCode.round2digits(lh));
+		lay = new Layer(z, layercount,Constants.round2digits(lh));
 		lay.setUnit(unit); //remember last unit
 		lay.setFanspeed(fanspeed);
 		lay.setBedtemp(bedtemp);
@@ -768,8 +777,8 @@ public class Model {
 		for (Layer layer : lays) {
 			ArrayList<GCode> gcodes = layer.getGcodes();
 			for (GCode gCode : gcodes) {
-				gCode.changeToComment();
-				gCode.parseGcode(gCode.getCodeline().toString());
+				GCodeMod.changeToComment(gCode);
+				//TODO GCodeMod.parseGcode(gCode,gCode.getCodeline().toString());
 			}
 		}
 	}
@@ -777,7 +786,7 @@ public class Model {
 		for (Layer layer : lays) {
 			ArrayList<GCode> gcodes = layer.getGcodes();
 			for (GCode gCode : gcodes) {
-				gCode.changeFan(value);
+				GCodeMod.changeFan(gCode,value);
 				//todo... add fan value if not exits
 			}
 		}
@@ -787,7 +796,7 @@ public class Model {
 		for (Layer layer : lays) {
 			ArrayList<GCode> gcodes = layer.getGcodes();
 			for (GCode gCode : gcodes) {
-				gCode.changeXOffset(value);
+				GCodeMod.changeXOffset(gCode,value);
 			}
 		}
 	}
@@ -796,7 +805,7 @@ public class Model {
 		for (Layer layer : lays) {
 			ArrayList<GCode> gcodes = layer.getGcodes();
 			for (GCode gCode : gcodes) {
-				gCode.changeYOffset(value);
+				GCodeMod.changeYOffset(gCode,value);
 			}
 		}
 	}
@@ -805,7 +814,7 @@ public class Model {
 		for (Layer layer : lays) {
 			ArrayList<GCode> gcodes = layer.getGcodes();
 			for (GCode gCode : gcodes) {
-				gCode.changeZOffset(value);
+				GCodeMod.changeZOffset(gCode,value);
 			}
 		}
 	}
@@ -814,7 +823,7 @@ public class Model {
 		for (Layer layer : lays) {
 			ArrayList<GCode> gcodes = layer.getGcodes();
 			for (GCode gCode : gcodes) {
-				gCode.changeLayerHeight(value);
+				GCodeMod.changeLayerHeight(gCode,value);
 			}
 		}
 	}
@@ -823,7 +832,7 @@ public class Model {
 		for (Layer layer : lays) {
 			ArrayList<GCode> gcodes = layer.getGcodes();
 		for (GCode gCode : gcodes) {
-				gCode.changeBedTemp(value);
+			GCodeMod.changeBedTemp(gCode,value);
 				//update temps, but always add a temp at the beginning of the layer
 				//TODO: if a temp definitions exists before G1/G2/G3 , do not insert a new one
 		}
@@ -834,7 +843,7 @@ public class Model {
 		for (Layer layer : lays) {
 			ArrayList<GCode> gcodes = layer.getGcodes();
 		for (GCode gCode : gcodes) {
-			gCode.changeExtTemp(value);
+			GCodeMod.changeExtTemp(gCode,value);
 				//update temps, but always add a temp at the beginning of the layer
 				//TODO: if a temp definitions exists before G1/G2/G3 , do not insert a new one						
 		}
@@ -845,7 +854,7 @@ public class Model {
 		for (Layer layer : lays) {
 			ArrayList<GCode> gcodes = layer.getGcodes();
 			for (GCode gCode : gcodes) {
-				gCode.changeExtrusion(value);
+				GCodeMod.changeExtrusion(gCode,value);
 			}
 		}
 	}
@@ -854,7 +863,7 @@ public class Model {
 		for (Layer layer : lays) {
 			ArrayList<GCode> gcodes = layer.getGcodes();
 			for (GCode gCode : gcodes) {
-				gCode.changeSpeed(value,true);
+				GCodeMod.changeSpeed(gCode,value,true);
 			}
 		}
 	}

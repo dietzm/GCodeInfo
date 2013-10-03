@@ -16,7 +16,7 @@ public class Constants {
 		   public short getId(){
 			   return idx;
 		   }
-		   
+
 		   /**
 		    * Gets the enum object from a short identifier
 		    * @param index
@@ -72,8 +72,10 @@ public class Constants {
 	public final  static short JY_MASK=1024;
 	public final  static short KZ_MASK=2048;
 	
+	public static final String ENCODING = "ISO-8859-1";
 	
-	public final static byte[] newline = "\n".getBytes();
+	public final static byte newlineb = 10;
+	public final static byte[] newline = new byte[]{newlineb};
 	public final static char newlinec = '\n';
 	
 	
@@ -93,4 +95,62 @@ public class Constants {
 	public final static String FANS2_LABEL ="II";
 	public final static String FANS3_LABEL ="III";
 	
+	
+	/**
+	 * pass Stringbuffer to avoid allocation
+	 * @param secs
+	 * @param buf
+	 * @return
+	 */
+	public static String formatTimetoHHMMSS(float secs, StringBuilder buf)
+	{		
+		int secsIn = Math.round(secs);
+		int hours =  secsIn / 3600,
+		remainder =  secsIn % 3600,
+		minutes = remainder / 60,
+		seconds = remainder % 60;
+
+		if(buf==null){
+			buf = new StringBuilder();
+		}
+		buf.append(hours);
+		buf.append(":");
+		buf.append((minutes < 10 ? "0" : ""));
+		buf.append(minutes);
+		buf.append(":");
+		buf.append((seconds< 10 ? "0" : ""));
+		buf.append(seconds);
+		
+	return buf.toString();
+	}
+	public static float round2digits(float num){
+		return Math.round((num)*100f)/100f;
+	}
+	
+	/**
+	 * returns true if it starts with G or M (should be trimmed and uppercase already)
+	 * @return boolean gcode
+	 */
+	public static boolean isValidGCode(String codeline){
+		 if(codeline == null || codeline.isEmpty()) return false;
+		 if (codeline.startsWith("G")) return true;
+		 if (codeline.startsWith("M")) return true;
+		 if (codeline.startsWith("T")) return true;
+		 //if (codeline.startsWith("g")) return true;
+		 //if (codeline.startsWith("m")) return true;
+		 return false;
+	}
+	
+	public static float round3digits(float num){
+		return Math.round((num)*1000f)/1000f;
+	}
+	
+	/**
+	 * Heavyweight
+	 * @param var
+	 * @return
+	 */
+	public static String removeTrailingZeros(String var) {
+		return var.replaceAll("[0]*$", "").replaceAll("\\.$", "");
+	}
 }

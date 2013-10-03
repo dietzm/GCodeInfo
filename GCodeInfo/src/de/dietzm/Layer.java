@@ -6,6 +6,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import de.dietzm.SpeedEntry.Speedtype;
+import de.dietzm.gcodes.GCode;
 
 public class Layer implements Comparable<Layer>{
 	
@@ -92,10 +93,10 @@ public class Layer implements Comparable<Layer>{
 //			exttemp=gcode.getExtemp();
 //		}
 		
-		//ignore retracts
-		//if ( gcode.getExtrusion() > 0){
-		extrusion=extrusion+gcode.getExtrusion();
-		//}
+		//
+			
+			extrusion=extrusion+gcode.getExtrusion();
+	
 	}
 
 
@@ -107,6 +108,8 @@ public class Layer implements Comparable<Layer>{
 		this.fanspeed = fanspeed;
 	}
 	void addPosition(float x, float y,float z){
+		//System.out.println("BoundOLD:"+boundaries[0]+"/"+boundaries[1]);
+		//System.out.println("X:"+x);
 		boundaries[0]=Math.max(x,boundaries[0]);
 		boundaries[1]=Math.min(x,boundaries[1]);
 		boundaries[2]=Math.max(y,boundaries[2]);
@@ -115,6 +118,8 @@ public class Layer implements Comparable<Layer>{
 		dimension[0]=boundaries[0]-boundaries[1];
 		dimension[1]=boundaries[2]-boundaries[3];
 		dimension[2]=Layerheight;
+		//System.out.println("BoundNEW:"+boundaries[0]+"/"+boundaries[1]);
+		
 	}
 
 	/**
@@ -208,11 +213,11 @@ public class Layer implements Comparable<Layer>{
 	public float getSpeed(Speed type) {
 		switch (type) {
 		case SPEED_ALL_AVG:
-			return GCode.round2digits(avgspeed/distance);
+			return Constants.round2digits(avgspeed/distance);
 		case SPEED_TRAVEL_AVG:
-			return GCode.round2digits((avgtravelspeed/traveldistance));
+			return Constants.round2digits((avgtravelspeed/traveldistance));
 		case SPEED_PRINT_AVG:
-			return GCode.round2digits((avgspeed-avgtravelspeed)/(distance-traveldistance));
+			return Constants.round2digits((avgspeed-avgtravelspeed)/(distance-traveldistance));
 		case SPEED_PRINT_MAX:
 			return maxprintspeed;
 		case SPEED_PRINT_MIN:
@@ -297,7 +302,7 @@ public class Layer implements Comparable<Layer>{
 	
 	public String getLayerSpeedReport() {
 		ArrayList<Float> speeds = new ArrayList<Float>(SpeedAnalysisT.keySet());
-		StringBuffer var2 = new StringBuffer();
+		StringBuilder var2 = new StringBuilder();
 		var2.append("---------- Layer #");
 		var2.append(number);
 		var2.append(" Speed Distribution ------------");
@@ -309,20 +314,20 @@ public class Layer implements Comparable<Layer>{
 			var2.append("    ");
 			var2.append(tim.getType());
 			var2.append("     Distance:");
-			var2.append(GCode.round2digits(tim.getDistance()/(distance/100)));
-			var2.append("%");
+			var2.append(Constants.round2digits(tim.getDistance()/(distance/100)));
+			var2.append('%');
 			var2.append("      Time:");
-			var2.append(GCode.round2digits(tim.getTime()));
+			var2.append(Constants.round2digits(tim.getTime()));
 			var2.append("sec/");
-			var2.append(GCode.round2digits(tim.getTime()/(time/100)));
-			var2.append("%");			
+			var2.append(Constants.round2digits(tim.getTime()/(time/100)));
+			var2.append('%');			
 		}
 		return var2.toString();
 	}
 	public String getLayerDetailReport() {
 //		System.out.println("fan:"+fantime+" "+(gcodes.size()/100f));
-		StringBuffer var = new StringBuffer(); 
-				var.append("#");
+		StringBuilder var = new StringBuilder(); 
+				var.append('#');
 				var.append(number);
 				var.append(" Height: ");
 				var.append(zPosition);
@@ -333,38 +338,38 @@ public class Layer implements Comparable<Layer>{
 				var.append("\n Is Printed: ");
 				var.append(isPrinted());
 				var.append("\n Print Time: ");
-				GCode.formatTimetoHHMMSS(time,var);
+				Constants.formatTimetoHHMMSS(time,var);
 				var.append("\n Print Time (Accel): ");
-				GCode.formatTimetoHHMMSS(timeaccel,var);
+				Constants.formatTimetoHHMMSS(timeaccel,var);
 				var.append("\n Distance (All/travel): ");
-				var.append(GCode.round2digits(distance));
-				var.append("/");
-				var.append(GCode.round2digits(traveldistance));
+				var.append(Constants.round2digits(distance));
+				var.append('/');
+				var.append(Constants.round2digits(traveldistance));
 				var.append(unit);
 				var.append("\n Extrusion: ");
-				var.append(GCode.round2digits(extrusion));
+				var.append(Constants.round2digits(extrusion));
 				var.append(unit);
 				var.append("\n Bed Temperatur:");
 				var.append(bedtemp);
-				var.append("°");
+				var.append('°');
 				var.append("\n Extruder Temperatur:");
 				var.append(exttemp);
-				var.append("°");
+				var.append('°');
 				var.append("\n Cooling Time (Fan): ");
-				var.append(GCode.round2digits(fantime/(time/100f)));
-				var.append("%");
+				var.append(Constants.round2digits(fantime/(time/100f)));
+				var.append('%');
 				var.append("\n GCodes: ");
 				var.append(gcodes.size()); 
 				var.append("\n GCode Linenr: ");
 				var.append(gcodes.get(0).getLineindex());
 				var.append("\n Dimension: ");
-				var.append(GCode.round2digits(dimension[0]));
+				var.append(Constants.round2digits(dimension[0]));
 				var.append(unit);
 				var.append(" x ");
-				var.append(GCode.round2digits(dimension[1]));
+				var.append(Constants.round2digits(dimension[1]));
 				var.append(unit);
 				var.append(" x");
-				var.append(GCode.round2digits(dimension[2]));
+				var.append(Constants.round2digits(dimension[2]));
 				var.append(unit);
 				var.append("\n Avg.Speed(All): ");
 				var.append(getSpeed(Speed.SPEED_ALL_AVG));
@@ -386,26 +391,25 @@ public class Layer implements Comparable<Layer>{
 	}
 	
 	public String getLayerSummaryReport() {
-		//TODO: use stringbuffer instead of string concatenation 
-		StringBuffer var = new StringBuffer(); 
-		var.append("#");
+		StringBuilder var = new StringBuilder(); 
+		var.append('#');
 		var.append(number);
 		var.append("   H:");
 		var.append(zPosition);
-		var.append("/");
+		var.append('/');
 		var.append(Layerheight);
 		var.append(unit);
 		var.append("   T:");
-		var.append(GCode.removeTrailingZeros(Float.toString(exttemp)));
+		var.append(Constants.removeTrailingZeros(Float.toString(exttemp)));
 		var.append("/");
-		var.append(GCode.removeTrailingZeros(Float.toString(bedtemp)));
-		var.append("°");
+		var.append(Constants.removeTrailingZeros(Float.toString(bedtemp)));
+		var.append('°');
 		var.append("   Speed: ");
 		var.append(getSpeed(Speed.SPEED_PRINT_AVG));
 		var.append(unit);
 		var.append("/s");
 		var.append("   Time: ");
-		GCode.formatTimetoHHMMSS(time,var);
+		Constants.formatTimetoHHMMSS(time,var);
 		return var.toString();
 	}
 	

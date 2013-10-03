@@ -1,6 +1,6 @@
 package de.dietzm.gcodesim;
 
-import de.dietzm.GCode;
+import de.dietzm.gcodes.GCode;
 
 public interface GraphicRenderer {
 

@@ -7,8 +7,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 
-import de.dietzm.GCode;
 import de.dietzm.Model;
+import de.dietzm.gcodes.GCode;
 
 public class NetworkPrinter implements Runnable{
 	ServerSocket sock =null;
@@ -33,7 +33,7 @@ public class NetworkPrinter implements Runnable{
 		BufferedOutputStream bufout = new BufferedOutputStream(out);
 		ArrayList<GCode> gcodes = mod.getGcodes();
 		for (GCode gCode : gcodes) {
-			bufout.write((gCode.getCodeline()+"\n").getBytes());
+			bufout.write((gCode.getCodeline()).getBytes());
 		}
 		bufout.flush();
 		cs.close();		
@@ -69,6 +69,7 @@ public class NetworkPrinter implements Runnable{
 			e.printStackTrace();
 		}
 	}
+	
 	
 
 }

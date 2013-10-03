@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 
+import de.dietzm.gcodes.GCode;
+
 public class GCodeUtil {
 
 	/**
@@ -105,7 +107,7 @@ public class GCodeUtil {
 			}
 
 			long end = System.currentTimeMillis();
-			System.out.println("Gcode Analyse Time: "+ GCode.formatTimetoHHMMSS((end-start)/1000f,null) +" Load time:"+GCode.formatTimetoHHMMSS((load-start)/1000f,null));
+			System.out.println("Gcode Analyse Time: "+ Constants.formatTimetoHHMMSS((end-start)/1000f,null) +" Load time:"+Constants.formatTimetoHHMMSS((load-start)/1000f,null));
 		
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -263,7 +265,7 @@ public class GCodeUtil {
 		
 		for (Iterator<Layer> iterator = layers.iterator(); iterator.hasNext();) {
 			Layer lay = iterator.next();
-			float layperc =  GCode.round2digits(lay.getTime()/(model.getTime()/100));
+			float layperc =  Constants.round2digits(lay.getTime()/(model.getTime()/100));
 			if(lay.isPrinted() && mode.contains("p")){
 				System.out.println("--------------------------------------------------");
 					System.out.println(lay.getLayerDetailReport()+"\n Percent of time:"+layperc+"%");					
@@ -293,7 +295,7 @@ public class GCodeUtil {
 		//Collections.sort(layers);		
 		for (Iterator<Layer> iterator = layers.iterator(); iterator.hasNext();) {
 			Layer lay = iterator.next();
-			float layperc =  GCode.round2digits(lay.getTime()/(model.getTime()/100));
+			float layperc =  Constants.round2digits(lay.getTime()/(model.getTime()/100));
 			if(lay.isPrinted()){
 				System.out.println("--------------------------------------------------");
 					System.out.println(lay.getLayerDetailReport()+"\n Percent of time:"+layperc+"%");

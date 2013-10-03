@@ -5,10 +5,10 @@ import java.io.InputStream;
 import java.util.ArrayList;
 
 import de.dietzm.Constants;
-import de.dietzm.GCode;
 import de.dietzm.Layer;
 import de.dietzm.Model;
 import de.dietzm.Position;
+import de.dietzm.gcodes.GCode;
 
 /**
  * Gcodepaint Class starts a thread and iterates through the gcodes and paint the corresponding lines. 
@@ -22,6 +22,7 @@ public class GcodePainter implements Runnable {
 	public static final int bedsizeY = 200;
 	public static final int colNR = 7;
 	public static final boolean PAINTTRAVEL = true;
+	private float fanspeed = 0;
 	//Private vars
 	private boolean useAccelTime=true;
 	private boolean ffLayer=false; //Fast Forward Layer
@@ -36,7 +37,7 @@ public class GcodePainter implements Runnable {
 	private Thread gcodepainter;
 	private String errormsg=null;
 	private String speeduplabel=speedup+"x";
-	private StringBuffer tempbuf = new StringBuffer();
+	private StringBuilder tempbuf = new StringBuilder();
 	private float mtime;
 	private Printer printer=null;
 	private ArrayList<Layer> layers;
@@ -45,6 +46,7 @@ public class GcodePainter implements Runnable {
 	private boolean print=false;
 	private int inbuffer = 0;
 	private int bufferemptyindex = 0;
+	private StringBuilder details = new StringBuilder(2000);
 	
 	//Public vars, might be accessed from other classes.
 	// Model & Layer Info
@@ -127,7 +129,7 @@ public class GcodePainter implements Runnable {
 		if(speedup > 1) {
 			speeduplabel=speedup+"x";
 		}else{
-			speeduplabel = GCode.round2digits(speedup)+"x";
+			speeduplabel = Constants.round2digits(speedup)+"x";
 		}
 	}
 
@@ -256,6 +258,7 @@ public class GcodePainter implements Runnable {
 	}
 
 	private void calculateOffset() {
+		//System.out.println("Bound:"+model.getBoundaries()[0]+"/"+model.getBoundaries()[1]);
 		//Calculate offset
 		if(model.getBoundaries()[0] >= bedsizeX || model.getBoundaries()[1] <= 0){
 			//67,139/2  =  0
@@ -285,7 +288,7 @@ public class GcodePainter implements Runnable {
 			printLabelBox(g2, 12,20, String.valueOf(lay.getZPosition()), Constants.ZPOS_LABEL,lay.getNumber());
 			printLabelBox(g2, 32,12,Constants.ZERO_LABEL, Constants.XYSPEED_LABEL,lay.getNumber());
 			printLabelBox(g2, 44,14,Constants.ZERO_LABEL, Constants.ESPEED_LABEL,lay.getNumber());
-			printLabelBox(g2, 95,5,getFanSpeed(lay.getFanspeed()), "Fan",lay.getNumber());	
+			printLabelBox(g2, 95,5,getFanSpeed(lay.getFanspeed()), Constants.FAN_LABEL,lay.getNumber());	
 			
 		}else{
 			printLabelBox(g2, 32,12,String.valueOf(Math.round(gc.getSpeed())), Constants.XYSPEED_LABEL,lay.getNumber());
@@ -297,7 +300,7 @@ public class GcodePainter implements Runnable {
 			printLabelBox(g2, 95,5,getFanSpeed(gc.getFanspeed()), Constants.FAN_LABEL,lay.getNumber());
 		}
 		
-		printLabelBox(g2, 58,24, GCode.formatTimetoHHMMSS(mtime,tempbuf), Constants.REMTIME_LABEL,lay.getNumber());
+		printLabelBox(g2, 58,24, Constants.formatTimetoHHMMSS(mtime,tempbuf), Constants.REMTIME_LABEL,lay.getNumber());
 		tempbuf.setLength(0);
 		if(print){
 			if(gc!=null){
@@ -321,6 +324,11 @@ public class GcodePainter implements Runnable {
 	}
 
 	private String getFanSpeed(float fanf) {
+		if(fanf== Short.MAX_VALUE){
+			fanf=fanspeed;
+		}else{
+			fanspeed=fanf;
+		}
 		if(fanf==0){
 			return Constants.FANS0_LABEL;
 		}else if (fanf<100){
@@ -336,10 +344,10 @@ public class GcodePainter implements Runnable {
 		float boxheight=(bedsizeX*zoom)/12f;
 		int linegap=(int)(5*zoom);
 		float size=2+10f*(zoom);
-		g2.setFontSize(size/3);
+		g2.setFontSize(size/2.6f);
 		
 		// bed
-		StringBuffer details = new StringBuffer();
+		details.setLength(0);
 		int start=0;
 		switch (detailstype) {
 		case 0:
@@ -377,7 +385,7 @@ public class GcodePainter implements Runnable {
 			details.append( model.getModelDetailReport());
 			break;
 		}
-		g2.clearrect(bedsizeX*zoom+gap+5,(bedsizeY*zoom/zoommod)+5, (bedsizeX * zoom/zoommod*2)-10, bedsizeY * zoom + boxheight -(bedsizeY*zoom/zoommod)-10 ,print?1:0);
+		g2.clearrect(bedsizeX*zoom+gap+5,(bedsizeY*zoom/zoommod)+2, (bedsizeX * zoom/zoommod*2)-5, bedsizeY * zoom + boxheight -(bedsizeY*zoom/zoommod)-7 ,print?1:0);
 		
 		String[] det = details.toString().split("\n");
 		int c=0;
@@ -419,7 +427,7 @@ public class GcodePainter implements Runnable {
 				g.drawtext(errormsg,100,340);
 			}else{
 				if(model.getFilesize() >0){
-					g.drawtext(GCode.round2digits((model.getReadbytes()/(model.getFilesize()/100f)))+"%  ("+model.getGcodes().size()+")",220,340);
+					g.drawtext(Constants.round2digits((model.getReadbytes()/(model.getFilesize()/100f)))+"%  ("+model.getGcodes().size()+")",220,340);
 				}else{
 					g.drawtext(model.getGcodes().size()+"",220,340);
 				}
@@ -633,18 +641,22 @@ public class GcodePainter implements Runnable {
 		g2.setColor(lay.getNumber() % colNR);
 		g2.setStroke(1);
 		float zoomsmall= zoom/zoommod;
-//		System.out.println("--STARTPOS: X"+lastpos[0]+" Y"+lastpos[1]+" Gcode:"+gc.getCodeline());
-//		System.out.println("--ENDPOS: X"+pos[0]+" Y"+pos[1]);
+//		System.out.println("--STARTPOS: X"+lastpos.x+" Y"+lastpos.y+" Gcode:"+gc.getCodeline());
+//		System.out.println("--ENDPOS: X"+pos.x+" Y"+pos.y);
 //		System.out.println("Offset:"+Xoffset+" "+Yoffset+" Zoom:"+zoom +" small:"+zoomsmall);
-		float x1 = ((lastpos.x + Xoffset) * zoomsmall) + (bedsizeX * zoom + gap) ;
-		float y1 = (bedsizeX * zoomsmall) - ((lastpos.y + Yoffset) * zoomsmall)+ (bedsizeX * zoom + gap);
-		float x2 = (pos.x + Xoffset) * zoomsmall+ (bedsizeX * zoom + gap);
-		float y2 = (bedsizeX * zoomsmall) - ((pos.x + Yoffset) * zoomsmall)+ (bedsizeX * zoom + gap);
-		float z =  (bedsizeY *zoomsmall) - (lay.getZPosition()*zoomsmall) - 20 ;
+		float z =  (bedsizeY *zoomsmall) - (lay.getZPosition()*zoomsmall) - 20 ;		
+		/*
+		 * Print side view
+		 */
+		float y1 = (bedsizeX * zoomsmall) - ((lastpos.y + Yoffset) * zoomsmall)+ (bedsizeX * zoom + gap);		
+		float y2 = (bedsizeX * zoomsmall) - ((pos.y + Yoffset) * zoomsmall)+ (bedsizeX * zoom + gap);
+		g2.drawline(y1, z, y2, z);
 		
-		//Print front view
-		g2.drawline(y1, z, y2, z);	
-		//Print side view
+		/*
+		 * Print front view
+		 */
+		float x1 = (lastpos.x + Xoffset) * zoomsmall + (bedsizeX * zoom + gap) ;
+		float x2 = (pos.x + Xoffset) * zoomsmall+ (bedsizeX * zoom + gap);
 		g2.drawline(x1+(bedsizeX * zoomsmall), z, x2+(bedsizeX * zoomsmall),z);
 
 		//Print Extrusion		
@@ -684,7 +696,8 @@ public class GcodePainter implements Runnable {
 			if (layers != null) {
 				Position pos = new Position(0,0);
 				Position lastpos = new Position(0,0);
-
+				fanspeed=0;
+				
 				g2.clearrect(0, 0, g2.getWidth(),g2.getHeight(),print?1:0);
 				calculateOffset();
 				mtime = model.getTimeaccel(); //remaining time
@@ -729,7 +742,9 @@ public class GcodePainter implements Runnable {
 						alignWithPrint(lay, gCode);
 						
 						//Print the lines from last position to current position
-						pos = gCode.getCurrentPosition(pos);
+						if(gCode.getCurrentPosition(pos) != null) {
+							//System.out.println("XXXXX"+gCode);
+			
 						g2.setPos((int)((pos.x+Xoffset)*zoom), (int)((bedsizeY * zoom) - (pos.y+Yoffset)*zoom));
 						if (lastpos != null) {
 							if (gCode.isExtruding()) {
@@ -751,7 +766,7 @@ public class GcodePainter implements Runnable {
 								g2.setStroke(1);
 							}
 						}
-
+						}
 						mtime=mtime-gCode.getTimeAccel();
 						lastpos.updatePos(pos);			
 						
@@ -883,17 +898,19 @@ public class GcodePainter implements Runnable {
 					} else {
 						fftoGcode = printCode.getLineindex();
 					}
-					System.out.println("AlignGCode: ff:"+fftoGcode);
+					//System.out.println("AlignGCode: ff:"+fftoGcode);
 					wait = false;
 				} else if (renderCode.getLineindex() < printCode.getLineindex() - behind) {
 					speedup++;
-					System.out.println("AlignGCode:Speedup:"+speedup);
+					//System.out.println("AlignGCode:Speedup:"+speedup);
 					wait = false;
 				}
 
 				if (pause != 0) {
 					bufferemptyindex=printCode.getLineindex();
 					doPause(lay, renderCode);
+					printLabelBox(g2, 82,12,"W", "Wait",lay.getNumber());
+					g2.repaint();
 				} else if (wait) {
 					//System.out.println("AlignGCode: WAIT "+printCode.isBuffered()+"  PR:"+(printCode.getLineindex()-renderCode.getLineindex())+" BF:"+inbuffer);
 					g2.repaint();
@@ -902,7 +919,9 @@ public class GcodePainter implements Runnable {
 					break; //no wait 
 				}
 			} catch (InterruptedException e) {
-				e.printStackTrace();
+			//	e.printStackTrace();
+				printLabelBox(g2, 82,12,"W", "Wait",lay.getNumber());
+				g2.repaint();
 			}
 
 		}
@@ -917,7 +936,7 @@ public class GcodePainter implements Runnable {
 		printLabelBox(g2, 82,12,"P", "Pause",lay.getNumber());
 		g2.clearrect(bedsizeX*zoom+gap+1,bedsizeY * zoom + (bedsizeX*zoom)/24f, (bedsizeX * zoom/zoommod*2)-2, (bedsizeX*zoom)/24f,print?1:0);
 		g2.drawrect(bedsizeX*zoom+gap+4,bedsizeY * zoom + (bedsizeX*zoom)/24f +2, (bedsizeX * zoom/zoommod*2)-7, (bedsizeX*zoom)/24f -5);
-		g2.drawtext("L"+gCode.getLineindex()+": "+ gCode.getCodeline(), bedsizeX*zoom+gap+10, bedsizeY * zoom +(bedsizeX*zoom)/24f +  (bedsizeX*zoom)/48f +1 );
+		g2.drawtext("L"+gCode.getLineindex()+": "+ gCode.getCodeline().toString().trim(), bedsizeX*zoom+gap+10, bedsizeY * zoom +(bedsizeX*zoom)/24f +  (bedsizeX*zoom)/48f +1 );
 		g2.repaint();
 		Thread.sleep(pause); //allow pause also if printing			
 		inpause=false;
@@ -1064,6 +1083,7 @@ public class GcodePainter implements Runnable {
 				ret=model.loadModel(in);
 			}
 		} catch (Exception e) {
+			e.printStackTrace();
 			ret=false;
 		}
 		

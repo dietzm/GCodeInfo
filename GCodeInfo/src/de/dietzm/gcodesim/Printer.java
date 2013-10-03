@@ -2,7 +2,7 @@ package de.dietzm.gcodesim;
 
 import java.io.InputStream;
 
-import de.dietzm.GCode;
+import de.dietzm.gcodes.GCode;
 
 public interface Printer {
 	

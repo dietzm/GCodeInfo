@@ -12,7 +12,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import de.dietzm.gcodes.GCode;
+import de.dietzm.gcodes.GCodeMemSave;
 import de.dietzm.gcodesim.Printer;
 
 public class SerialIO implements SerialPortEventListener, Printer{
@@ -112,8 +116,8 @@ public class SerialIO implements SerialPortEventListener, Printer{
 		GCode code = printQueue.take();
 		if(code==null) return null;
 		long starttime = System.currentTimeMillis();
-		System.out.println("Print gcode "+code.getCodelineToPrint() +" Hash:"+code.hashCode());
-		outputStream.write((code.getCodelineToPrint()+"\n").getBytes());
+		System.out.println("Print gcode "+code.getCodeline() +" Hash:"+code.hashCode());
+		outputStream.write((code.getCodeline()).getBytes());
 		while (true) {
 			result.setLength(0);
 			wait(10000);
@@ -178,7 +182,7 @@ public class SerialIO implements SerialPortEventListener, Printer{
 		SerialIO sio=new SerialIO();
 		sio.connect("/dev/ttyUSB0");
 		while(true){
-			sio.addToPrintQueue(new GCode("M114\n", 1),true);
+			sio.addToPrintQueue(new GCodeMemSave("M114\n", 1,null),true);
 			Thread.sleep(1000);
 		}
 		

@@ -3,8 +3,8 @@ package de.dietzm.gcodesim;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-import de.dietzm.GCode;
 import de.dietzm.Model;
+import de.dietzm.gcodes.GCode;
 
 /**
  * Print Queue
@@ -23,6 +23,11 @@ public class PrintQueue  {
 	public void put(GCode code)throws InterruptedException{
 		mprintQ.put(code);			
 	}
+	
+	public void putAuto(GCode code)throws InterruptedException{
+		aprintQ.put(code);			
+	}
+	
 	
 	public void addModel(Model code) throws InterruptedException{
 		for (GCode gc : code.getGcodes()) {
