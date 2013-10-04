@@ -404,7 +404,7 @@ public class Layer implements Comparable<Layer>{
 		var.append("/");
 		var.append(Constants.removeTrailingZeros(Float.toString(bedtemp)));
 		var.append('°');
-		var.append("   Speed: ");
+		var.append("  ");
 		var.append(getSpeed(Speed.SPEED_PRINT_AVG));
 		var.append(unit);
 		var.append("/s");

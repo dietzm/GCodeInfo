@@ -31,7 +31,7 @@ public class Model {
 	private float dimension[] = { 0, 0, 0 }; // X,y,z
 	private float extrusion=0;
 	private String filename;
-	private ArrayList<GCode> gcodes = new ArrayList<GCode>();
+	private ArrayList<GCode> gcodes = new ArrayList<GCode>(200000);
 	//private SortedMap<Float, Layer> layer = new TreeMap<Float, Layer>();
 	private ArrayList<Layer> layer = new ArrayList<Layer>();
 	
@@ -540,7 +540,7 @@ public class Model {
 	
 	public boolean loadModel(InputStream in)throws IOException{
 		InputStreamReader fread =  new InputStreamReader(in);
-		BufferedReader gcread= new BufferedReader(fread);
+		BufferedReader gcread= new BufferedReader(fread,32768);
 		ArrayList<GCode> codes = getGcodes();
 		String line;
 		int idx=1;
@@ -560,11 +560,11 @@ public class Model {
 				success++;
 			}
 			codes.add(gc);
-			readbytes+=line.getBytes().length;
+			readbytes+=line.length(); //might be incorrect for multibyte chars, but getbytes is expensive
 			
 		}
 		gcread.close();
-		System.out.println("Load Model DONE"+(System.currentTimeMillis()-time));
+		System.out.println("Load Model finished in ms:"+(System.currentTimeMillis()-time));
 		if(errorcnt != 0){
 			System.err.println("Detected "+errorcnt+" error(s) during parsing of Gcode file. Results might be wrong.");
 		}
@@ -590,7 +590,7 @@ public class Model {
 			if (gCode.isComment()){
 				//System.out.println(gCode.getComment());
 				buf.append(gCode.getComment());
-				//buf.append(Constants.newlinec);
+				buf.append(Constants.newlinec);
 			}
 		}
 		return buf.toString();
@@ -732,7 +732,7 @@ public class Model {
 			float layperc =  Constants.round2digits(lay.getTime()/(getTime()/100));
 			var.append("  ");
 			var.append(lay.getLayerSummaryReport());
-			var.append("    ");
+			var.append("  ");
 			var.append(layperc);
 			var.append("%\n"); 
 		}

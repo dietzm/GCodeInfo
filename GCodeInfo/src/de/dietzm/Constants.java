@@ -5,7 +5,7 @@ import java.io.UnsupportedEncodingException;
 public class Constants {
 
 	public static enum GCDEF {
-		G0(0),G1(1),G2(2),G3(3),G4(4),G20(20),G21(21),G28(28),G29(29),G30(30),G31(31),G32(32),G90(90),G91(91),G92(92),G161(161),G162(162),M0(1000),M1(1001),M6(1006),M18(1018),M70(1070),M72(1072),M73(1073),M92(1092),M101(1101),M103(1103),M104(1104),M105(1105),M106(1106),M107(1107),M108(1108),M109(1109),M113(1113),M114(1114),M117(1115),M132(1132),M140(1140),M190(1190),M204(1204),M82(1082),M83(1083),M84(1084),UNKNOWN(Short.MAX_VALUE),INVALID(Short.MIN_VALUE);
+		G0(0),G1(1),G2(2),G3(3),G4(4),G20(20),G21(21),G28(28),G29(29),G30(30),G31(31),G32(32),G90(90),G91(91),G92(92),G130(130),G161(161),G162(162),M0(1000),M1(1001),M6(1006),M18(1018),M70(1070),M72(1072),M73(1073),M92(1092),M101(1101),M103(1103),M104(1104),M105(1105),M106(1106),M107(1107),M108(1108),M109(1109),M113(1113),M114(1114),M117(1115),M130(1130),M132(1132),M133(1133),M134(1134),M135(1135),M136(1136),M137(1137),M140(1140),M190(1190),M204(1204),M82(1082),M83(1083),M84(1084),UNKNOWN(Short.MAX_VALUE),INVALID(Short.MIN_VALUE);
 		
 		 private short idx;
 		 private byte[] bytes;
@@ -30,7 +30,14 @@ public class Constants {
 		   public byte[] getBytes(){
 			   return bytes;
 		   }
-
+		   
+		   
+		   public static GCDEF getGCDEF(String val) {
+			   if(val.equals("G1")){
+				    return G1;
+			   }
+			   return GCDEF.valueOf(val);			   
+		   }
 		   /**
 		    * Gets the enum object from a short identifier
 		    * @param index
@@ -149,11 +156,9 @@ public class Constants {
 	 */
 	public static boolean isValidGCode(String codeline){
 		 if(codeline == null || codeline.isEmpty()) return false;
-		 if (codeline.startsWith("G")) return true;
-		 if (codeline.startsWith("M")) return true;
-		 if (codeline.startsWith("T")) return true;
-		 //if (codeline.startsWith("g")) return true;
-		 //if (codeline.startsWith("m")) return true;
+		 if (codeline.charAt(0) == 'G') return true;
+		 if (codeline.charAt(0) == 'M') return true;
+		 if (codeline.charAt(0) == 'T') return true;
 		 return false;
 	}
 	

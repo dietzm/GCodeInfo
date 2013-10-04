@@ -87,8 +87,9 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	 * 1.11 fixed boundary calculation, Add makeware specific extrusion code ( A instead of E)
 	 * 1.12 GCode creation through factory. Add makeware specific extrusion code ( B instead of E), removed experimental modifications, fixed temp for first layer, fixed comments
 	 * 1.13 Fixed network send bug
+	 * 1.14 fixed some more bugs. improved load time
 	 */
-	public static final String VERSION = "v1.13";	
+	public static final String VERSION = "v1.14";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;

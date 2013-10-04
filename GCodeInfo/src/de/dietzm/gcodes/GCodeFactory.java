@@ -49,12 +49,12 @@ public class GCodeFactory {
 		
 		Character id;		
 		String[] segments = codelinevar.split(" ");
-		String gcodestr=segments[0].trim();
-		codelinevar=codelinevar.substring(segments[0].length()).trim(); //Cut GX to save string memory
+		codelinevar=codelinevar.substring(Math.min(segments[0].length()+1,codelinevar.length())); //Cut GX to save string memory
 		
 		try {
-			tmpgcode = Constants.GCDEF.valueOf(gcodestr);
+			tmpgcode = Constants.GCDEF.getGCDEF(segments[0]);
 		} catch (Exception e1) {
+			System.err.println("Parse GCODE GCDEF Exception:"+e1);
 		}
 		GCode gcd = null;
 		
@@ -189,15 +189,13 @@ public class GCodeFactory {
 			gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
 			break;
 		default:
-			System.err.println("Unknown Gcode "+linenr+": "+ codelinevar.substring(0,Math.min(15,codelinevar.length()))+"....");
+			System.err.println("Unknown Gcode "+linenr+": "+ tmpgcode+" "+codelinevar.substring(0,Math.min(15,codelinevar.length()))+"....");
 			return createDefaultGCode(codelinevar,linenr,tmpgcode);
 		}
 		//update used values
-	//	if(isInitialized(Constants.SB_MASK))		bedtemp=ext.s_bed;
-	//	if(isInitialized(Constants.SE_MASK))		extemp=ext.s_ext;
-		if(gcd.isInitialized(Constants.SF_MASK))	{
-			gcd.setFanspeed((short)gcd.getS_Fan());
-		}
+//		if(gcd.isInitialized(Constants.SF_MASK))	{
+//			gcd.setFanspeed((short)gcd.getS_Fan());
+//		}
 		
 		
 		return gcd;
@@ -284,10 +282,7 @@ public class GCodeFactory {
 		if((idx = clv.indexOf(';')) != -1){
 			//is a comment
 			clv=clv.substring(0, idx);
-		}else if((idx = clv.indexOf("(<")) != -1){
-			//is a comment
-			clv=clv.substring(0, idx);
-		}else if((idx = clv.indexOf("(")) != -1){
+		}else if((idx = clv.indexOf("(")) != -1){ //INCLUDES (<
 			//is a comment
 			clv=clv.substring(0, idx);
 		}

@@ -13,7 +13,6 @@ public class GCodeXYE extends GCode {
 	
 	//Dynamic values updated by analyse	 (7MB for 300000 gcodes)
 	private float time;
-	private float timeaccel; //track acceleration as extra time 
 	private float distance;
 
 	
@@ -160,7 +159,7 @@ public class GCodeXYE extends GCode {
 	 */
 	@Override
 	public float getExtrusionSpeed(){
-		return (e/timeaccel)*60f;
+		return (e/getTimeAccel())*60f;
 	}
 
 
@@ -200,7 +199,7 @@ public class GCodeXYE extends GCode {
 
 	@Override
 	public float getTimeAccel() {
-		return this.timeaccel;
+		return distance / (((Math.min(40*60,distance *60/time)+distance *60/time)/2) / 60);
 	}
 
 
@@ -321,7 +320,7 @@ public class GCodeXYE extends GCode {
 
 	@Override
 	public void setTimeAccel(float time) {
-		this.timeaccel = time;
+		//No need to store, can be calculated
 	}
 
 

@@ -26,12 +26,6 @@ public abstract class GCode {
 	protected int lineindex;
 	
 	public GCode(String line,int linenr,GCDEF code){
-		/*
-		 * Append newline to avoid copying byte[] and creating new strings when sending to printer
-		 * Requires a bit more memory now, but avoids memory allocations during print
-		 * TODO instead of appending newline here we should rather not cut it off during read file
-		 */
-	//	String linewcr= new StringBuilder().append(line).append(Constants.newlinec).toString();
 		updateDataArray(line);
 		lineindex=linenr;
 		gcode=code.getId();
@@ -83,6 +77,10 @@ public abstract class GCode {
 	}
 	
 	public MemoryEfficientString getCodeline() {
+			if(getGcode() == GCDEF.INVALID){
+				return new MemoryEfficientString(data, Constants.newline);
+			}
+				
 			byte[] gc1=getGcode().getBytes();
 			int len=gc1.length+2+data.length;
 			byte[] newdata = new byte[len];
@@ -103,6 +101,12 @@ public abstract class GCode {
 	 * @return len, how much data is written to buffer,-1 if buffer is too small
 	 */
 	public int getCodeline(byte[] buffer) {
+			if(getGcode() == GCDEF.INVALID){
+				System.arraycopy(data,0,buffer,0,data.length);
+				buffer[data.length]=Constants.newlineb;
+				return data.length+1;
+			}
+			
 			byte[] gc1=getGcode().getBytes();
 			int len = (gc1.length+2+data.length); //+2 for space and \n
 			if(buffer.length < len){

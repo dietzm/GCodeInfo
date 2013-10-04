@@ -30,7 +30,7 @@ public class NetworkPrinter implements Runnable{
 	public void sendToReceiver(String ip,Model mod)throws IOException{
 		Socket cs = new Socket(ip,PORT);
 		OutputStream out = cs.getOutputStream();
-		BufferedOutputStream bufout = new BufferedOutputStream(out);
+		BufferedOutputStream bufout = new BufferedOutputStream(out,32768);
 		byte[] transBuf = new byte[1024];
 		int len=0;
 		ArrayList<GCode> gcodes = mod.getGcodes();
