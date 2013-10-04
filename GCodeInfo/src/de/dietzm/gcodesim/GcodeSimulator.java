@@ -86,8 +86,9 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	 * 1.10 Significantly reduced memory footprint, reworked printing code (decouple render from print), avoid creating many objects
 	 * 1.11 fixed boundary calculation, Add makeware specific extrusion code ( A instead of E)
 	 * 1.12 GCode creation through factory. Add makeware specific extrusion code ( B instead of E), removed experimental modifications, fixed temp for first layer, fixed comments
+	 * 1.13 Fixed network send bug
 	 */
-	public static final String VERSION = "v1.12";	
+	public static final String VERSION = "v1.13";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;

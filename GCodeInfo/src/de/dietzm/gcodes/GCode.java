@@ -31,8 +31,8 @@ public abstract class GCode {
 		 * Requires a bit more memory now, but avoids memory allocations during print
 		 * TODO instead of appending newline here we should rather not cut it off during read file
 		 */
-		String linewcr= new StringBuilder().append(line).append(Constants.newlinec).toString();
-		updateDataArray(linewcr);
+	//	String linewcr= new StringBuilder().append(line).append(Constants.newlinec).toString();
+		updateDataArray(line);
 		lineindex=linenr;
 		gcode=code.getId();
 	}
@@ -83,8 +83,41 @@ public abstract class GCode {
 	}
 	
 	public MemoryEfficientString getCodeline() {
-		return new MemoryEfficientString(getGcode().toString().getBytes() , data);
+			byte[] gc1=getGcode().getBytes();
+			int len=gc1.length+2+data.length;
+			byte[] newdata = new byte[len];
+		
+			System.arraycopy(gc1,0,newdata,0,gc1.length);
+			System.arraycopy(data,0,newdata,gc1.length+1,data.length);
+			newdata[gc1.length]=' ';
+			newdata[len-1]='\n';			
+			
+			return new MemoryEfficientString(newdata);	
 	}
+	
+	
+	/**
+	 * get codeline into the provided buffer.
+	 * Save memory allocations
+	 * @param buffer
+	 * @return len, how much data is written to buffer,-1 if buffer is too small
+	 */
+	public int getCodeline(byte[] buffer) {
+			byte[] gc1=getGcode().getBytes();
+			int len = (gc1.length+2+data.length); //+2 for space and \n
+			if(buffer.length < len){
+				System.err.println("GCode.getCodeline: Buffer to small");
+				return -1;
+			}		
+			System.arraycopy(gc1,0,buffer,0,gc1.length);
+			System.arraycopy(data,0,buffer,gc1.length+1,data.length);
+			buffer[gc1.length]=Constants.spaceb;
+			buffer[len-1]=Constants.newlineb;	
+			
+			return len;			
+	}
+	
+	
 
 	protected void updateDataArray(String line) {
 		/**

@@ -1,13 +1,23 @@
 package de.dietzm;
 
+import java.io.UnsupportedEncodingException;
+
 public class Constants {
 
 	public static enum GCDEF {
 		G0(0),G1(1),G2(2),G3(3),G4(4),G20(20),G21(21),G28(28),G29(29),G30(30),G31(31),G32(32),G90(90),G91(91),G92(92),G161(161),G162(162),M0(1000),M1(1001),M6(1006),M18(1018),M70(1070),M72(1072),M73(1073),M92(1092),M101(1101),M103(1103),M104(1104),M105(1105),M106(1106),M107(1107),M108(1108),M109(1109),M113(1113),M114(1114),M117(1115),M132(1132),M140(1140),M190(1190),M204(1204),M82(1082),M83(1083),M84(1084),UNKNOWN(Short.MAX_VALUE),INVALID(Short.MIN_VALUE);
 		
 		 private short idx;
+		 private byte[] bytes;
 
-		   private GCDEF(int lidx) { this.idx = (short)lidx; }
+		   private GCDEF(int lidx) { 
+			   this.idx = (short)lidx;
+			   try{
+				   bytes = toString().getBytes(Constants.ENCODING);
+			   } catch (UnsupportedEncodingException e) {
+			      throw new RuntimeException("GCDEF Unexpected: " + Constants.ENCODING + " not supported!");
+			   }
+		   }
 
 		   /**
 		    * Get a space efficient identifier
@@ -15,6 +25,10 @@ public class Constants {
 		    */
 		   public short getId(){
 			   return idx;
+		   }
+		   
+		   public byte[] getBytes(){
+			   return bytes;
 		   }
 
 		   /**
@@ -75,6 +89,8 @@ public class Constants {
 	public static final String ENCODING = "ISO-8859-1";
 	
 	public final static byte newlineb = 10;
+	public final static byte spaceb = 32;
+	
 	public final static byte[] newline = new byte[]{newlineb};
 	public final static char newlinec = '\n';
 	

@@ -31,9 +31,13 @@ public class NetworkPrinter implements Runnable{
 		Socket cs = new Socket(ip,PORT);
 		OutputStream out = cs.getOutputStream();
 		BufferedOutputStream bufout = new BufferedOutputStream(out);
+		byte[] transBuf = new byte[1024];
+		int len=0;
 		ArrayList<GCode> gcodes = mod.getGcodes();
 		for (GCode gCode : gcodes) {
-			bufout.write((gCode.getCodeline()).getBytes());
+			len= gCode.getCodeline(transBuf);
+			bufout.write(transBuf,0,len);
+			//System.out.println("Send:"+new String(transBuf,0,len));
 		}
 		bufout.flush();
 		cs.close();		

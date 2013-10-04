@@ -118,7 +118,7 @@ public class GCodeFactory {
 		case G161:
 		case G162:
 		case G28:
-			gcd = createOptimizedGCode(codelinevar, linenr,tmpgcode);
+			gcd = createOptimizedGCode(segments,codelinevar, linenr,tmpgcode);
 			if (segments.length == 1) { //no param means home all axis
 				gcd.setInitialized(Constants.X_MASK,0);
 				gcd.setInitialized(Constants.Y_MASK,0);
@@ -204,7 +204,7 @@ public class GCodeFactory {
 	}
 
 	protected GCode findMatches(String[] segments,String line, int linenr, GCDEF code) {
-		GCode gcd = createOptimizedGCode(line, linenr, code);
+		GCode gcd = createOptimizedGCode(segments,line, linenr, code);
 		
 		Character id;
 		for (int i = 1; i < segments.length; i++) {
@@ -256,7 +256,7 @@ public class GCodeFactory {
 	 * @param code
 	 * @return GCode
 	 */
-	protected GCode createOptimizedGCode(String line, int linenr, GCDEF code) {
+	protected GCode createOptimizedGCode(String[] segments,String line, int linenr, GCDEF code) {
 		return createDefaultGCode(line, linenr, code);
 	}
 	

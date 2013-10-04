@@ -545,6 +545,8 @@ public class Model {
 		String line;
 		int idx=1;
 		int errorcnt=0, success=0;
+		long time = System.currentTimeMillis();
+		System.out.println("Load Model started");
 		while((line=gcread.readLine())!=null){
 			//GCode gc=new GCodeMemSave(line,idx++);
 			GCode gc = GCodeFactory.getGCode(line, idx++);
@@ -562,6 +564,7 @@ public class Model {
 			
 		}
 		gcread.close();
+		System.out.println("Load Model DONE"+(System.currentTimeMillis()-time));
 		if(errorcnt != 0){
 			System.err.println("Detected "+errorcnt+" error(s) during parsing of Gcode file. Results might be wrong.");
 		}
