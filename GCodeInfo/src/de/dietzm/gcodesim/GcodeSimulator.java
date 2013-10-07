@@ -88,8 +88,10 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	 * 1.12 GCode creation through factory. Add makeware specific extrusion code ( B instead of E), removed experimental modifications, fixed temp for first layer, fixed comments
 	 * 1.13 Fixed network send bug
 	 * 1.14 fixed some more bugs. improved load time
+	 * 1.15 fixed G4 NPE
+	 * 1.16 Improved load error handling. print wrong gcodes in window. fixed double whitespace error
 	 */
-	public static final String VERSION = "v1.14";	
+	public static final String VERSION = "v1.16";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;

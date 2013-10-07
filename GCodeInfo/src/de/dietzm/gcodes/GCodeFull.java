@@ -442,7 +442,7 @@ public class GCodeFull extends GCode {
 	 */
 	@Override
 	public boolean isPrintable(){
-		 return !Constants.GCDEF.INVALID.equals(gcode) ; 
+		 return !Constants.GCDEF.COMMENT.equals(gcode) ; 
 	}
 	
 
@@ -452,7 +452,7 @@ public class GCodeFull extends GCode {
 	 */
 	@Override
 	public boolean isComment(){
-		 return Constants.GCDEF.INVALID.equals(gcode) && commentidx != -1; 
+		 return Constants.GCDEF.COMMENT.equals(gcode) && commentidx != -1; 
 	}
 
 	/* (non-Javadoc)

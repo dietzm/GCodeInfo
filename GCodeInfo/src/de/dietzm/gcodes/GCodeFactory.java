@@ -39,11 +39,13 @@ public class GCodeFactory {
 
 		//Find comments and strip them, init the comment filed 
 		codelinevar = stripComment(codelinevar);
-		codelinevar = codelinevar.toUpperCase();
+		if(codelinevar.length()==0) { // plain Comments 
+			return createDefaultGCode(arg0,linenr,Constants.GCDEF.COMMENT);
+		}
 
-		//Is Gcode valid ? plain Comments are marked as invalid as well
+		codelinevar = codelinevar.toUpperCase();
 		if(!Constants.isValidGCode(codelinevar)){
-			GCode min = createDefaultGCode(arg0,linenr,Constants.GCDEF.INVALID);
+			GCode min = createDefaultGCode(arg0,linenr,Constants.GCDEF.UNKNOWN);
 			return min;
 		}
 		
@@ -70,6 +72,7 @@ public class GCodeFactory {
 			break;
 		case G4: //Dwell
 			//TODO add to duration
+			gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
 			break;
 		case G92:
 			gcd=findMatches(segments, codelinevar,linenr,tmpgcode);
@@ -162,9 +165,11 @@ public class GCodeFactory {
 		case M114: //get current position
 		case M0: //Stop
 		case M1: //Sleep
+		case M116:
 		case M117: //get zero position
 		case M92: //set axis steps per unit (just calibration) 
 		case M132: //set pid
+		case G130:
 		case M6: //replicatorG tool change
 			gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
 			break;
@@ -188,15 +193,18 @@ public class GCodeFactory {
 			System.err.println("M204 Acceleration control is ignored.");
 			gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
 			break;
-		default:
+		case UNKNOWN:
 			System.err.println("Unknown Gcode "+linenr+": "+ tmpgcode+" "+codelinevar.substring(0,Math.min(15,codelinevar.length()))+"....");
+		default:
 			return createDefaultGCode(codelinevar,linenr,tmpgcode);
 		}
 		//update used values
 //		if(gcd.isInitialized(Constants.SF_MASK))	{
 //			gcd.setFanspeed((short)gcd.getS_Fan());
 //		}
-		
+		if(gcd==null){
+			return createDefaultGCode(codelinevar,linenr,tmpgcode);
+		}
 		
 		return gcd;
 	}
@@ -207,6 +215,7 @@ public class GCodeFactory {
 		Character id;
 		for (int i = 1; i < segments.length; i++) {
 			//System.out.println("segment:"+segments[i]);
+			if(segments[i].length() == 0 ) continue;
 			id = segments[i].charAt(0);
 			switch (id) {
 			case 'A':		//makerwares A is the new E

@@ -424,7 +424,12 @@ public class GcodePainter implements Runnable {
 		if(model != null){
 			g.clearrect(200,285,500,75,print?1:0);
 			if(errormsg!=null){
-				g.drawtext(errormsg,100,340);
+				g.setFontSize(20);
+				String[] errlines =  errormsg.split("\n");
+				for (int i = 0; i < errlines.length; i++) {
+					g.drawtext(errlines[i],100,340+i*30);
+				}
+				
 			}else{
 				if(model.getFilesize() >0){
 					g.drawtext(Constants.round2digits((model.getReadbytes()/(model.getFilesize()/100f)))+"%  ("+model.getGcodes().size()+")",220,340);
@@ -721,7 +726,7 @@ public class GcodePainter implements Runnable {
 						/*
 						 * Painting starts here
 						 */
-						if(gCode.getGcode() == Constants.GCDEF.UNKNOWN || gCode.getGcode() == Constants.GCDEF.INVALID){
+						if(gCode.getGcode() == Constants.GCDEF.UNKNOWN || gCode.getGcode() == Constants.GCDEF.COMMENT){
 							continue;
 						}
 						//System.out.println(gCode);
@@ -1084,7 +1089,9 @@ public class GcodePainter implements Runnable {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			ret=false;
+			errormsg="Failed to load model. Is this a valid gcode file ?\n"+e.getMessage(); 
+			g2.repaint();
+			return;
 		}
 		
 		if(!ret) {

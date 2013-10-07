@@ -40,7 +40,7 @@ public abstract class GCode {
 	 * @return
 	 */
 	public boolean isComment(){
-		 return Constants.GCDEF.INVALID.equals(gcode); 
+		 return Constants.GCDEF.COMMENT.equals(gcode); 
 	}
 	
 	public void setLineindex(int lineindex) {
@@ -73,11 +73,11 @@ public abstract class GCode {
 	 * @return
 	 */
 	public boolean isPrintable(){
-		 return !Constants.GCDEF.INVALID.equals(gcode) ; 
+		 return !Constants.GCDEF.COMMENT.equals(gcode) ; 
 	}
 	
 	public MemoryEfficientString getCodeline() {
-			if(getGcode() == GCDEF.INVALID){
+			if(getGcode() == GCDEF.COMMENT){
 				return new MemoryEfficientString(data, Constants.newline);
 			}
 				
@@ -101,7 +101,7 @@ public abstract class GCode {
 	 * @return len, how much data is written to buffer,-1 if buffer is too small
 	 */
 	public int getCodeline(byte[] buffer) {
-			if(getGcode() == GCDEF.INVALID){
+			if(getGcode() == GCDEF.COMMENT){
 				System.arraycopy(data,0,buffer,0,data.length);
 				buffer[data.length]=Constants.newlineb;
 				return data.length+1;

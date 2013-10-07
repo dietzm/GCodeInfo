@@ -543,20 +543,27 @@ public class Model {
 		BufferedReader gcread= new BufferedReader(fread,32768);
 		ArrayList<GCode> codes = getGcodes();
 		String line;
+		String errors = "Error while parsing gcodes:\n";
 		int idx=1;
 		int errorcnt=0, success=0;
 		long time = System.currentTimeMillis();
 		System.out.println("Load Model started");
 		while((line=gcread.readLine())!=null){
-			//GCode gc=new GCodeMemSave(line,idx++);
-			GCode gc = GCodeFactory.getGCode(line, idx++);
-			if(gc.getGcode() == GCDEF.UNKNOWN){
+			
+			GCode gc = null;
+			try {
+				gc = GCodeFactory.getGCode(line, idx++);
+			} catch (Exception e) {
+				e.printStackTrace();
+				System.err.println("Error while parsing gcode:"+line+" (line:"+idx+")");
+			}
+			if(gc == null || gc.getGcode() == GCDEF.UNKNOWN){
 					errorcnt++;
-					if(errorcnt-success > 10){
-						System.err.println("Too many errors while reading GCODE file.");
-						return false;
+					errors = errors + ("line:"+idx+"     "+line+"\n");
+					if(errorcnt-success > 10 || gc == null){
+						throw new IOException(errors);
 					}	
-			}else{
+			}else{ 
 				success++;
 			}
 			codes.add(gc);
