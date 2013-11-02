@@ -150,15 +150,16 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 	}
 
 	@Override
-	public void drawtext(String text, float x, float y) {
+	public void drawtext(CharSequence text, float x, float y) {
 		// g.getFontMetrics();
-		g.drawString(text, x, y);
+		g.drawString(text.toString(), x, y);
 	}
 
-	public void drawtext(String text, float x, float y, float w) {
-		int wide = g.getFontMetrics().stringWidth(text);
+	public void drawtext(CharSequence text, float x, float y, float w) {
+		String txt=text.toString();
+		int wide = g.getFontMetrics().stringWidth(txt);
 		float center = (w - wide) / 2;
-		g.drawString(text, x + center, y);
+		g.drawString(txt, x + center, y);
 
 	}
 

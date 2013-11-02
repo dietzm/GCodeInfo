@@ -607,7 +607,7 @@ public class Model {
 		float[] sizes = getDimension();
 		float[] bound = getBoundaries();
 		String mm_in = getUnit();
-		StringBuilder varb = new StringBuilder(500);
+		StringBuilder varb = new StringBuilder(600);
 		
 		varb.append("Filename:  ");
 		varb.append(getFilename());

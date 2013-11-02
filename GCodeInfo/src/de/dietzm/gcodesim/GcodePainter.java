@@ -9,6 +9,7 @@ import de.dietzm.Layer;
 import de.dietzm.Model;
 import de.dietzm.Position;
 import de.dietzm.gcodes.GCode;
+import de.dietzm.gcodes.MemoryEfficientString;
 
 /**
  * Gcodepaint Class starts a thread and iterates through the gcodes and paint the corresponding lines. 
@@ -36,8 +37,10 @@ public class GcodePainter implements Runnable {
 	private int Xoffset=0,Yoffset=0;
 	private Thread gcodepainter;
 	private String errormsg=null;
+	private String[] modelspeed=null,modelcomments=null,modellaysum=null;
+	private String[] modeldetails =null;
 	private String speeduplabel=speedup+"x";
-	private StringBuilder tempbuf = new StringBuilder();
+	private MemoryEfficientString tempbuf = new MemoryEfficientString(new byte[10]);
 	private float mtime;
 	private Printer printer=null;
 	private ArrayList<Layer> layers;
@@ -46,7 +49,7 @@ public class GcodePainter implements Runnable {
 	private boolean print=false;
 	private int inbuffer = 0;
 	private int bufferemptyindex = 0;
-	private StringBuilder details = new StringBuilder(2000);
+	//private StringBuilder details = new StringBuilder(2000);
 	
 	//Public vars, might be accessed from other classes.
 	// Model & Layer Info
@@ -199,8 +202,10 @@ public class GcodePainter implements Runnable {
 			if(cmd==Commands.REPAINTLABEL) this.cmd = cmd;		
 			return ;
 		}
-		gcodepainter.interrupt();
-		this.cmd = cmd;		
+		if(gcodepainter != null){
+			gcodepainter.interrupt();
+			this.cmd = cmd;		
+		}
 	}
 	
 	public int[] getSize(boolean details){
@@ -255,6 +260,7 @@ public class GcodePainter implements Runnable {
 		this.g2=g;		
 	//	this.modeldetails=modeldetails;
 		this.zoom=zoomlevel;
+		
 	}
 
 	private void calculateOffset() {
@@ -284,24 +290,25 @@ public class GcodePainter implements Runnable {
 		//On Layer change, skip for individual gcodes to save cycles
 		if(gc == null){
 			// Paint boxes with infos about current layer
-			printLabelBox(g2, 0,12, String.valueOf(lay.getNumber()), Constants.LAYER_LABEL,lay.getNumber());
-			printLabelBox(g2, 12,20, String.valueOf(lay.getZPosition()), Constants.ZPOS_LABEL,lay.getNumber());
+			printLabelBox(g2, 0,12, Constants.inttoChar(lay.getNumber(),tempbuf), Constants.LAYER_LABEL,lay.getNumber());
+			printLabelBox(g2, 12,20,Constants.floattoChar(lay.getZPosition(),tempbuf,2), Constants.ZPOS_LABEL,lay.getNumber());
 			printLabelBox(g2, 32,12,Constants.ZERO_LABEL, Constants.XYSPEED_LABEL,lay.getNumber());
 			printLabelBox(g2, 44,14,Constants.ZERO_LABEL, Constants.ESPEED_LABEL,lay.getNumber());
 			printLabelBox(g2, 95,5,getFanSpeed(lay.getFanspeed()), Constants.FAN_LABEL,lay.getNumber());	
 			
 		}else{
-			printLabelBox(g2, 32,12,String.valueOf(Math.round(gc.getSpeed())), Constants.XYSPEED_LABEL,lay.getNumber());
+			printLabelBox(g2, 32,12,Constants.inttoChar(Math.round(gc.getSpeed()),tempbuf), Constants.XYSPEED_LABEL,lay.getNumber());
 			printLabelBox(g2, 44,14,getExtrSpeed(gc), Constants.ESPEED_LABEL,lay.getNumber());
 			//Z-Lift
 			if(gc.isInitialized(Constants.Z_MASK)){
-				printLabelBox(g2, 12,20, String.valueOf(gc.getZ()), Constants.ZPOS_LABEL,lay.getNumber());
+				printLabelBox(g2, 12,20, Constants.floattoChar(gc.getZ(),tempbuf,2), Constants.ZPOS_LABEL,lay.getNumber());
 			}
 			printLabelBox(g2, 95,5,getFanSpeed(gc.getFanspeed()), Constants.FAN_LABEL,lay.getNumber());
 		}
 		
-		printLabelBox(g2, 58,24, Constants.formatTimetoHHMMSS(mtime,tempbuf), Constants.REMTIME_LABEL,lay.getNumber());
-		tempbuf.setLength(0);
+		Constants.formatTimetoHHMMSS(mtime,tempbuf.getBytes());
+		printLabelBox(g2, 58,24, tempbuf, Constants.REMTIME_LABEL,lay.getNumber());
+
 		if(print){
 			if(gc!=null){
 				//printLabelBox(g2, 82,12,gc.getLineindex()%2==0?"#":"##", "Print",lay.getNumber());
@@ -347,47 +354,47 @@ public class GcodePainter implements Runnable {
 		g2.setFontSize(size);
 		
 		// bed
-		details.setLength(0);
+		//details.setLength(0);
+		String[] det = null;
 		int start=0;
 		switch (detailstype) {
 		case 0:
-			details.append("--------------- Model details ------------------\n");
-			details.append(model.getModelDetailReport());
-			details.append(model.guessPrice(model.guessDiameter()));
-			//details="";
+			det=modeldetails;
 			break;
 		case 1:
-			details.append("--------------- Layer details ------------------\n");
-			details.append(lay.getLayerDetailReport());
+			StringBuilder tmpbuf = new StringBuilder();
+			tmpbuf.append("--------------- Layer details ------------------\n");
+			tmpbuf.append(lay.getLayerDetailReport());
+			det=tmpbuf.toString().split("\n");
 			break;
 		case 2:
 		case 3:
 		case 4:
-			details.append(model.getModelLayerSummaryReport());
-			String[] lines = details.toString().split("\n");
+			det=modellaysum;
+			String[] lines = modellaysum;
 			if(lines.length*linegap+30 >= bedsizeY*zoom+boxheight -(bedsizeY*zoom/zoommod) ){
 				start=(int) (((bedsizeY*zoom+boxheight -linegap -(bedsizeY*zoom/zoommod) )/linegap)+1)*(detailstype-2); //TODO calculate number
 				//System.out.println("START:"+start);
 				break;
 			}
 			detailstype=5; //skip
-			details.setLength(0);
+			det=null;
 		case 5:
-			details.append( model.getModelSpeedReport());
+			det=modelspeed;
 			break;
 		case 6:
-			details.append(lay.getLayerSpeedReport());
+			det=lay.getLayerSpeedReport().split("\n");
 			break;
 		case 7:
-			details.append( model.getModelComments());
-			if(details.length() != 0) break;
+			det=modelcomments;
+			if(det.length != 0) break;
 		default:
-			details.append( model.getModelDetailReport());
+			det=modeldetails;
 			break;
 		}
 		g2.clearrect(bedsizeX*zoom+gap+5,(bedsizeY*zoom/zoommod)+2, (bedsizeX * zoom/zoommod*2)-5, bedsizeY * zoom + boxheight -(bedsizeY*zoom/zoommod)-7 ,print?1:0);
 		
-		String[] det = details.toString().split("\n");
+		
 		int c=0;
 		for (int i = start; i < det.length; i++) {
 			int y = (int)(bedsizeY*zoom/zoommod)+linegap+c*linegap; //avoid painting across the border
@@ -399,7 +406,7 @@ public class GcodePainter implements Runnable {
 		}
 	}
 
-	private void printLabelBox(GraphicRenderer g2, int boxposp,int bsizepercent, String value, String labl,int laynr) {
+	private void printLabelBox(GraphicRenderer g2, int boxposp,int bsizepercent, CharSequence value, CharSequence labl,int laynr) {
 		float boxsize=((bedsizeX*zoom+gap)/100)*bsizepercent;
 		float boxpos=((bedsizeX*zoom+gap)/100)*boxposp;
 		float boxheight=(bedsizeX*zoom)/12f;
@@ -695,6 +702,7 @@ public class GcodePainter implements Runnable {
 	 * Paint the gcodes to a offline image (offbuf) and trigger repaint
 	 */
 	public void run() {
+		Thread.currentThread().setName("GcodePainter");
 		g2.clearrect(0, 0, g2.getWidth(), g2.getHeight(),print?1:0);
 		g2.repaint();
 		A: while (true) {
@@ -702,7 +710,8 @@ public class GcodePainter implements Runnable {
 				Position pos = new Position(0,0);
 				Position lastpos = new Position(0,0);
 				fanspeed=0;
-				
+				updateDetailLabels();
+				updateSpeedupLabel();
 				g2.clearrect(0, 0, g2.getWidth(),g2.getHeight(),print?1:0);
 				calculateOffset();
 				mtime = model.getTimeaccel(); //remaining time
@@ -715,14 +724,18 @@ public class GcodePainter implements Runnable {
 				 for (Layer lay : layers) {
 					currentlayer=lay;
 					ffLayer=false;					
-					updateSpeedupLabel();
 					printDetails(g2, lay);
 					paintLevelBar(g2, lay);
 					paintLabel(g2, lay,null);
 										
 					// Print & Paint all Gcodes
-					for (GCode gCode : lay.getGcodes()) {
-						
+					
+					//Android guidelines say foreach loops are slower for arraylist
+					ArrayList<GCode> gcarr = lay.getGcodes();
+					int gcnum = gcarr.size();
+					for(int ig = 0 ; ig < gcnum; ig++ ){
+						GCode gCode = gcarr.get(ig);
+				
 						/*
 						 * Painting starts here
 						 */
@@ -849,6 +862,20 @@ public class GcodePainter implements Runnable {
 		
 	}
 
+	private void updateDetailLabels() {
+		
+		StringBuilder tmpbuf = new StringBuilder();
+		
+		tmpbuf.append("--------------- Model details ------------------\n");
+		tmpbuf.append(model.getModelDetailReport());
+		tmpbuf.append(model.guessPrice(model.guessDiameter()));
+		modeldetails=tmpbuf.toString().split("\n");
+		modelspeed= model.getModelSpeedReport().split("\n");
+		modelcomments = model.getModelComments().split("\n");
+		modellaysum=model.getModelLayerSummaryReport().split("\n");
+		
+	}
+
 	/**
 	 * Render gcodes as in normal simulation mode, set speedup to 1
 	 * Synchronization is done based on line index numbers.
@@ -947,9 +974,9 @@ public class GcodePainter implements Runnable {
 		inpause=false;
 	}
 
-	private String getExtrSpeed(GCode gCode) {
+	private CharSequence getExtrSpeed(GCode gCode) {
 		int exspeed = Math.round(gCode.getExtrusionSpeed());
-		String exvar = exspeed >=0 ? String.valueOf(exspeed) : Constants.RETRACT_LABEL;
+		CharSequence exvar = exspeed >=0 ? Constants.inttoChar(exspeed,tempbuf) : Constants.RETRACT_LABEL;
 		return exvar;
 	}
 	

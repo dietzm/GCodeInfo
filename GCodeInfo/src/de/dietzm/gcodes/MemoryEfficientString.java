@@ -47,6 +47,15 @@ public class MemoryEfficientString implements CharSequence {
 		  return new MemoryEfficientString(newdata);
 		}
 	  
+	  /**
+	   * Set all bytes to null, starting from idx
+	   */
+	  public void clear(int idx){
+		  int cnt = data.length;
+		  for (int i = idx; i < cnt; i++) {
+			  data[i]=0;
+		}
+	  }
 	  
 	  public MemoryEfficientString subSequence(int start) {
 		 return this.subSequence(start, data.length);

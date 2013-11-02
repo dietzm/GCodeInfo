@@ -107,7 +107,7 @@ public class GCodeUtil {
 			}
 
 			long end = System.currentTimeMillis();
-			System.out.println("Gcode Analyse Time: "+ Constants.formatTimetoHHMMSS((end-start)/1000f,null) +" Load time:"+Constants.formatTimetoHHMMSS((load-start)/1000f,null));
+			System.out.println("Gcode Analyse Time: "+ Constants.formatTimetoHHMMSS((end-start)/1000f,(StringBuilder)null) +" Load time:"+Constants.formatTimetoHHMMSS((load-start)/1000f,(StringBuilder)null));
 		
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
