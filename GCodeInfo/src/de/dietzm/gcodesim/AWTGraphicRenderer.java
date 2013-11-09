@@ -109,6 +109,9 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 	public void drawArc(int x, int y, int width, int height, int theta, int delta) {
 		g.drawArc(x, y, width, height, theta, delta);
 	}
+	public int getColorNr(){
+		return colors.length;
+	}
 
 	/**
 	 * Draw the buffer to the real surface

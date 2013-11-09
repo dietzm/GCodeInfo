@@ -47,6 +47,14 @@ public class PrintQueue  {
 		return gc;
 	}
 	
+	public int getSizeAuto(){
+		return aprintQ.size();
+	}
+	
+	public int getSizeManual(){
+		return mprintQ.size();
+	}
+	
 	/**
 	 * is the manual queue empty ?
 	 * @return
@@ -56,6 +64,7 @@ public class PrintQueue  {
 	}
 
 	public GCode pollAuto() throws InterruptedException {
+		if(!mprintQ.isEmpty()) return mprintQ.poll();
 		GCode gc = aprintQ.poll();
 		return gc;
 	}

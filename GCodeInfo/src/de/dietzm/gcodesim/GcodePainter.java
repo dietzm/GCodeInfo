@@ -21,8 +21,10 @@ public class GcodePainter implements Runnable {
 	public static enum Commands {STEPBACK,STEP50X,STEP50XBACK,RESTART,NEXTLAYER,REPAINTLABEL,DEBUG,EXIT,OPENFILE,NOOP,PRINT,REPAINTLAYERS,PREVIOUSLAYER,HELP,REANALYSE}; 
 	public static final int bedsizeX = 200;
 	public static final int bedsizeY = 200;
-	public static final int colNR = 7;
+	public int colNR = 7;
 	public static final boolean PAINTTRAVEL = true;
+	public boolean paintWhilePrint = true;
+
 	private float fanspeed = 0;
 	//Private vars
 	private boolean useAccelTime=true;
@@ -56,6 +58,11 @@ public class GcodePainter implements Runnable {
 	public Model model = null;
 	public static final int gap=20;
 
+	public void setPaintWhilePrint(boolean paintWhilePrint) {
+		this.paintWhilePrint = paintWhilePrint;
+	}
+
+	
 	/**
 	 * Get Zoom factor
 	 * @return float zoom factor
@@ -254,11 +261,11 @@ public class GcodePainter implements Runnable {
 	
 	public GcodePainter(GraphicRenderer g){
 		this.g2=g;	
+		colNR=g.getColorNr()-2; //-1 size vs index , -2 travel + border colors
 	}
 	
 	public GcodePainter(GraphicRenderer g, boolean modeldetails, float zoomlevel){
-		this.g2=g;		
-	//	this.modeldetails=modeldetails;
+		this(g);
 		this.zoom=zoomlevel;
 		
 	}
@@ -910,6 +917,19 @@ public class GcodePainter implements Runnable {
 
 		while (print && printer.isPrinting()) {
 			try {
+				//option to supress rendering while printing to save resources
+				if(!paintWhilePrint){
+					//paint second layer and wait
+					if(model.getLayercount(false) > 2 && lay.getNumber() < 2){
+						fftoLayer=2;
+						return;
+					}
+					printLabelBox(g2, 82,12,"W", "Wait",lay.getNumber());
+					g2.repaint();
+					while(printer.isPrinting()){
+						Thread.sleep(2500); //check every 2.5 sec if still printing
+					}
+				}
 				boolean wait = false;
 				GCode printCode = printer.getCurrentGCode(); //get what has been send to the printer last
 				if(printCode == null) continue;
@@ -1095,7 +1115,7 @@ public class GcodePainter implements Runnable {
 			errormsg=null;
 			setCmd(Commands.EXIT); //Stop thread
 			try {
-				gcodepainter.join(0);
+				gcodepainter.join(10000);
 			} catch (InterruptedException e) {}
 			setCmd(Commands.NOOP); 
 			layers=null;

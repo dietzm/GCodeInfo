@@ -6,6 +6,7 @@ public interface GraphicRenderer {
 
 	public void setColor(int idx);
 	public void setStroke(int idx);
+	public int getColorNr();
 	
 	public void drawline(float x,float y, float x1,float y1);
 	public void drawrect(float x,float y, float w,float h);
