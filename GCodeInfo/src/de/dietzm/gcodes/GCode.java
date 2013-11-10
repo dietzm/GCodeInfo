@@ -132,7 +132,10 @@ public abstract class GCode {
 		    } catch (UnsupportedEncodingException e) {
 		      throw new RuntimeException("Unexpected: " + Constants.ENCODING + " not supported!");
 		    }
+
 	}
+	
+
 	public int getLineindex() {
 		return lineindex;
 	}

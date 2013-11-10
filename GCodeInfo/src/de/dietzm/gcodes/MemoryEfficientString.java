@@ -73,6 +73,14 @@ public class MemoryEfficientString implements CharSequence {
 		  }
 		}
 	  
+		public int indexOf(char ch){
+			if(data.length<1) return -1;
+			for (int i = 0; i < data.length-1; i++) {
+				if(data[i]==ch) return i;
+			}
+			return -1; //ASCII
+		}
+	  
 	  
 	  public static String toString(byte[] data) {
 		  try {

@@ -577,6 +577,53 @@ public class Model {
 		}
 		return true;
 	}
+	
+	public boolean loadModelNew(InputStream in)throws IOException{
+		InputStreamReader fread =  new InputStreamReader(in);
+		BufferedReader gcread= new BufferedReader(fread,32768);
+		ArrayList<GCode> codes = getGcodes();
+		char[] line = new char[1024];
+		String errors = "Error while parsing gcodes:\n";
+		int idx=1;
+		int errorcnt=0, success=0;
+		long time = System.currentTimeMillis();
+		System.out.println("Load Model started");
+		
+		int i = 0;
+		while((line[i]=(char)gcread.read())!=-1){
+			if(line[i]!='\n'){
+				i++;
+				continue;
+			}
+			
+			
+			GCode gc = null;
+			try {
+				gc = GCodeFactory.getGCode(new String(line,0,i), idx++);
+			} catch (Exception e) {
+				e.printStackTrace();
+				System.err.println("Error while parsing gcode:"+line+" (line:"+idx+")");
+			}
+			if(gc == null || gc.getGcode() == GCDEF.UNKNOWN){
+					errorcnt++;
+					errors = errors + ("line:"+idx+"     "+line+"\n");
+					if(errorcnt-success > 10 || gc == null){
+						throw new IOException(errors);
+					}	
+			}else{ 
+				success++;
+			}
+			codes.add(gc);
+			readbytes+=i; //might be incorrect for multibyte chars, but getbytes is expensive
+			i=0;
+		}
+		gcread.close();
+		System.out.println("Load Model finished in ms:"+(System.currentTimeMillis()-time));
+		if(errorcnt != 0){
+			System.err.println("Detected "+errorcnt+" error(s) during parsing of Gcode file. Results might be wrong.");
+		}
+		return true;
+	}
 	public void saveModel(String newfilename)throws IOException{
 		FileWriter fwr =  new FileWriter(newfilename);
 		BufferedWriter gcwr= new BufferedWriter(fwr);

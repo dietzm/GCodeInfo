@@ -27,7 +27,33 @@ public class GCodeFactory {
 //		while ( matcher.find() ){
 //		  System.out.println(matcher.group());
 //		  }
-		 System.out.println("G1 E23 X32 Y43 Z30".matches(".*[FZJK].*"));
+		 System.out.println("Split");
+//		 String s = " G1X323  Y323.32 F2 22 ";
+		 String s =" G1 Z5 F5000\n";
+		 long time = System.nanoTime();
+		 for (int i = 0; i < 100; i++) {
+			 s.split(" ");	
+		 }
+		 System.out.println("Split:"+(System.nanoTime()-time));
+		 
+		
+		 time = System.nanoTime();
+		 for (int i = 0; i < 100; i++) {
+			 Constants.splitbyLetter(s);	
+		 }
+		 System.out.println("SplitBy:"+(System.nanoTime()-time));
+		
+		 time = System.nanoTime();
+		 for (int i = 0; i < 100; i++) {
+			 Constants.splitbyLetter2(s);	
+		 }
+		 System.out.println("SplitBy:"+(System.nanoTime()-time));
+		 
+		 String[] str = Constants.splitbyLetter2(s);
+		 for (int i = 0; i < str.length; i++) {
+			System.out.println("-"+str[i]+"-");
+			System.out.println("Len:"+str[i].length());
+		}
 	}
 	
 	/* (non-Javadoc)
@@ -43,14 +69,15 @@ public class GCodeFactory {
 			return createDefaultGCode(arg0,linenr,Constants.GCDEF.COMMENT);
 		}
 
-		codelinevar = codelinevar.toUpperCase();
+		//codelinevar = codelinevar.toUpperCase(); 
 		if(!Constants.isValidGCode(codelinevar)){
 			GCode min = createDefaultGCode(arg0,linenr,Constants.GCDEF.UNKNOWN);
 			return min;
 		}
 		
 		Character id;		
-		String[] segments = codelinevar.split(" ");
+		//String[] segments = codelinevar.split(" ");
+		String[] segments = Constants.splitbyLetter2(codelinevar);
 		codelinevar=codelinevar.substring(Math.min(segments[0].length()+1,codelinevar.length())); //Cut GX to save string memory
 		
 		try {
@@ -81,15 +108,15 @@ public class GCodeFactory {
 		case M190: //set bed temp and wait
 			gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
 			id = segments[1].charAt(0);
-			if (id=='S'){
-				gcd.setInitialized(Constants.SB_MASK,parseSegment(segments[1]));
+			if (id=='S' || id == 's'){
+				gcd.setInitialized(Constants.SB_MASK,Constants.parseFloat(segments[1],1));
 			}
 			break;
 		case M104: //set extruder temp and NOT wait
 			gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
 			id = segments[1].charAt(0);
-			if (id=='S'){
-				gcd.setInitialized(Constants.SE_MASK,parseSegment(segments[1]));
+			if (id=='S'|| id == 's'){
+				gcd.setInitialized(Constants.SE_MASK,Constants.parseFloat(segments[1],1));
 			}
 			break;
 		case G90: //Absolute positioning
@@ -114,8 +141,8 @@ public class GCodeFactory {
 		case M109: //set extruder temp and wait
 			gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
 			id = segments[1].charAt(0);
-			if (id=='S'){
-				gcd.setInitialized(Constants.SE_MASK,parseSegment(segments[1]));
+			if (id=='S'|| id == 's'){
+				gcd.setInitialized(Constants.SE_MASK,Constants.parseFloat(segments[1],1));
 			}
 			break;
 		case G161:
@@ -132,12 +159,15 @@ public class GCodeFactory {
 					id = segments[i].charAt(0);
 					switch (id) {
 					case 'X':
+					case 'x':
 						gcd.setInitialized(Constants.X_MASK,0);
 						break;
 					case 'Y':
+					case 'y':
 						gcd.setInitialized(Constants.Y_MASK,0);
 						break;
 					case 'Z':
+					case 'z':
 						gcd.setInitialized(Constants.Z_MASK,0);
 						break;
 					}
@@ -154,8 +184,8 @@ public class GCodeFactory {
 				gcd.setInitialized(Constants.SF_MASK,255);
 			} else {
 				id = segments[1].charAt(0);
-				if (id=='S'){
-					gcd.setInitialized(Constants.SF_MASK,parseSegment(segments[1]));
+				if (id=='S' || id=='s'){
+					gcd.setInitialized(Constants.SF_MASK,Constants.parseFloat(segments[1],1));
 				}
 			}
 			break;
@@ -219,33 +249,44 @@ public class GCodeFactory {
 			id = segments[i].charAt(0);
 			switch (id) {
 			case 'A':		//makerwares A is the new E
-			case 'B':		//makerwares A is the new E 
+			case 'B':		//makerwares A is the new E
+			case 'b':
+			case 'a':
 			case 'E':
-				gcd.setInitialized(Constants.E_MASK,parseSegment(segments[i]));
+			case 'e':
+				gcd.setInitialized(Constants.E_MASK,Constants.parseFloat(segments[i],1));
 				break;
 			case 'X':
-				gcd.setInitialized(Constants.X_MASK,parseSegment(segments[i]));
+			case 'x':
+				gcd.setInitialized(Constants.X_MASK,Constants.parseFloat(segments[i],1));
 				break;
 			case 'Y':
-				gcd.setInitialized(Constants.Y_MASK,parseSegment(segments[i]));
+			case 'y':
+				gcd.setInitialized(Constants.Y_MASK,Constants.parseFloat(segments[i],1));
 				break;
 			case 'Z':
-				gcd.setInitialized(Constants.Z_MASK,parseSegment(segments[i]));
+			case 'z':
+				gcd.setInitialized(Constants.Z_MASK,Constants.parseFloat(segments[i],1));
 				break;
 			case 'F':
-				gcd.setInitialized(Constants.F_MASK,parseSegment(segments[i]));
+			case 'f':
+				gcd.setInitialized(Constants.F_MASK,Constants.parseFloat(segments[i],1));
 				break;
 			case 'I':
-				gcd.setInitialized(Constants.IX_MASK,parseSegment(segments[i]));
+			case 'i':
+				gcd.setInitialized(Constants.IX_MASK,Constants.parseFloat(segments[i],1));
 				break;
 			case 'J':
-				gcd.setInitialized(Constants.JY_MASK,parseSegment(segments[i]));
+			case 'j':
+				gcd.setInitialized(Constants.JY_MASK,Constants.parseFloat(segments[i],1));
 				break;
 			case 'K':
-				gcd.setInitialized(Constants.KZ_MASK,parseSegment(segments[i]));
+			case 'k':
+				gcd.setInitialized(Constants.KZ_MASK,Constants.parseFloat(segments[i],1));
 				break;
 			case 'R':
-				gcd.setInitialized(Constants.R_MASK,parseSegment(segments[i]));
+			case 'r':
+				gcd.setInitialized(Constants.R_MASK,Constants.parseFloat(segments[i],1));
 				break;
 			default:
 				break;
@@ -296,11 +337,5 @@ public class GCodeFactory {
 			clv=clv.substring(0, idx);
 		}
 		return clv.trim();
-	}
-
-	private float parseSegment(String segment){
-		String num = segment.substring(1);
-		return Float.parseFloat(num);
-		//return new Float(num);
 	}
 }

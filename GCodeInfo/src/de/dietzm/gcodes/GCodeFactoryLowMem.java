@@ -9,25 +9,26 @@ public class GCodeFactoryLowMem extends GCodeFactory {
 		GCode gcd;
 		//System.out.println("OptimizedGCode: "+line);
 		try{
-			if(segments.length==2 && segments[1].charAt(0)=='E'){	//E only
-				gcd = new GCodeE(line, linenr, code);
-			}else if(segments.length==2 && segments[1].charAt(0)=='Z'){ //Z only
-				gcd = new GCodeZ(line, linenr, code);
+			if(segments.length==4 && segments[1].charAt(0)=='X' && segments[2].charAt(0)=='Y' && segments[3].charAt(0)=='E'){
+				gcd = new GCodeXYE(line, linenr, code);
+			}else if(segments.length==4 && segments[1].charAt(0)=='Y' && segments[2].charAt(0)=='X' && segments[3].charAt(0)=='E'){
+				gcd = new GCodeXYE(line, linenr, code);
 			}else if(segments.length==3 && segments[1].charAt(0)=='X' && segments[2].charAt(0)=='Y'){
 				gcd = new GCodeXY(line, linenr, code);
 			}else if(segments.length==3 && segments[1].charAt(0)=='Y' && segments[2].charAt(0)=='X'){
-				gcd = new GCodeXY(line, linenr, code);
+				gcd = new GCodeXY(line, linenr, code);			
+
+				//TODO handle all combinations
+			}else if(segments.length==4 && segments[1].charAt(0)=='X' && segments[2].charAt(0)=='Y' && segments[3].charAt(0)=='F'){
+				gcd = new GCodeXYF(line, linenr, code);
 			}else if(segments.length==3 && segments[1].charAt(0)=='F' && segments[2].charAt(0)=='E'){
 				gcd = new GCodeFE(line, linenr, code);
 			}else if(segments.length==3 && segments[1].charAt(0)=='E' && segments[2].charAt(0)=='F'){
 				gcd = new GCodeFE(line, linenr, code);
-			}else if(segments.length==4 && segments[1].charAt(0)=='X' && segments[2].charAt(0)=='Y' && segments[3].charAt(0)=='E'){
-				gcd = new GCodeXYE(line, linenr, code);
-			}else if(segments.length==4 && segments[1].charAt(0)=='Y' && segments[2].charAt(0)=='X' && segments[3].charAt(0)=='E'){
-				gcd = new GCodeXYE(line, linenr, code);
-				//TODO handle all combinations
-			}else if(segments.length==4 && segments[1].charAt(0)=='X' && segments[2].charAt(0)=='Y' && segments[3].charAt(0)=='F'){
-				gcd = new GCodeXYF(line, linenr, code);
+			}else if(segments.length==2 && segments[1].charAt(0)=='Z'){ //Z only
+				gcd = new GCodeZ(line, linenr, code);
+			}else if(segments.length==2 && segments[1].charAt(0)=='E'){	//E only
+				gcd = new GCodeE(line, linenr, code);
 			}else{
 				gcd = new GCodeMemSave(line, linenr, code);
 			}

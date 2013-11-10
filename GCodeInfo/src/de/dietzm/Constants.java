@@ -1,11 +1,15 @@
 package de.dietzm;
 
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.List;
 
 import de.dietzm.gcodes.MemoryEfficientString;
 
 public class Constants {
 
+	static char[] buffer = new char[1024];
+	static List<String> list = new ArrayList<String>();
 
 	
 	public static enum GCDEF {
@@ -38,10 +42,25 @@ public class Constants {
 		   
 		   
 		   public static GCDEF getGCDEF(String val) {
-			   if(val.equals("G1")){
+			   if(val.equalsIgnoreCase("G1")){
 				    return G1;
 			   }
-			   return GCDEF.valueOf(val);			   
+			   if(val.equalsIgnoreCase("G2")){
+				    return G2;
+			   }
+			   if(val.equalsIgnoreCase("G3")){
+				    return G3;
+			   }
+			   if(val.equalsIgnoreCase("G92")){
+				    return G92;
+			   }
+			   if(val.charAt(0) > 97){ //Check if lowercase
+				   return GCDEF.valueOf(val.toUpperCase());   
+			   }else{
+				   return GCDEF.valueOf(val);
+			   }
+			   
+			   
 		   }
 		   /**
 		    * Gets the enum object from a short identifier
@@ -315,8 +334,11 @@ public class Constants {
 		floattoChar(0.99f, me.getBytes(),2);
 		System.out.println(me.toString());	
 		inttoChar(Integer.MIN_VALUE, me.getBytes());
-		System.out.println(me.toString());
-		System.out.println(Float.MIN_VALUE);
+		
+		//Failure case
+		float f = 0.0054454f;
+		System.out.println(parseFloat("0.0054454545", 0));
+		//System.out.println(Float.MIN_VALUE);
 	}
 	
 
@@ -330,9 +352,9 @@ public class Constants {
 	 */
 	public static boolean isValidGCode(String codeline){
 		 if(codeline == null || codeline.isEmpty()) return false;
-		 if (codeline.charAt(0) == 'G') return true;
-		 if (codeline.charAt(0) == 'M') return true;
-		 if (codeline.charAt(0) == 'T') return true;
+		 if (codeline.charAt(0) == 'G' || codeline.charAt(0) == 'g') return true;
+		 if (codeline.charAt(0) == 'M' || codeline.charAt(0) == 'm') return true;
+		 if (codeline.charAt(0) == 'T' || codeline.charAt(0) == 't') return true;
 		 return false;
 	}
 	
@@ -348,6 +370,121 @@ public class Constants {
 	public static String removeTrailingZeros(String var) {
 		return var.replaceAll("[0]*$", "").replaceAll("\\.$", "");
 	}
+
+	/**
+	 * Parse a float much quicker than Float.parseFloat().
+	 * But has less precision, gives wrong results for high precision floats
+	 * Seems to be ok for 4 digits beyond the comma which is fine for 3d print
+	 * @param f
+	 * @param startpos
+	 * @return
+	 */
+	public static float parseFloat(String f,int startpos) {
+		final int len   = f.length();
+		float     ret   = 0f;         // return value
+		int       pos   = startpos;          // read pointer position
+		int       part  = 0;          // the current part (int, float and sci parts of the number)
+		boolean   neg   = false;      // true if part is a negative number
+	
+		// find start
+		while (pos < len && (f.charAt(pos) < '0' || f.charAt(pos) > '9') && f.charAt(pos) != '-' && f.charAt(pos) != '.')
+			pos++;
+	
+		// sign
+		if (f.charAt(pos) == '-') { 
+			neg = true; 
+			pos++; 
+		}
+	
+		// integer part
+		while (pos < len && !(f.charAt(pos) > '9' || f.charAt(pos) < '0'))
+			part = part*10 + (f.charAt(pos++) - '0');
+		ret = neg ? (float)(part*-1) : (float)part;
+	
+		// float part
+		if (pos < len && f.charAt(pos) == '.') {
+			pos++;
+			int mul = 1;
+			part = 0;
+			while (pos < len && !(f.charAt(pos) > '9' || f.charAt(pos) < '0')) {
+				part = part*10 + (f.charAt(pos) - '0'); 
+				mul*=10; pos++;
+			}
+			ret = neg ? ret - (float)part / (float)mul : ret + (float)part / (float)mul;
+		}
+	
+		// scientific part
+		if (pos < len && (f.charAt(pos) == 'e' || f.charAt(pos) == 'E')) {
+			pos++;
+			neg = (f.charAt(pos) == '-'); pos++;
+			part = 0;
+			while (pos < len && !(f.charAt(pos) > '9' || f.charAt(pos) < '0')) {
+				part = part*10 + (f.charAt(pos++) - '0'); 
+			}
+			if (neg)
+				ret = ret / (float)Math.pow(10, part);
+			else
+				ret = ret * (float)Math.pow(10, part);
+		}	
+		return ret;
+	}
+
+	public static String[] splitbyLetter(String text){
+	            List<String> list = new ArrayList<String>();
+	            int pos = 0;
+	            int trailws=0;
+	            int len = text.length();
+	            boolean first=true;
+	            
+	            
+	            for (int i = 0; i < len; i++) {
+	            	char c = text.charAt(i);
+					if(c > 58){ //ASCII no number and no whitespace
+						if(first){
+							first=false;
+							continue;
+						}
+						list.add(text.substring(pos, i-trailws));
+						pos=i;
+					}else if (i==pos && c == 32){
+						pos++;
+					}else if (c == 32){
+						trailws++;
+					}else{
+						trailws=0;
+					}
+				}
+	            list.add(text.substring(pos, len-trailws));
+	            return list.toArray(new String[list.size()]);
+	}
+	
+	public static String[] splitbyLetter2(String text){
+        list.clear();
+        int pos = 0;
+        int len = text.length();      
+        boolean first=true;
+        
+        
+        for (int i = 0; i < len; i++) {
+        	char c = text.charAt(i);
+			if(c > 58){ //ASCII no number and no whitespace
+				if(first){
+					first=false;
+					buffer[pos++]=c;
+					continue;
+				}
+				list.add(new String(buffer,0,pos));
+				pos=0;
+				buffer[pos++]=c;
+			}else if (c == 32 || c == 10){
+				//ignore spaces and newlines
+			}else{
+				buffer[pos++]=c;
+			}
+		}
+        list.add(new String(buffer,0,pos));
+        return list.toArray(new String[list.size()]);
+}
 
 
 }
