@@ -41,9 +41,6 @@ public class PrintQueue  {
 	
 	public GCode pollManual(int timeout_sec) throws InterruptedException {
 		GCode gc = mprintQ.poll(timeout_sec,TimeUnit.SECONDS);
-		synchronized(this){
-			notify();
-		}
 		return gc;
 	}
 	
@@ -64,8 +61,8 @@ public class PrintQueue  {
 	}
 
 	public GCode pollAuto() throws InterruptedException {
-		if(!mprintQ.isEmpty()) return mprintQ.poll();
-		GCode gc = aprintQ.poll();
+		if(!mprintQ.isEmpty()) return pollManual(1000);
+		GCode gc = aprintQ.poll(2,TimeUnit.SECONDS);
 		return gc;
 	}
 
