@@ -31,7 +31,7 @@ public class Model {
 	private float dimension[] = { 0, 0, 0 }; // X,y,z
 	private float extrusion=0;
 	private String filename;
-	private ArrayList<GCode> gcodes = new ArrayList<GCode>(200000);
+	private ArrayList<GCode> gcodes = new ArrayList<GCode>(1000000);
 	//private SortedMap<Float, Layer> layer = new TreeMap<Float, Layer>();
 	private ArrayList<Layer> layer = new ArrayList<Layer>();
 	
@@ -549,7 +549,6 @@ public class Model {
 		long time = System.currentTimeMillis();
 		System.out.println("Load Model started");
 		while((line=gcread.readLine())!=null){
-			
 			GCode gc = null;
 			try {
 				gc = GCodeFactory.getGCode(line, idx++);
