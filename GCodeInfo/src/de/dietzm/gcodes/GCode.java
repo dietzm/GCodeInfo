@@ -77,7 +77,7 @@ public abstract class GCode {
 	}
 	
 	public MemoryEfficientString getCodeline() {
-			if(getGcode() == GCDEF.COMMENT){
+			if(getGcode() == GCDEF.COMMENT || getGcode() ==GCDEF.UNKNOWN){
 				return new MemoryEfficientString(data, Constants.newline);
 			}
 				
@@ -101,7 +101,7 @@ public abstract class GCode {
 	 * @return len, how much data is written to buffer,-1 if buffer is too small
 	 */
 	public int getCodeline(byte[] buffer) {
-			if(getGcode() == GCDEF.COMMENT){
+			if(getGcode() == GCDEF.COMMENT || getGcode() ==GCDEF.UNKNOWN){
 				System.arraycopy(data,0,buffer,0,data.length);
 				buffer[data.length]=Constants.newlineb;
 				return data.length+1;

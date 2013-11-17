@@ -548,6 +548,7 @@ public class Model {
 		int errorcnt=0, success=0;
 		long time = System.currentTimeMillis();
 		System.out.println("Load Model started");
+		try{
 		while((line=gcread.readLine())!=null){
 			GCode gc = null;
 			try {
@@ -568,6 +569,9 @@ public class Model {
 			codes.add(gc);
 			readbytes+=line.length(); //might be incorrect for multibyte chars, but getbytes is expensive
 			
+		}
+		}catch(OutOfMemoryError oom){
+			throw new IOException("Out of Memory Error");
 		}
 		gcread.close();
 		System.out.println("Load Model finished in ms:"+(System.currentTimeMillis()-time));
