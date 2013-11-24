@@ -90,8 +90,9 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	 * 1.14 fixed some more bugs. improved load time
 	 * 1.15 fixed G4 NPE
 	 * 1.16 Improved load error handling. print wrong gcodes in window. fixed double whitespace error
+	 * 1.17 Many performance improvments, Paint extruder, MacOS load bug 
 	 */
-	public static final String VERSION = "v1.16";	
+	public static final String VERSION = "v1.17";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
@@ -335,7 +336,10 @@ public class GcodeSimulator extends Frame implements ActionListener {
 		}
 		
 		fd.setModal(true);
-		fd.setFilenameFilter(new FilenameFilter() {
+		if (System.getProperty("os.name").startsWith("Mac OS X")) {
+			//Allow all filename due to a MacoS bug ?
+		}else{
+			fd.setFilenameFilter(new FilenameFilter() {
 			@Override
 			public boolean accept(File arg0, String arg1) {
 				if(arg1.toLowerCase().endsWith(".gcode")) return true;
@@ -343,6 +347,7 @@ public class GcodeSimulator extends Frame implements ActionListener {
 				return false;
 			}
 		});
+		}
 		fd.requestFocus();
 		fd.setVisible(true);
 		// Choosing a "recently used" file will fail because of redhat

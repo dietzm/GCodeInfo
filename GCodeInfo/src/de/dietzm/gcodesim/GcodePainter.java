@@ -574,7 +574,7 @@ public class GcodePainter implements Runnable {
 				(int) (lay.getLayerheight() * 10 * factor)); // Draw level indicator
 	}
 
-	private float printLine(GraphicRenderer g2, Position lastpos, Position pos, float time,long starttime) {
+	private float printLine(GraphicRenderer g2, Position lastpos, Position pos, float zpos, float time,long starttime,boolean travel) {
 		float x1 = (lastpos.x + Xoffset) * zoom;
 		float y1 = (bedsizeY * zoom) - ((lastpos.y + Yoffset) * zoom);
 		float x2 = (pos.x + Xoffset) * zoom;
@@ -592,9 +592,14 @@ public class GcodePainter implements Runnable {
 				float stepx = distx / maxdist;
 				float stepy = disty / maxdist;
 				for (int i = 0; i < maxdist; i++) {
-					g2.setPos((int)(x1 + ((i + 1) * stepx)),(int)( y1+ ((i + 1) * stepy)));
-					g2.drawline(x1 + (i * stepx), y1 + (i * stepy), x1 + ((i + 1) * stepx), y1
-							+ ((i + 1) * stepy));
+					float nx=(x1 + ((i + 1) * stepx));
+					float lx=x1 + (i * stepx);
+					float ly=y1 + (i * stepy);
+					float ny=( y1+ ((i + 1) * stepy));
+					
+					g2.setPos((int)lx,(int)ny);
+					g2.drawline(lx, ly, nx, ny);
+					printLineHorizontal2(g2,lx,ly,nx,ny, zpos,travel);
 					try {
 						g2.repaint();
 						long paintdur=System.currentTimeMillis()-starttime;
@@ -610,6 +615,7 @@ public class GcodePainter implements Runnable {
 		}
 
 		g2.drawline(x1, y1, x2, y2);
+		printLineHorizontal2(g2,x1,y1,x2,y2, zpos,travel);
 		return time; // not slept, sleep in the main loop
 	}
 	
@@ -676,13 +682,13 @@ public class GcodePainter implements Runnable {
 	
 	
 	
-	private void printLineHorizontal(GraphicRenderer g2, Position lastpos, Position pos, Layer lay,GCode gc) {
+	private void printLineHorizontal(GraphicRenderer g2, Position lastpos, Position pos, float zpos) {
 		//TODO save some CPU cycles by remembering what has been drawn already on this layer and avoid redraw
 		float zoomsmall= zoom/zoommod;
 //		System.out.println("--STARTPOS: X"+lastpos.x+" Y"+lastpos.y+" Gcode:"+gc.getCodeline());
 //		System.out.println("--ENDPOS: X"+pos.x+" Y"+pos.y);
 //		System.out.println("Offset:"+Xoffset+" "+Yoffset+" Zoom:"+zoom +" small:"+zoomsmall);
-		float z =  (bedsizeY *zoomsmall) - (lay.getZPosition()*zoomsmall) - 20 ;		
+		float z =  (bedsizeY *zoomsmall) - (zpos*zoomsmall) - 20 ;		
 		/*
 		 * Print side view
 		 */
@@ -722,6 +728,30 @@ public class GcodePainter implements Runnable {
 //				(bedsizeX * zoom + gap) + (bedsizeX * zoomsmall)+(gc.getLineindex()/10%(bedsizeX * zoomsmall))
 //				,(bedsizeY * zoomsmall)-20-gc.getSpeed());
 			
+	}
+	
+	private void printLineHorizontal2(GraphicRenderer g2,float lx,float ly,float x, float y, float zpos,boolean travel) {
+		//TODO save some CPU cycles by remembering what has been drawn already on this layer and avoid redraw
+		float zoomsmall= zoom/zoommod;
+		float z =  (bedsizeY *zoomsmall) - (zpos*zoomsmall) - 20 ;		
+		/*
+		 * Print side view
+		 */
+		float y1 = (bedsizeX * zoomsmall) - ((ly / zoom) * zoomsmall)+ (bedsizeX * zoom + gap);		
+		float y2 = (bedsizeX * zoomsmall) - ((y / zoom) * zoomsmall)+ (bedsizeX * zoom + gap);
+		/*
+		 * Print front view
+		 */
+		float x1 = ((lx / zoom) * zoomsmall + (bedsizeX * zoom + gap))+(bedsizeX * zoomsmall) ;
+		float x2 = ((x / zoom) * zoomsmall+ (bedsizeX * zoom + gap))+(bedsizeX * zoomsmall);
+
+		if(!travel){ //do not paint travel
+			g2.drawline(y1, z, y2, z);
+			g2.drawline(x1, z, x2,z);
+		}
+		
+		
+		g2.setPos((int)y1, (int)x1, (int)z);
 	}
 
 	@Override
@@ -770,6 +800,7 @@ public class GcodePainter implements Runnable {
 					//Android guidelines say foreach loops are slower for arraylist
 					ArrayList<GCode> gcarr = lay.getGcodes();
 					int gcnum = gcarr.size();
+					float zpos=lay.getZPosition();
 					GCDEF gcdef;
 					for(int ig = 0 ; ig < gcnum; ig++ ){
 						GCode gCode = gcarr.get(ig);
@@ -807,17 +838,18 @@ public class GcodePainter implements Runnable {
 								g2.setColor(lay.getNumber() % colNR);		
 								if(gcdef == Constants.GCDEF.G2 ||gcdef == Constants.GCDEF.G3 ){
 									printArc(g2, lastpos, pos, lay, gCode);
+									printLineHorizontal(g2,lastpos,pos,zpos);
 								}else{
-									printLine(g2, lastpos, pos,sleeptime,starttime);
+									printLine(g2, lastpos, pos,zpos,sleeptime,starttime,false);
 								}
-								printLineHorizontal(g2, lastpos, pos,lay,gCode); //Side & front view
+								//printLineHorizontal(g2, lastpos, pos,lay,gCode); //Side & front view
 							} else if (painttravel) {
 								g2.setColor(colNR+1);
 								g2.setStroke(0);
 								if(gcdef == Constants.GCDEF.G2 ||gcdef == Constants.GCDEF.G3 ){
 									printArc(g2, lastpos, pos, lay, gCode);
 								}else{
-									printLine(g2, lastpos, pos,sleeptime,starttime);
+									printLine(g2, lastpos, pos,zpos,sleeptime,starttime,true);
 								}
 								g2.setStroke(1);
 							}
