@@ -429,6 +429,11 @@ public class Constants {
 		return ret;
 	}
 
+	/**
+	 * User for splitting the GCodes into segments
+	 * @param text
+	 * @return
+	 */
 	public static String[] splitbyLetter(String text){
 	            List<String> list = new ArrayList<String>();
 	            int pos = 0;
@@ -458,6 +463,11 @@ public class Constants {
 	            return list.toArray(new String[list.size()]);
 	}
 	
+	/**
+	 * User for splitting the GCodes into segments
+	 * @param text
+	 * @return
+	 */
 	public static String[] splitbyLetter2(String text){
         list.clear();
         int pos = 0;

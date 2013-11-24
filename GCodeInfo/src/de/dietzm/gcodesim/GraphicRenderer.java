@@ -16,6 +16,8 @@ public interface GraphicRenderer {
 	public void fillrect(float x,float y, float w,float h);
 	public void drawtext(CharSequence text,float x, float y);
 	public void clearrect(float x,float y, float w,float h,int colitem);
+	
+	public void faintRect(float x,float y, float w,float h);
 	public int getWidth();
 	public int getHeight();
 	public void repaint();
@@ -24,5 +26,12 @@ public interface GraphicRenderer {
 	public void drawtext(CharSequence text, float x, float y, float w);
 	
 	public void setTitle(String txt);
+	/**
+	 * Set Position for the side & Front view
+	 * @param x1
+	 * @param x2
+	 * @param z
+	 */
+	public void setPos(int x1,int x2,int z);
 
 }
