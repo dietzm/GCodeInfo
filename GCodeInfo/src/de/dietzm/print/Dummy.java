@@ -53,10 +53,7 @@ public class Dummy implements PrinterConnection {
 	@Override
 	public void requestDevice(String device) {
 		cons.appendText("Waiting for printer response");
-		if (sio.runner == null || !sio.runner.isAlive()) {
-			sio.runner = new Thread(sio);
-			sio.runner.start();
-		}
+		sio.startRunnerThread();
 		
 	}
 

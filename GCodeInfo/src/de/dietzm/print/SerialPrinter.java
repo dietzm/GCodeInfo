@@ -14,14 +14,14 @@ public class SerialPrinter implements Runnable, Printer {
 
 	public static final GCode G0 = GCodeFactory.getGCode("G0", 0);
 	public static final GCode M105 = GCodeFactory.getGCode("M105", 0);
-	final static String serial = "SERIAL"; //log tag	
-	ConsoleIf cons = null;
-
+	public static final String serial = "SERIAL"; //log tag	
+	
+	private ConsoleIf cons = null;
 	private PrinterConnection mConn = null;
 	private final PrintQueue printQueue = new PrintQueue();;
 	private final ReceiveBuffer ioBuffer = new ReceiveBuffer(4096);
 	
-	public Thread runner = null;
+	private Thread runner = null;
 	private long printstart; //time when print started
 	private long sendtime = 0;
 	private long starttime = 0;
@@ -86,13 +86,7 @@ public class SerialPrinter implements Runnable, Printer {
 
 	public SerialPrinter( ConsoleIf console) {
 		this.cons = console;
-	//	instance = this;
 		cons.appendText("Not connected. Press connect button to establish printer connection.");
-//		 cons.log(serial, "Balloooon started");
-//		 byte[] ballooon = new byte[30000000];
-//		 ballooon[5000]=5;
-//		 ballooon[300000]=ballooon[45000];
-		 
 	}
 	
 	public void setConsole(ConsoleIf conso){
@@ -149,13 +143,6 @@ public class SerialPrinter implements Runnable, Printer {
 		state.connecting=true;
 		state.baud=baud;
 		mConn=type;
-//		if (type == PrinterConnection.USBOTG) {
-//			mConn = new OTG(this,ctx,cons);
-//		} else if (type == PrinterConnection.BLUETOOTH) {
-//			mConn = new Bluetooth(this,ctx,cons);
-//		}else {
-//			mConn = new Dummy(this,ctx,cons);
-//		}
 		boolean succ = mConn.enumerate();
 		if(!succ) state.connecting=false;
 		return succ;
@@ -163,6 +150,13 @@ public class SerialPrinter implements Runnable, Printer {
 
 	public void connectTo(String device) {
 		mConn.requestDevice(device);
+	}
+	
+	public void startRunnerThread(){
+		if (runner == null || !runner.isAlive()) {
+			runner = new Thread(this);
+			runner.start();
+		}
 	}
 
 	public void disconnect() {

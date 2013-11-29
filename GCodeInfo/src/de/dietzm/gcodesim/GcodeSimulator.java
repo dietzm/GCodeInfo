@@ -40,6 +40,9 @@ import java.util.TimerTask;
 import de.dietzm.Model;
 import de.dietzm.SerialIO;
 import de.dietzm.gcodesim.GcodePainter.Commands;
+import de.dietzm.print.ConsoleIf;
+import de.dietzm.print.Dummy;
+import de.dietzm.print.SerialPrinter;
 
 
 /**
@@ -527,9 +530,71 @@ public class GcodeSimulator extends Frame implements ActionListener {
 					gp.togglePause();
 				} else if (arg0.getKeyChar() == 's') {
 					try {
-						SerialIO	sio = new SerialIO();
+						
+						ConsoleIf cons=new ConsoleIf() {
+							
+							@Override
+							public void setWakeLock(boolean active) {
+								// TODO Auto-generated method stub
+								
+							}
+							
+							@Override
+							public void setTemp(CharSequence temp) {
+								// TODO Auto-generated method stub
+								
+							}
+							
+							@Override
+							public void setPrinting(boolean printing) {
+								// TODO Auto-generated method stub
+								
+							}
+							
+							@Override
+							public void log(String tag, String value) {
+								// TODO Auto-generated method stub
+								
+							}
+							
+							@Override
+							public boolean hasWakeLock() {
+								// TODO Auto-generated method stub
+								return false;
+							}
+							
+							@Override
+							public void clearConsole() {
+								// TODO Auto-generated method stub
+								
+							}
+							
+							@Override
+							public int chooseDialog(String[] items, String[] values) {
+								// TODO Auto-generated method stub
+								return 0;
+							}
+							
+							@Override
+							public void appendTextNoCR(CharSequence... txt) {
+								// TODO Auto-generated method stub
+								
+							}
+							
+							@Override
+							public void appendText(CharSequence... txt) {
+								for (CharSequence n : txt) {
+									System.out.println(n);
+						         }
+																
+							}
+						};
+						SerialPrinter	sio = new SerialPrinter(cons);
+						
+						
 						gp.setPrintercon(sio);
-						sio.connect("/dev/ttyUSB0");			
+						
+						sio.connect(new Dummy(sio, cons),115200);			
 						} catch (NoClassDefFoundError er) {
 							//er.printStackTrace();
 							System.out.println("Opening COM Port FAILED ! RXTX Jar Missing.  " + er);
