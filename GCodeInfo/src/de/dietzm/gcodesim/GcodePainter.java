@@ -21,7 +21,7 @@ import de.dietzm.print.Printer;
  */
 public class GcodePainter implements Runnable {
 	public static enum Commands {STEPBACK,STEP50X,STEP50XBACK,RESTART,NEXTLAYER,NEXTLAYER10,REPAINTLABEL,DEBUG,EXIT,OPENFILE,NOOP,PRINT,REPAINTLAYERS,PREVIOUSLAYER,HELP,REANALYSE}; 
-	public static final int bedsizeX = 300;
+	public static final int bedsizeX = 200;
 	public static final int bedsizeY = 200;
 	public int colNR = 7;
 	public boolean painttravel = true;
