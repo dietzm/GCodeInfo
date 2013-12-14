@@ -1,4 +1,4 @@
-package de.dietzm.gcodesim;
+package de.dietzm.print;
 
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;

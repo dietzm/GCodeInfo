@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
 
 import de.dietzm.gcodes.GCode;
 import de.dietzm.gcodes.GCodeMemSave;
-import de.dietzm.gcodesim.Printer;
+import de.dietzm.print.Printer;
 
 public class SerialIO implements SerialPortEventListener, Printer{
 

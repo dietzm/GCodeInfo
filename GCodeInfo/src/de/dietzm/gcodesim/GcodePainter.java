@@ -12,6 +12,7 @@ import de.dietzm.Constants.GCDEF;
 import de.dietzm.gcodes.GCode;
 import de.dietzm.gcodes.MemoryEfficientLenString;
 import de.dietzm.gcodes.MemoryEfficientString;
+import de.dietzm.print.Printer;
 
 /**
  * Gcodepaint Class starts a thread and iterates through the gcodes and paint the corresponding lines. 
