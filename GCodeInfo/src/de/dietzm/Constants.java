@@ -4,6 +4,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 
+import de.dietzm.gcodes.MemoryEfficientLenString;
 import de.dietzm.gcodes.MemoryEfficientString;
 
 public class Constants {
@@ -175,9 +176,9 @@ public class Constants {
 	 * pass byte[] to avoid allocation
 	 * @param secs
 	 * @param buf - must be 10 bytes large
-	 * @return
+	 * @return number of bytes written to tempbuf
 	 */
-	public static byte[] formatTimetoHHMMSS(float secs, byte[] buf)
+	public static int formatTimetoHHMMSS(float secs, byte[] buf)
 	{		
 		int secsIn = Math.round(secs);
 		int hours =  secsIn / 3600,
@@ -205,10 +206,12 @@ public class Constants {
 		buf[cnt++]=':';
 		buf[cnt++]=(byte)Character.forDigit(seconds/10, 10);
 		buf[cnt++]=(byte)Character.forDigit(seconds%10, 10);
-		while(cnt < buf.length){
-			buf[cnt++]=0;
+		
+		int cntnew = cnt;
+		while(cntnew < buf.length){
+			buf[cntnew++]=0;
 		}
-	return buf;
+	return cnt;
 	}
 	
 	/**
@@ -217,8 +220,9 @@ public class Constants {
 	 * @param result - should be 12 bytes large
 	 * @return
 	 */
-	public static MemoryEfficientString inttoChar(int value, MemoryEfficientString result){
-		inttoChar(value, result.getBytes());
+	public static MemoryEfficientString inttoChar(int value, MemoryEfficientLenString result){
+		int nr = inttoChar(value, result.getBytes());
+		result.setlength(nr); //set length of string		
 		return result;
 	}
 	
@@ -229,8 +233,9 @@ public class Constants {
 	 * @param result - should be 12 bytes large
 	 * @return
 	 */
-	public static MemoryEfficientString floattoChar(float value, MemoryEfficientString result, int digits){
-		floattoChar(value, result.getBytes(), digits);
+	public static MemoryEfficientString floattoChar(float value, MemoryEfficientLenString result, int digits){
+		int nr = floattoChar(value, result.getBytes(), digits);
+		result.setlength(nr);
 		return result;
 	}
 	
@@ -238,9 +243,9 @@ public class Constants {
 	 * Memory efficient convert of int to char 
 	 * @param value
 	 * @param result - should be 12 bytes large
-	 * @return
+	 * @return length of bytes written to byte[]
 	 */
-	public static byte[] inttoChar(int value, byte[] result){
+	public static int inttoChar(int value, byte[] result){
 			int cnt = 0;
 	       
            if (value == 0)
@@ -267,11 +272,12 @@ public class Constants {
                    t /= 10;
            }
            }
-           //Clear the remaining bytes
-           while(cnt < result.length){
-   			result[cnt++]=0;
-   			}
-           return result;
+//           //Clear the remaining bytes
+           int cntnew = cnt;
+	   		while(cntnew < result.length){
+	   			result[cntnew++]=0;
+	   		}
+           return cnt;
 	}
 	
 	/**
@@ -279,9 +285,9 @@ public class Constants {
 	 * WARNING Does not support the full float range !! 
 	 * @param value
 	 * @param result - should be 12 bytes large
-	 * @return
+	 * @return number of bytes written to byte[]
 	 */
-	public static byte[] floattoChar(float val, byte[] result, int digits){
+	public static int floattoChar(float val, byte[] result, int digits){
 			int cnt = 0;
 			int multip=(int)Math.pow(10,digits);
 	       int value = (int)(val * multip); //3 digits 
@@ -314,11 +320,12 @@ public class Constants {
                    t /= 10;
            }
            }
-           //Clear the remaining bytes
-           while(cnt < result.length){
-   			result[cnt++]=0;
-   			}
-           return result;
+//         //Clear the remaining bytes
+         int cntnew = cnt;
+	   		while(cntnew < result.length){
+	   			result[cntnew++]=0;
+	   		}
+           return cnt;
 	}
 	
 	public static void main(String[] args) {

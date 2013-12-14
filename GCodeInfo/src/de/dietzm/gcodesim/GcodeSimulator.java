@@ -28,12 +28,17 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.ConnectException;
 import java.net.UnknownHostException;
+import java.security.acl.LastOwnerException;
 import java.util.Collections;
+import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -90,12 +95,17 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	 * 1.14 fixed some more bugs. improved load time
 	 * 1.15 fixed G4 NPE
 	 * 1.16 Improved load error handling. print wrong gcodes in window. fixed double whitespace error
-	 * 1.17 Many performance improvments, Paint extruder, MacOS load bug 
+	 * 1.17 Many performance improvments, Paint extruder, MacOS load bug
+	 * 1.18 label paint errors fixed , config file for networkip & path
 	 */
-	public static final String VERSION = "v1.17";	
+	public static final String VERSION = "v1.18";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
+	
+	//Properties
+	static String networkip = "192.168.0.50";
+	static String lastfilepath = System.getProperty("user.dir");
 
 
 	public GcodeSimulator() {
@@ -205,6 +215,7 @@ public class GcodeSimulator extends Frame implements ActionListener {
 		GcodeSimulator gs = new GcodeSimulator();
 		String filename;
 		InputStream in = null;
+		readConfig();
 		if (args.length < 1 || !new File(args[0]).exists()) {
 			filename = "/gcodesim.gcode";
 			in= gs.getClass().getResourceAsStream(filename);			
@@ -214,6 +225,56 @@ public class GcodeSimulator extends Frame implements ActionListener {
 		gs.init(filename,in);
 		gs.requestFocus();
 
+	}
+	
+	
+	public static void readConfig(){
+		
+		String homedir = System.getProperty("user.home");
+		String sep = System.getProperty("file.separator");
+		File config = new File(homedir+sep+".gcodesim");
+		
+		if(config.exists()){
+			try {
+				Properties prop = new Properties();
+				prop.load(new FileInputStream(config));
+				lastfilepath = prop.getProperty("lastfilepath",System.getProperty("user.dir"));
+				networkip  = prop.getProperty("networkip","192.168.0.50");
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}else{
+			System.out.println("Config file does not exist:"+config);
+		}
+		
+		
+	}
+	
+	public static void storeConfig(){
+		
+		String homedir = System.getProperty("user.home");
+		String sep = System.getProperty("file.separator");
+		File config = new File(homedir+sep+".gcodesim");
+		
+		try {
+				Properties prop = new Properties();
+				prop.setProperty("lastfilepath", lastfilepath);
+				prop.setProperty("networkip", networkip);
+				prop.store(new FileOutputStream(config),"Gcode Simulator Config");
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		
+		
+		
 	}
 	
 	@Override
@@ -229,7 +290,7 @@ public class GcodeSimulator extends Frame implements ActionListener {
 		in.setBackground(Color.lightGray);
 		final TextField tf2 = new TextField(15);
 		final Label status = new Label("                                                    ");
-		tf2.setText("192.168.0.50");
+		tf2.setText(networkip);
 //		tf2.setSize(200,20);
 		Button btn1 = new Button("Ok");
 		
@@ -261,7 +322,9 @@ public class GcodeSimulator extends Frame implements ActionListener {
 					NetworkPrinter netp = new NetworkPrinter();
 					status.setText("Sending file ... please wait");
 					in.repaint();
-					netp.sendToReceiver(tf2.getText(), gp.model);
+					networkip=tf2.getText();
+					storeConfig();
+					netp.sendToReceiver(networkip, gp.model);					
 					status.setText("Sending file ... done");
 					in.repaint();
 					in.setVisible(false);
@@ -293,28 +356,6 @@ public class GcodeSimulator extends Frame implements ActionListener {
 
 	static String openFileBrowser(Frame gs) {
 		String filename =null;
-//		JFileChooser fc = new JFileChooser();
-//		fc.setFileFilter(new FileFilter() {
-//			
-//			@Override
-//			public String getDescription() {
-//				return "*.gcode";
-//			}
-//			
-//			@Override
-//			public boolean accept(File arg0) {
-//				if(arg0.getName().toLowerCase().endsWith(".gcode")) return true;
-//				if(arg0.isDirectory()) return true;
-//				return false;
-//			}
-//		});
-//		
-//		int ret = fc.showOpenDialog(gs);
-//		if (ret == JFileChooser.APPROVE_OPTION) {
-//			filename = fc.getSelectedFile().getAbsolutePath();
-//		}else{
-//			System.exit(0);
-//		}
 		final FileDialog fd = new FileDialog(gs, "Choose a gcode file");
 		final Thread gpt = Thread.currentThread();
 // 		Native file dialog is better but it has a bug when selecting recent files :-(
@@ -329,11 +370,12 @@ public class GcodeSimulator extends Frame implements ActionListener {
 			}
 		}, 100000);
 		
-		if(new File(System.getProperty("user.home")+"/Desktop/3D/MODELS").exists()){
-			fd.setDirectory(System.getProperty("user.home")+"/Desktop/3D/MODELS");
-		}else{
-				fd.setDirectory(System.getProperty("user.dir"));
-		}
+	   if(lastfilepath != null){
+				   fd.setDirectory(lastfilepath);
+			   }else{
+				   fd.setDirectory(System.getProperty("user.dir"));
+	   }
+		
 		
 		fd.setModal(true);
 		if (System.getProperty("os.name").startsWith("Mac OS X")) {
@@ -355,6 +397,8 @@ public class GcodeSimulator extends Frame implements ActionListener {
 		if (fd.getFile() == null)	return null;
 		filename = fd.getDirectory() + fd.getFile();
 		t.cancel();
+		lastfilepath=fd.getDirectory();
+		storeConfig();
 		return filename;
 	}
 

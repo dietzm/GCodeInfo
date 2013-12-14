@@ -5,7 +5,7 @@ import java.io.UnsupportedEncodingException;
 public class MemoryEfficientString implements CharSequence {
 
 		private static final String ENCODING = "ISO-8859-1";
-	    private final byte[] data;
+	    protected final byte[] data;
 
 	  public MemoryEfficientString(String str) {
 	    try {
@@ -67,7 +67,7 @@ public class MemoryEfficientString implements CharSequence {
 	  
 	  public String toString() {
 		  try {
-		    return new String(data, 0, data.length, ENCODING);
+		    return new String(data, 0, length(), ENCODING);
 		  } catch (UnsupportedEncodingException e) {
 		    throw new RuntimeException("Unexpected: " + ENCODING + " not supported");
 		  }

@@ -10,6 +10,7 @@ import de.dietzm.Model;
 import de.dietzm.Position;
 import de.dietzm.Constants.GCDEF;
 import de.dietzm.gcodes.GCode;
+import de.dietzm.gcodes.MemoryEfficientLenString;
 import de.dietzm.gcodes.MemoryEfficientString;
 
 /**
@@ -62,7 +63,7 @@ public class GcodePainter implements Runnable {
 	private String[] modelspeed=null,modelcomments=null,modellaysum=null;
 	private String[] modeldetails =null;
 	private String speeduplabel=speedup+"x";
-	private MemoryEfficientString tempbuf = new MemoryEfficientString(new byte[10]);
+	private MemoryEfficientLenString tempbuf = new MemoryEfficientLenString(new byte[10]);
 	private float mtime;
 	private Printer printer=null;
 	private ArrayList<Layer> layers;
@@ -328,12 +329,14 @@ public class GcodePainter implements Runnable {
 			printLabelBox(g2, 44,14,getExtrSpeed(gc), Constants.ESPEED_LABEL,lay.getNumber());
 			//Z-Lift
 			if(gc.isInitialized(Constants.Z_MASK)){
-				printLabelBox(g2, 12,20, Constants.floattoChar(gc.getZ(),tempbuf,2), Constants.ZPOS_LABEL,lay.getNumber());
+				CharSequence cs = Constants.floattoChar(gc.getZ(),tempbuf,2);
+				printLabelBox(g2, 12,20,cs, Constants.ZPOS_LABEL,lay.getNumber());
 			}
 			printLabelBox(g2, 95,5,getFanSpeed(gc.getFanspeed()), Constants.FAN_LABEL,lay.getNumber());
 		}
 		
-		Constants.formatTimetoHHMMSS(mtime,tempbuf.getBytes());
+		int nr = Constants.formatTimetoHHMMSS(mtime,tempbuf.getBytes());
+		tempbuf.setlength(nr);
 		printLabelBox(g2, 58,24, tempbuf, Constants.REMTIME_LABEL,lay.getNumber());
 
 		if(print){
