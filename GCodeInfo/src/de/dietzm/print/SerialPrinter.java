@@ -463,10 +463,10 @@ public class SerialPrinter implements Runnable, Printer {
 				break;
 			}
 			
-			if(code.isBuffered() && !recv.startsWithEcho()){ //For buffered commands we only expect ok
+			if(code.isBuffered() && !recv.startsWithEcho() && !recv.startsWithGO()){ //For buffered commands we only expect ok
 				state.unexpected++;
 				cons.appendText("Unexpected response from printer: "+recv.toString());
-				break;
+				//break; Do not break because e.g. makibox always returns with unexpected responses
 			}
 		}
 		// Wait longer for the final result

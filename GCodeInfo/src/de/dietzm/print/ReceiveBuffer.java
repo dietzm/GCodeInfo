@@ -69,6 +69,15 @@ public class ReceiveBuffer implements CharSequence {
 		return array[0]==111 && array[1]==107; //ASCII
 	}
 	
+	/**
+	 * Makibox sends "go xxx" answers 
+	 * @return
+	 */
+	public boolean startsWithGO(){
+		if(len<2) return false;
+		return array[0]==103 && array[1]==111; //ASCII
+	}
+	
 	public boolean containsOK(){
 		if(len<2) return false;
 		for (int i = 0; i < len-1; i++) {
