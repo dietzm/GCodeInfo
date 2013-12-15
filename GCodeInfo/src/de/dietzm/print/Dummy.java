@@ -30,7 +30,7 @@ public class Dummy implements PrinterConnection {
 	}
 
 	@Override
-	public boolean init() throws Exception {
+	public boolean init(boolean reset) throws Exception {
 		try {
 			Thread.sleep(3000);
 		} catch (InterruptedException e) {
@@ -84,7 +84,7 @@ public class Dummy implements PrinterConnection {
 		}
 		if(!isSend) return;
 		isSend=false;
-		
+		//TODO state.readcalls++;
 		if(isM105){
 			System.arraycopy(memT, 0, rbuf.array, 0, memT.length);
 			rbuf.setlength(memT.length);

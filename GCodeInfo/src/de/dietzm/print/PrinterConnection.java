@@ -13,7 +13,7 @@ public interface PrinterConnection {
 	 * 1st time initialize the connection
 	 * @throws Exception
 	 */
-	public abstract boolean init() throws Exception;
+	public abstract boolean init(boolean reset) throws Exception;
 
 	public abstract boolean enumerate();
 	

@@ -13,7 +13,7 @@ import de.dietzm.gcodes.MemoryEfficientString;
 public class SerialPrinter implements Runnable, Printer {
 
 	public static final GCode G0 = GCodeFactory.getGCode("G0", 0);
-	public static final GCode M105 = GCodeFactory.getGCode("M105", 0);
+	public static final GCode M105 = GCodeFactory.getGCode("M105", -105);
 	public static final String serial = "SERIAL"; //log tag	
 	
 	private ConsoleIf cons = null;
@@ -25,9 +25,20 @@ public class SerialPrinter implements Runnable, Printer {
 	private long printstart; //time when print started
 	private long sendtime = 0;
 	private long starttime = 0;
+	private long garbagetime = 0;
 	private long lastTempWatch = 0; //time when last tempwatch happened
 	private float testrunavg = 0;
 	private int tempwatchintervall = 10000;
+	private boolean resetoninit=true;
+	private boolean logerrors=true;
+	public boolean isResetoninit() {
+		return resetoninit;
+	}
+
+	public void setResetoninit(boolean resetoninit) {
+		this.resetoninit = resetoninit;
+	}
+
 	private int movespeed = 3000;
 	int timeout = 10000;
 	
@@ -66,6 +77,7 @@ public class SerialPrinter implements Runnable, Printer {
 		public int timeoutline=0;
 		public int unexpected=0;
 		public int swallows=0;
+		public int readcalls=0;
 		public String serialtype="";
 		public MemoryEfficientString tempstring = new MemoryEfficientString(new byte[64]);
 		// public boolean absolute
@@ -186,7 +198,7 @@ public class SerialPrinter implements Runnable, Printer {
 		state.lastE = 0;
 		state.lastpos = new float[3];
 		try{
-			if(mConn.init()){
+			if(mConn.init(resetoninit)){
 				state.connected=true;
 				state.connecting=false;
 			}
@@ -226,7 +238,7 @@ public class SerialPrinter implements Runnable, Printer {
 	private void doTestRun() throws InterruptedException {
 		printQueue.putAuto(GCodeFactory.getGCode("G90", 0)); // absolute
 		for (int i = 0; i < 5000; i++) {
-			GCode gco = GCodeFactory.getGCode("G1 X10 Y10", 0);
+			GCode gco = GCodeFactory.getGCode("G1 X10 Y10", i);
 			printQueue.putAuto(gco);
 		}
 		printQueue.putAuto(GCodeFactory.getGCode("M114", 5002));
@@ -348,6 +360,10 @@ public class SerialPrinter implements Runnable, Printer {
 				state.lastgcode = code;// remember last code to sync with UI
 				if (code == null)
 					setPrintMode(false); // Finish printing
+				if(logerrors && Constants.lastGarbage-garbagetime > 0){
+					garbagetime=Constants.lastGarbage;
+					cons.appendText("Garbage collector run during print !");
+				}
 			}
 			if (!state.printing || state.pause) {
 				code = printQueue.pollManual(1); // poll for manual ops
@@ -378,6 +394,7 @@ public class SerialPrinter implements Runnable, Printer {
 		ioBuffer.setlength(len);					//adjust buffer len to what we got
 		mConn.writeBuffer(ioBuffer);				//write buffer
 		sendtime = System.currentTimeMillis();
+		state.readcalls=0; //reset readcalls var debug only
 
 		/*
 		 * Wait for the response
@@ -398,9 +415,9 @@ public class SerialPrinter implements Runnable, Printer {
 			if (recv.isEmpty()) {
 				state.timeouts++;
 				state.timeoutline=code.getLineindex();
-				if(state.debug){
+				if(state.debug || logerrors){
 					//This can even happen in normal cases e.g. when the move is very long (1st in the buffer) 
-					cons.appendText("Timeout waiting for printer response (", String.valueOf((System.currentTimeMillis() - starttime)), "ms)");
+					cons.appendText("Timeout waiting for printer response at line #",String.valueOf(state.timeoutline),"(", String.valueOf((System.currentTimeMillis() - starttime)), "ms)");
 				}
 				break; // timeout
 			}
@@ -426,8 +443,8 @@ public class SerialPrinter implements Runnable, Printer {
 					}
 					cons.setTemp(state.tempstring);
 				}else if (code == M105 && recv.isPlainOK()){
-					if(state.debug){
 						state.swallows++;
+					if(state.debug || logerrors){						
 						cons.appendText("Swallow OK");
 					}
 					continue;
@@ -584,6 +601,7 @@ public class SerialPrinter implements Runnable, Printer {
 		} else {
 			System.gc(); //Force garbage collection to avoid gc during print
 			printstart = System.currentTimeMillis();
+			garbagetime =printstart+6000;
 		}
 
 	}
@@ -631,8 +649,8 @@ public class SerialPrinter implements Runnable, Printer {
 
 	public void setDebug(boolean db) {
 		state.debug = db;
-		cons.appendText("Set debug " + state.debug);
 		showDebugData();
+		cons.appendText("Set debug " + state.debug);
 	}
 
 	public void toggleFan() {
@@ -674,6 +692,7 @@ public class SerialPrinter implements Runnable, Printer {
 			cons.appendText("Last com. timeout linenr:"+state.timeoutline);
 			cons.appendText("Unexpected response:"+state.unexpected);
 			cons.appendText("Swallow OK:"+state.swallows);
+			cons.appendText("Read calls:"+state.readcalls);
 			cons.appendText("Wakelock:" +cons.hasWakeLock());
 			cons.appendText("Time since last send:" +(System.currentTimeMillis() - starttime));
 			cons.appendText("Manual Print Queue:" +printQueue.getSizeManual());
