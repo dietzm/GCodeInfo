@@ -260,7 +260,7 @@ public class GcodePainter implements Runnable {
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
-				start(filename,null);
+				start(filename,null,null);
 			}
 		}).start();
 		
@@ -1183,50 +1183,56 @@ public class GcodePainter implements Runnable {
 	}
 
 	/**
-	 * Start the painter thread. Another invocation will stop the thread and start a new one
+	 * Start the painter thread. Another invocation will stop the thread and
+	 * start a new one
+	 * 
 	 * @param filename
 	 * @param in
 	 * @throws IOException
 	 */
-	public void start(String filename, InputStream in) {
-		//Cleanup if thread already exists
-		if(gcodepainter!=null){
-			errormsg=null;
-			setCmd(Commands.EXIT); //Stop thread
+	public void start(String filename, InputStream in, Model modelin) {
+		// Cleanup if thread already exists
+		if (gcodepainter != null) {
+			errormsg = null;
+			setCmd(Commands.EXIT); // Stop thread
 			try {
 				gcodepainter.join(10000);
-			} catch (InterruptedException e) {}
-			setCmd(Commands.NOOP); 
-			layers=null;
-			model=null;			
+			} catch (InterruptedException e) {
+			}
+			setCmd(Commands.NOOP);
+			layers = null;
+			model = null;
 			g2.repaint();
 		}
 		gcodepainter = new Thread(this);
 		gcodepainter.start();
 
 		boolean ret;
-		try {
-			model = new Model(filename);
-			ret = false;
-			if(in == null){			
-				ret=model.loadModel();
-			}else{
-				ret=model.loadModel(in);
+		if (modelin == null) {
+			try {
+				model = new Model(filename);
+				ret = false;
+				if (in == null) {
+					ret = model.loadModel();
+				} else {
+					ret = model.loadModel(in);
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+				errormsg = "Failed to load model. Is this a valid gcode file ?\n" + e.getMessage();
+				g2.repaint();
+				return;
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
-			errormsg="Failed to load model. Is this a valid gcode file ?\n"+e.getMessage(); 
-			g2.repaint();
-			return;
+
+			if (!ret) {
+				errormsg = "Failed to load model.Check errors on command line.";
+				g2.repaint();
+				return;
+			}
+			model.analyze();
+		} else {
+			model = modelin;
 		}
-		
-		if(!ret) {
-			errormsg="Failed to load model.Check errors on command line."; 
-			g2.repaint();
-			return;
-		}
-			
-		model.analyze();		
 		layers = new ArrayList<Layer>(model.getLayer());
 	}
 

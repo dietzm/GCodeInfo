@@ -16,26 +16,35 @@ public class PrintQueue  {
 	
 	//public static final int MAX_AUTO_CONCURRENT=1;
 	public static final int MAX_MANUAL_CONCURRENT=2000;
+	public Model printModel = null;
+	private float remainingtime=0;
+
 	//private boolean clear =false;
 	private LinkedBlockingQueue<GCode> aprintQ = new LinkedBlockingQueue<GCode>();
 	private LinkedBlockingQueue<GCode> mprintQ = new LinkedBlockingQueue<GCode>(MAX_MANUAL_CONCURRENT);
-	
+
+	public Model getPrintModel() {
+		return printModel;
+	}
+
 	public void put(GCode code)throws InterruptedException{
 		mprintQ.put(code);			
 	}
 	
 	public void putAuto(GCode code)throws InterruptedException{
-		aprintQ.put(code);			
+		aprintQ.put(code);	
+		remainingtime+=code.getTimeAccel();
 	}
 	
 	
 	public void addModel(Model code) throws InterruptedException{
+		printModel=code;
 		for (GCode gc : code.getGcodes()) {
 			if(gc.isPrintable()){
 				aprintQ.add(gc);
 			}
 		}
-	
+		remainingtime=printModel.getTimeaccel();	
 	}
 	
 	
@@ -63,6 +72,9 @@ public class PrintQueue  {
 	public GCode pollAuto() throws InterruptedException {
 		if(!mprintQ.isEmpty()) return pollManual(1000);
 		GCode gc = aprintQ.poll(2,TimeUnit.SECONDS);
+		if(gc!=null){
+			remainingtime-=gc.getTimeAccel();
+			}
 		return gc;
 	}
 
@@ -72,5 +84,17 @@ public class PrintQueue  {
 		//notify(); //notify to ensure the addAUtoOPs is interrupted
 		aprintQ.clear();
 		mprintQ.clear();
+		printModel=null;
+		remainingtime=0;
+	}
+
+	public float getRemainingtime() {
+		return remainingtime;
+	}
+	
+	public int getPercentCompleted() {
+	//	int perc = (int) (100 -( remainingtime / (printModel.getTimeaccel() /100)));
+		int perc = (int) (100 -( aprintQ.size() / (printModel.getGcodecount() /100)));
+		return perc;
 	}
 }

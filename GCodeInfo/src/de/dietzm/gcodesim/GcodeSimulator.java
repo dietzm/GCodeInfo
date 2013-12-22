@@ -131,7 +131,7 @@ public class GcodeSimulator extends Frame implements ActionListener {
 		
 
 		
-		gp.start(filename,in);	
+		gp.start(filename,in,null);	
 	}
 	
 	
@@ -576,6 +576,10 @@ public class GcodeSimulator extends Frame implements ActionListener {
 					try {
 						
 						ConsoleIf cons=new ConsoleIf() {
+							
+							public void updateState(String statemsg, int perc){
+								
+							}
 							
 							@Override
 							public void setWakeLock(boolean active) {
