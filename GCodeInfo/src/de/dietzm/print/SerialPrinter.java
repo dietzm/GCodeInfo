@@ -64,9 +64,11 @@ public class SerialPrinter implements Runnable, Printer {
 	public class States {
 		
 		public static final String CONNECTED="Connected";
+		public static final String FINISHED="Print Finshed";
 		public static final String DISCONNECTED="Disconnected";
 		public static final String CONNECTING="Connecting";
 		public static final String PRINTING="Printing";
+		public static final String PAUSED="Printing Paused";
 		public int baud = 115200;
 		public float bedtemp = 0;
 		public boolean connected = false;
@@ -202,8 +204,8 @@ public class SerialPrinter implements Runnable, Printer {
 				e.printStackTrace();
 			}
 			runner = null;
-			cons.updateState(States.DISCONNECTED,0);
 		}
+		cons.updateState(States.DISCONNECTED,0);
 	}
 
 	
@@ -271,6 +273,10 @@ public class SerialPrinter implements Runnable, Printer {
 
 	public GCode getCurrentGCode() {
 		return state.lastgcode;
+	}
+	
+	public float getRemainingtime() {
+		return printQueue.getRemainingtime();
 	}
 
 	/**
@@ -451,6 +457,7 @@ public class SerialPrinter implements Runnable, Printer {
 				cons.appendTextNoCR(recv);
 			}
 
+
 			/*
 			 * Check if printer command is committed with "ok" make sure to
 			 * update temperature in case of M105 command print out debug info
@@ -485,6 +492,11 @@ public class SerialPrinter implements Runnable, Printer {
 					}
 				}
 				break;
+			}
+			//Check if temperature field needs to be updated (M109,m116,..)
+			if (recv.containsTx()) { // Parse temperature
+				state.tempstring = recv.subSequence(0, recv.length(), state.tempstring);
+				cons.setTemp(state.tempstring);
 			}
 			
 			if(code.isBuffered() && !recv.startsWithEcho() && !recv.startsWithGO()){ //For buffered commands we only expect ok
@@ -634,7 +646,7 @@ public class SerialPrinter implements Runnable, Printer {
 				state.testrun = false;
 			}
 			state.lastgcode = GCodeFactory.getGCode("G0", 0);
-			cons.updateState(States.CONNECTED,-1);
+			cons.updateState(States.FINISHED,-1);
 		} else {
 			System.gc(); //Force garbage collection to avoid gc during print
 			printstart = System.currentTimeMillis();
@@ -713,6 +725,13 @@ public class SerialPrinter implements Runnable, Printer {
 			}
 		} else {
 			cons.appendText("Continue");
+		}
+		if(state.printing){
+			 if(state.pause){
+				 cons.updateState(States.PAUSED, -1);
+			 }else{
+				 cons.updateState(States.PRINTING, -1);
+			 }
 		}
 	}
 
