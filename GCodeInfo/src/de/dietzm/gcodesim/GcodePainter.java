@@ -838,7 +838,7 @@ public class GcodePainter implements Runnable {
 			
 						g2.setPos((int)((pos.x+Xoffset)*zoom), (int)((bedsizeY * zoom) - (pos.y+Yoffset)*zoom));
 						if (lastpos != null) {
-							if (gCode.isExtruding()) {
+							if (gCode.isExtruding()) { //TODO Add all_extrude for CNC
 								g2.setColor(lay.getNumber() % colNR);		
 								if(gcdef == Constants.GCDEF.G2 ||gcdef == Constants.GCDEF.G3 ){
 									printArc(g2, lastpos, pos, lay, gCode);
