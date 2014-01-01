@@ -68,7 +68,7 @@ public class NetworkPrinter implements Runnable{
 		try {
 			th.interrupt();
 			sock.close();
-		} catch (IOException e) {
+		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
