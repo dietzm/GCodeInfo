@@ -32,10 +32,11 @@ public class Dummy implements PrinterConnection {
 	@Override
 	public boolean init(boolean reset) throws Exception {
 		try {
-			Thread.sleep(3000);
+			Thread.sleep(2000);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			return false;
 		}
 		cons.appendText("start");
 		cons.appendText("Dummy Marlin V1.00");
@@ -46,7 +47,8 @@ public class Dummy implements PrinterConnection {
 
 	@Override
 	public boolean enumerate() {
-		requestDevice("TEST");
+		//requestDevice("TEST");
+		cons.chooseDialog(new String[]{"USB1","USB2"}, new String[]{"USB1","USB2"});
 		return true;
 	}
 
