@@ -7,7 +7,9 @@ public class Dummy implements PrinterConnection {
 	boolean isM105 =false;
 	boolean isReset =false;
 	boolean isSend =false;
-	byte[] memT = new MemoryEfficientString("ok T:14.9 /0.0 B:17.6 /0.0 T0:14.9 /0.0 @:0 B@:0\n").getBytes();
+	boolean odd = false;
+	byte[] memT = new MemoryEfficientString("ok T:179.2 /0.0 B:50.6 /0.0 T0:14.9 /0.0 @:0 B@:0\n").getBytes();
+	byte[] memT1 = new MemoryEfficientString("ok T:181.2 /0.0 B:48.6 /0.0 T0:10.9 /0.0 @:0 B@:0\n").getBytes();
 	byte[] memS = new MemoryEfficientString("start grbl\n").getBytes();
 	SerialPrinter sio;
 	ConsoleIf cons;
@@ -80,7 +82,8 @@ public class Dummy implements PrinterConnection {
 	@Override
 	public void read(ReceiveBuffer rbuf) {
 		try {
-			Thread.sleep((long)sio.state.lastgcode.getTimeAccel());				
+			Thread.sleep((long)(sio.state.lastgcode.getTimeAccel()*1000));	
+			//System.out.println(sio.state.lastgcode.getTimeAccel()*1000+"Sec");
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
@@ -88,8 +91,14 @@ public class Dummy implements PrinterConnection {
 		isSend=false;
 		//TODO state.readcalls++;
 		if(isM105){
-			System.arraycopy(memT, 0, rbuf.array, 0, memT.length);
-			rbuf.setlength(memT.length);
+			if(odd){
+				System.arraycopy(memT, 0, rbuf.array, 0, memT.length);
+				rbuf.setlength(memT.length);
+			}else{
+				System.arraycopy(memT1, 0, rbuf.array, 0, memT1.length);
+				rbuf.setlength(memT1.length);
+			}
+			odd = !odd;
 			isM105=false;
 		}else if(isReset){
 			System.arraycopy(memS, 0, rbuf.array, 0, memS.length);
