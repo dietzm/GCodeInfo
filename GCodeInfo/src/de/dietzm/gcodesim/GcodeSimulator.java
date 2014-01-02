@@ -577,7 +577,7 @@ public class GcodeSimulator extends Frame implements ActionListener {
 						
 						ConsoleIf cons=new ConsoleIf() {
 							
-							public void updateState(String statemsg, int perc){
+							public void updateState(CharSequence statemsg,CharSequence detail, int perc){
 								
 							}
 							

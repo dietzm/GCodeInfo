@@ -10,5 +10,5 @@ public interface ConsoleIf {
 	public void setPrinting(boolean printing);
 	public void log(String tag, String value);
 	public boolean hasWakeLock();
-	public void updateState(String statemsg,int progressPercent);
+	public void updateState(CharSequence statemsg,CharSequence detail,int progressPercent);
 }

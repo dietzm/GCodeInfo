@@ -9,6 +9,7 @@ import de.dietzm.Model;
 import de.dietzm.SerialIO.States;
 import de.dietzm.gcodes.GCode;
 import de.dietzm.gcodes.GCodeFactory;
+import de.dietzm.gcodes.MemoryEfficientLenString;
 import de.dietzm.gcodes.MemoryEfficientString;
 
 
@@ -69,6 +70,9 @@ public class SerialPrinter implements Runnable, Printer {
 		public static final String CONNECTING="Connecting";
 		public static final String PRINTING="Printing";
 		public static final String PAUSED="Printing Paused";
+		public static final String CONNECTMSG = "Please connect";
+		public static final String CONNECTINGMSG ="Establishing printer connection";
+		public static final String CONNECTEDMSG ="Ready to start printing";
 		public int baud = 115200;
 		public float bedtemp = 0;
 		public boolean connected = false;
@@ -91,6 +95,7 @@ public class SerialPrinter implements Runnable, Printer {
 		public String serialtype="";
 		public int percentCompleted=0;
 		public MemoryEfficientString tempstring = new MemoryEfficientString(new byte[64]);
+		public MemoryEfficientLenString timestring = new MemoryEfficientLenString(new byte[32]);
 		// public boolean absolute
 		boolean testrun = false;
 
@@ -164,14 +169,14 @@ public class SerialPrinter implements Runnable, Printer {
 
 	public boolean connect(PrinterConnection type, int baud) {
 		state.connecting=true;
-		cons.updateState(States.CONNECTING,0);
+		cons.updateState(States.CONNECTING,States.CONNECTINGMSG,0);
 		state.baud=baud;
 		mConn=type;
 		boolean succ = mConn.enumerate();
 		if(!succ){ 
 			state.connecting=false;		
 			state.connected=false;
-			cons.updateState(States.DISCONNECTED,0);
+			cons.updateState(States.DISCONNECTED,States.CONNECTMSG,0);
 		}
 		return succ;
 	}
@@ -205,7 +210,7 @@ public class SerialPrinter implements Runnable, Printer {
 			}
 			runner = null;
 		}
-		cons.updateState(States.DISCONNECTED,0);
+		cons.updateState(States.DISCONNECTED,States.CONNECTMSG,0);
 	}
 
 	
@@ -218,7 +223,7 @@ public class SerialPrinter implements Runnable, Printer {
 			if(mConn.init(resetoninit)){
 				state.connected=true;
 				state.connecting=false;
-				cons.updateState(States.CONNECTED,0);
+				cons.updateState(States.CONNECTED,States.CONNECTEDMSG,0);
 			}
 		} catch (Exception e) {
 			if(state.debug) cons.appendText("Init failed:" + e.getMessage());
@@ -275,8 +280,10 @@ public class SerialPrinter implements Runnable, Printer {
 		return state.lastgcode;
 	}
 	
-	public float getRemainingtime() {
-		return printQueue.getRemainingtime();
+	public CharSequence getRemainingtime() {
+		int	len = Constants.formatTimetoHHMMSS(printQueue.getRemainingtime(),state.timestring.getBytes());
+		state.timestring.setlength(len-3); //Cut off seconds
+		return state.timestring;
 	}
 
 	/**
@@ -509,7 +516,7 @@ public class SerialPrinter implements Runnable, Printer {
 		//Update progress bar percentage. Only update if percent changes.
 		if(isPrinting() && state.percentCompleted != printQueue.getPercentCompleted()){
 			state.percentCompleted = printQueue.getPercentCompleted();
-			cons.updateState(States.PRINTING,state.percentCompleted );
+			cons.updateState(States.PRINTING, getRemainingtime() ,state.percentCompleted );
 		}
 	}
 
@@ -637,8 +644,9 @@ public class SerialPrinter implements Runnable, Printer {
 		cons.setPrinting(isprinting);
 		
 		if (!isprinting) {
-			cons.log(serial, "Print Finished Time:" + (System.currentTimeMillis() - printstart));
-			cons.appendText("Print finished in " + ((System.currentTimeMillis() - printstart) / 1000) + "s");
+			String fin = "Print finished in " + ((System.currentTimeMillis() - printstart) / 1000) + "s";
+			cons.log(serial, fin);
+			cons.appendText(fin);
 			printQueue.clear();
 			if (state.testrun) {
 				cons.appendText("Testrun completed, average response time (ms):" + testrunavg / 5002);
@@ -646,12 +654,12 @@ public class SerialPrinter implements Runnable, Printer {
 				state.testrun = false;
 			}
 			state.lastgcode = GCodeFactory.getGCode("G0", 0);
-			cons.updateState(States.FINISHED,-1);
+			cons.updateState(States.FINISHED,fin,-1);
 		} else {
 			System.gc(); //Force garbage collection to avoid gc during print
 			printstart = System.currentTimeMillis();
 			garbagetime =printstart+6000;
-			cons.updateState(States.PRINTING,0);
+			cons.updateState(States.PRINTING,getRemainingtime(),0);
 		}
 
 	}
@@ -728,9 +736,9 @@ public class SerialPrinter implements Runnable, Printer {
 		}
 		if(state.printing){
 			 if(state.pause){
-				 cons.updateState(States.PAUSED, -1);
+				 cons.updateState(States.PAUSED,null, -1);
 			 }else{
-				 cons.updateState(States.PRINTING, -1);
+				 cons.updateState(States.PRINTING,null, -1);
 			 }
 		}
 	}
