@@ -5,8 +5,11 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 
+import de.dietzm.Constants;
 import de.dietzm.Model;
 import de.dietzm.gcodes.GCode;
 
@@ -52,7 +55,8 @@ public class NetworkPrinter implements Runnable{
 		try {
 			while(!Thread.interrupted()){
 				Socket sin = waitForData();
-				gp.printreceived("GCode from "+sin.getInetAddress(), sin.getInputStream());
+				String filename = 	sin.getInetAddress().getHostAddress() + "_"+new SimpleDateFormat("yyMMdd_HHmmss").format(new Date())+".gcode";
+				gp.printreceived(filename, sin.getInputStream());
 				sin.close();
 			}
 		} catch (IOException e) {
