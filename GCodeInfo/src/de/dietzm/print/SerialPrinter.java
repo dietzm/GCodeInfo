@@ -17,7 +17,8 @@ public class SerialPrinter implements Runnable, Printer {
 
 	public static final GCode G0 = GCodeFactory.getGCode("G0", 0);
 	public static final GCode M105 = GCodeFactory.getGCode("M105", -105);
-	public static final String serial = "SERIAL"; //log tag	
+	public static final String serial = "SERIAL"; //log tag
+	public static final String io = "IO"; //log tag	
 	
 	private ConsoleIf cons = null;
 	private PrinterConnection mConn = null;
@@ -400,6 +401,7 @@ public class SerialPrinter implements Runnable, Printer {
 				if(logerrors && Constants.lastGarbage-garbagetime > 0){
 					garbagetime=Constants.lastGarbage;
 					cons.appendText("Garbage collector run during print !");
+					cons.log("GC", String.valueOf(garbagetime));
 				}
 			}
 			if (!state.printing || state.pause) {
@@ -430,6 +432,7 @@ public class SerialPrinter implements Runnable, Printer {
 		int len = code.getCodeline(ioBuffer.array); //Get codeline into buffer
 		ioBuffer.setlength(len);					//adjust buffer len to what we got
 		mConn.writeBuffer(ioBuffer);				//write buffer
+		cons.log(io, null, ioBuffer); 				//log buffer to logfile
 		sendtime = System.currentTimeMillis();
 		state.readcalls=0; //reset readcalls var debug only
 
@@ -441,7 +444,7 @@ public class SerialPrinter implements Runnable, Printer {
 
 			// receive updates wait 10min or 10sec
 			ReceiveBuffer recv = readResponse(code.isLongRunning()?60000:timeout);
-
+			cons.log(io, null, recv); 						//log buffer to logfile
 			if (state.reset)
 				break;
 
@@ -453,8 +456,10 @@ public class SerialPrinter implements Runnable, Printer {
 				state.timeouts++;
 				state.timeoutline=code.getLineindex();
 				if(state.debug || logerrors){
-					//This can even happen in normal cases e.g. when the move is very long (1st in the buffer) 
-					cons.appendText("Timeout waiting for printer response at line #",String.valueOf(state.timeoutline),"(", String.valueOf((System.currentTimeMillis() - starttime)), "ms)");
+					//This can even happen in normal cases e.g. when the move is very long (1st in the buffer)
+					String logm = "Timeout waiting for printer response at line #"+state.timeoutline+"("+ String.valueOf((System.currentTimeMillis() - starttime))+ "ms)";
+					cons.appendText(logm);
+					cons.log("ERROR", logm);
 				}
 				break; // timeout
 			}
@@ -484,6 +489,7 @@ public class SerialPrinter implements Runnable, Printer {
 						state.swallows++;
 					if(state.debug || logerrors){						
 						cons.appendText("Swallow OK");
+						cons.log("ERROR", "Swallow OK");
 					}
 					continue;
 				}
@@ -509,6 +515,7 @@ public class SerialPrinter implements Runnable, Printer {
 			if(code.isBuffered() && !recv.startsWithEcho() && !recv.startsWithGO()){ //For buffered commands we only expect ok
 				state.unexpected++;
 				cons.appendText("Unexpected response from printer: "+recv.toString());
+				cons.log("ERROR", "Unexpected response from printer");
 				//break; Do not break because e.g. makibox always returns with unexpected responses
 			}
 		}
@@ -619,9 +626,8 @@ public class SerialPrinter implements Runnable, Printer {
 	}
 	
 	public void onRunError(Exception arg0, String arg1 ) {
-		if (state.debug)
-			cons.appendText(arg1+" Error:" + arg0.getMessage());
-			cons.log(serial, arg1+" Error:" + arg0);
+		if (state.debug) cons.appendText(arg1+" Error:" + arg0.getMessage());
+		cons.log("ERROR", arg1+" Error:" + arg0);
 		try {
 			disconnect();
 		} catch (Exception e) {
@@ -655,10 +661,12 @@ public class SerialPrinter implements Runnable, Printer {
 			}
 			state.lastgcode = GCodeFactory.getGCode("G0", 0);
 			cons.updateState(States.FINISHED,fin,-1);
+			if(state.debug) cons.appendText(showDebugData());
+			cons.log("DEBUG",showDebugData());
 		} else {
 			System.gc(); //Force garbage collection to avoid gc during print
 			printstart = System.currentTimeMillis();
-			garbagetime =printstart+6000;
+			garbagetime =printstart+12000;
 			cons.updateState(States.PRINTING,getRemainingtime(),0);
 		}
 
@@ -707,7 +715,7 @@ public class SerialPrinter implements Runnable, Printer {
 
 	public void setDebug(boolean db) {
 		state.debug = db;
-		showDebugData();
+		cons.appendText(showDebugData());
 		cons.appendText("Set debug " + state.debug);
 	}
 
@@ -729,7 +737,7 @@ public class SerialPrinter implements Runnable, Printer {
 			cons.appendText("Pause");
 			if(state.debug){
 				cons.appendText("Pause at GCode line number:" + state.lastgcode.getLineindex());
-				showDebugData();
+				cons.appendText(showDebugData());
 			}
 		} else {
 			cons.appendText("Continue");
@@ -743,37 +751,109 @@ public class SerialPrinter implements Runnable, Printer {
 		}
 	}
 
-	public void showDebugData() {
-			cons.appendText("-----------------Debug Data---------------------------");
-			cons.appendText("Connected/Connecting/reset:"+state.connected+"/"+state.connecting+"/"+state.reset);
-			cons.appendText("Baud:"+state.baud);
-			cons.appendText("Last GCode:"+state.lastgcode.getCodeline().toString().trim());
-			cons.appendText("Printing:"+state.printing);
-			cons.appendText("Serial Port:"+state.serialtype);
-			if(state.printing) cons.appendText("Print Start:"+new Date(printstart));
-			cons.appendText("Temperature:"+state.tempstring.toString().trim());
-			cons.appendText("TempWatch Intervall:"+tempwatchintervall);
-			cons.appendText("Communication Timeout (occurrences):"+timeout+"("+state.timeouts+")");
-			cons.appendText("Last com. timeout linenr:"+state.timeoutline);
-			cons.appendText("Unexpected response:"+state.unexpected);
-			cons.appendText("Swallow OK:"+state.swallows);
-			cons.appendText("Read calls:"+state.readcalls);
-			cons.appendText("Wakelock:" +cons.hasWakeLock());
-			cons.appendText("Time since last send:" +(System.currentTimeMillis() - starttime));
-			cons.appendText("Manual Print Queue:" +printQueue.getSizeManual());
-			cons.appendText("Auto Print Queue:" +printQueue.getSizeAuto());
+	public String showDebugData() {
+			StringBuilder str = new StringBuilder();
+			str.append("-----------------Debug Data---------------------------");
+			str.append(Constants.newlinec);
+			str.append("Connected/Connecting/reset:");
+			str.append(state.connected);
+			str.append("/");
+			str.append(state.connecting);
+			str.append("/");
+			str.append(state.reset);
+			str.append(Constants.newlinec);
+			
+			str.append("Baud:");
+			str.append(state.baud);
+			str.append(Constants.newlinec);
+			
+			str.append("Last GCode:");
+			str.append(state.lastgcode.getCodeline().toString().trim());
+			str.append(Constants.newlinec);
+			
+			str.append("Printing:");
+			str.append(state.printing);
+			str.append(Constants.newlinec);
+			
+			str.append("Serial Port:");
+			str.append(state.serialtype);
+			str.append(Constants.newlinec);
+			
+			if(state.printing){
+				str.append("Print Start:");
+				str.append(new Date(printstart));
+				str.append(Constants.newlinec);
+				
+				str.append("Filename:");
+				str.append(getModel().getFilename());
+				str.append(Constants.newlinec);
+			}
+			str.append("Temperature:");
+			str.append(state.tempstring.toString().trim());
+			str.append(Constants.newlinec);
+			
+			str.append("TempWatch Intervall:");
+			str.append(tempwatchintervall);
+			str.append(Constants.newlinec);
+			
+			str.append("Communication Timeout (occurrences):");
+			str.append(timeout);
+			str.append("(");
+			str.append(state.timeouts);
+			str.append(")");
+			str.append(Constants.newlinec);
+			
+			str.append("Last com. timeout linenr:");
+			str.append(state.timeoutline);
+			str.append(Constants.newlinec);
+			
+			str.append("Unexpected response:");
+			str.append(state.unexpected);
+			str.append(Constants.newlinec);
+			
+			str.append("Swallow OK:");
+			str.append(state.swallows);
+			str.append(Constants.newlinec);
+			
+			str.append("Read calls:");
+			str.append(state.readcalls);
+			str.append(Constants.newlinec);
+			
+			str.append("Wakelock:" );
+			str.append(cons.hasWakeLock());
+			str.append(Constants.newlinec);
+			
+			str.append("Time since last send:");
+			str.append((System.currentTimeMillis() - starttime));
+			str.append(Constants.newlinec);
+			
+			str.append("Manual Print Queue:");
+			str.append(printQueue.getSizeManual());
+			str.append(Constants.newlinec);
+			
+			str.append("Auto Print Queue:" );
+			str.append(printQueue.getSizeAuto());
+			str.append(Constants.newlinec);
+			
 			if(Constants.lastGarbage != 0){
-				cons.appendText("Last Garbage Collection:" +new Date(Constants.lastGarbage));
+				str.append("Last Garbage Collection:");
+				str.append(new Date(Constants.lastGarbage));
+				str.append(Constants.newlinec);
 			}
 			if (runner != null){
-				cons.appendText("RunnerThread Alive:" + runner.isAlive());
+				str.append("RunnerThread Alive:");
+				str.append(runner.isAlive());
+				str.append(Constants.newlinec);
 				StackTraceElement[] stack = runner.getStackTrace();
-				cons.appendText("RunnerThread Stack:");
+				str.append("RunnerThread Stack:");
 				for (int i = 0; i < stack.length; i++) {
-					cons.appendText(stack[i].toString());
+					str.append(stack[i].toString());
+					str.append(Constants.newlinec);
 				}
 			}
-			cons.appendText("--------------------------------------------");
+			str.append("--------------------------------------------");
+			str.append(Constants.newlinec);
+			return str.toString();
 	}
 
 }

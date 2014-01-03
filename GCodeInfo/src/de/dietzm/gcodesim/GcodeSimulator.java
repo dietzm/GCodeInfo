@@ -47,6 +47,7 @@ import de.dietzm.SerialIO;
 import de.dietzm.gcodesim.GcodePainter.Commands;
 import de.dietzm.print.ConsoleIf;
 import de.dietzm.print.Dummy;
+import de.dietzm.print.ReceiveBuffer;
 import de.dietzm.print.SerialPrinter;
 
 
@@ -600,7 +601,7 @@ public class GcodeSimulator extends Frame implements ActionListener {
 							}
 							
 							@Override
-							public void log(String tag, String value) {
+							public void log(String tag, String value, ReceiveBuffer ... buf) {
 								// TODO Auto-generated method stub
 								
 							}
