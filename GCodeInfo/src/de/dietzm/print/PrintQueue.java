@@ -94,7 +94,7 @@ public class PrintQueue  {
 	
 	public int getPercentCompleted() {
 		if ((printModel.getGcodecount()/100) == 0) return 100;
-		if (aprintQ.size() == 0) return 0;
+		if (aprintQ.size() == 0) return 100;
 		//System.out.println("Gcode count:"+printModel.getGcodecount());
 	//	int perc = (int) (100 -( remainingtime / (printModel.getTimeaccel() /100)));
 		int perc = (int) (100 -( aprintQ.size() / (printModel.getGcodecount() /100)));
