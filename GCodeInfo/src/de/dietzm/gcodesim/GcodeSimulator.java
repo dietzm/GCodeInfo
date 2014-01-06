@@ -601,7 +601,13 @@ public class GcodeSimulator extends Frame implements ActionListener {
 							}
 							
 							@Override
-							public void log(String tag, String value, ReceiveBuffer ... buf) {
+							public void log(String tag, String value, ReceiveBuffer buf) {
+								// TODO Auto-generated method stub
+								
+							}
+							
+							@Override
+							public void log(String tag, String value) {
 								// TODO Auto-generated method stub
 								
 							}

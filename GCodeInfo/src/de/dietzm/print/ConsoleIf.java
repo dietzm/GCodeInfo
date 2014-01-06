@@ -8,7 +8,8 @@ public interface ConsoleIf {
 	public int chooseDialog(final String[] items,final String[] values);
 	public void setWakeLock(boolean active);
 	public void setPrinting(boolean printing);
-	public void log(String tag, String value, ReceiveBuffer ... buf );
+	public void log(String tag, String value, ReceiveBuffer buf );
+	public void log(String tag, String value );
 	public boolean hasWakeLock();
 	public void updateState(CharSequence statemsg,CharSequence detail,int progressPercent);
 }
