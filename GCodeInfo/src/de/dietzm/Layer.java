@@ -326,7 +326,7 @@ public class Layer implements Comparable<Layer>{
 	}
 	public String getLayerDetailReport() {
 //		System.out.println("fan:"+fantime+" "+(gcodes.size()/100f));
-		StringBuilder var = new StringBuilder(); 
+		StringBuilder var = new StringBuilder(500); 
 				var.append('#');
 				var.append(number);
 				var.append(" Height: ");
