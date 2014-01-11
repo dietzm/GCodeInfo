@@ -30,7 +30,7 @@ public class SerialPrinter implements Runnable, Printer {
 	private long sendtime = 0;
 	private long starttime = 0;
 	private long garbagetime = 0;
-
+	
 	private long lastTempWatch = 0; //time when last tempwatch happened
 	private float testrunavg = 0;
 	private int tempwatchintervall = 10000;
@@ -208,6 +208,8 @@ public class SerialPrinter implements Runnable, Printer {
 					runner.interrupt();
 			} catch (Exception e) {
 				e.printStackTrace();
+				if (runner != null && runner != Thread.currentThread())
+					runner.interrupt();
 			}
 			runner = null;
 		}
@@ -520,6 +522,9 @@ public class SerialPrinter implements Runnable, Printer {
 			}
 		}
 
+//		int dtime = (int)(System.currentTimeMillis() - starttime);
+//		bufferedGCodetime = Math.max(0,(bufferedGCodetime-dtime));
+//		cons.log("TIME","BGTTime:"+bufferedGCodetime);
 		//Update progress bar percentage. Only update if percent changes.
 		if(isPrinting() && state.percentCompleted != printQueue.getPercentCompleted()){
 			state.percentCompleted = printQueue.getPercentCompleted();
@@ -586,10 +591,8 @@ public class SerialPrinter implements Runnable, Printer {
 		}
 		if (state.connected) {
 			cons.appendText("Reset connection");
-			if (state.printing)
-				setPrintMode(false);
 			state.reset = true;
-			runner.interrupt(); // inform runner thread to do the reset
+			//runner.interrupt(); // inform runner thread to do the reset
 		} else {
 			cons.appendText("Not connected");
 		}

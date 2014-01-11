@@ -1,5 +1,6 @@
 package de.dietzm.print;
 
+import de.dietzm.gcodes.GCode;
 import de.dietzm.gcodes.MemoryEfficientString;
 
 public class Dummy implements PrinterConnection {
@@ -13,6 +14,9 @@ public class Dummy implements PrinterConnection {
 	byte[] memS = new MemoryEfficientString("start grbl\n").getBytes();
 	SerialPrinter sio;
 	ConsoleIf cons;
+	GCode[] buffer = new GCode[16];
+	int buffercnt=0;
+	int bufferpos=0;
 	
 	public Dummy(SerialPrinter sio,ConsoleIf cons) {
 		this.sio=sio;
@@ -77,12 +81,18 @@ public class Dummy implements PrinterConnection {
 			isM105=true;
 		}
 		isSend=true;
+		buffer[bufferpos++] = sio.state.lastgcode;
+		buffercnt++;
 	}
 
 	@Override
 	public void read(ReceiveBuffer rbuf) {
 		try {
-			Thread.sleep((long)(sio.state.lastgcode.getTimeAccel()*1000));	
+			if(buffercnt == buffer.length){
+				bufferpos=0;
+				Thread.sleep((long)(buffer[bufferpos].getTimeAccel()*1000));
+				buffercnt--;
+			}
 			//System.out.println(sio.state.lastgcode.getTimeAccel()*1000+"Sec");
 		} catch (InterruptedException e) {
 			e.printStackTrace();
