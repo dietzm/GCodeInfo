@@ -405,11 +405,14 @@ public class SerialPrinter implements Runnable, Printer {
 	private void printAndWaitQueue() throws InterruptedException {
 		GCode code = null;
 		// do temp watch every 10 sec if busy
-		if (System.currentTimeMillis() - lastTempWatch < tempwatchintervall || (!state.printing && !printQueue.isManualEmpty())) {
+		if (System.currentTimeMillis() - lastTempWatch < tempwatchintervall || (!state.printing && !printQueue.isManualEmpty()) || state.streaming) {
 			if (state.printing && !state.pause) {
 				code = printQueue.pollAuto(); // poll for auto ops
 				if (code == null){
 					state.lastgcode = G0;
+					if(state.percentCompleted >= 100){
+						state.sdprint=false; //end printing
+					}
 					if(state.sdprint){
 						code=M27; //get SD status
 					}else{
@@ -528,9 +531,6 @@ public class SerialPrinter implements Runnable, Printer {
 					
 				}else if(code == M27){
 					state.percentCompleted=recv.parseSDStatus();
-					if(state.percentCompleted >= 100){
-						state.sdprint=false; //end printing
-					}
 				}
 
 				// if(state.debug){
@@ -753,6 +753,7 @@ public class SerialPrinter implements Runnable, Printer {
 			System.gc(); //Force garbage collection to avoid gc during print
 			printstart = System.currentTimeMillis();
 			garbagetime =printstart+12000;
+			state.percentCompleted=0;
 			if(state.streaming || state.sdprint){
 				cons.updateState(States.STREAMING,"unknown",0);
 			}else{
