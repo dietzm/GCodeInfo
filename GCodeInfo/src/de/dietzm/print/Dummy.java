@@ -54,7 +54,7 @@ public class Dummy implements PrinterConnection {
 	@Override
 	public boolean enumerate() {
 		//requestDevice("TEST");
-		cons.chooseDialog(new String[]{"USB1","USB2"}, new String[]{"USB1","USB2"});
+		cons.chooseDialog(new String[]{"USB1","USB2"}, new String[]{"USB1","USB2"},1);
 		return true;
 	}
 

@@ -17,6 +17,8 @@ public class SerialPrinter implements Runnable, Printer {
 
 	public static final GCode G0 = GCodeFactory.getGCode("G0", 0);
 	public static final GCode M105 = GCodeFactory.getGCode("M105", -105);
+	public static final GCode M20 = GCodeFactory.getGCode("M20", -20);
+	public static final GCode M27 = GCodeFactory.getGCode("M27", -20);
 	public static final String serial = "SERIAL"; //log tag
 	public static final String io = "IO"; //log tag	
 	
@@ -24,6 +26,7 @@ public class SerialPrinter implements Runnable, Printer {
 	private PrinterConnection mConn = null;
 	private final PrintQueue printQueue = new PrintQueue();;
 	private final ReceiveBuffer ioBuffer = new ReceiveBuffer(4096);
+	private StringBuffer sdfiles = new StringBuffer();
 	
 	private Thread runner = null;
 	private long printstart; //time when print started
@@ -70,6 +73,7 @@ public class SerialPrinter implements Runnable, Printer {
 		public static final String DISCONNECTED="Disconnected";
 		public static final String CONNECTING="Connecting";
 		public static final String PRINTING="Printing";
+		public static final String STREAMING="Streaming to SD";
 		public static final String PAUSED="Printing Paused";
 		public static final String CONNECTMSG = "Please connect";
 		public static final String CONNECTINGMSG ="Establishing printer connection";
@@ -87,6 +91,8 @@ public class SerialPrinter implements Runnable, Printer {
 		public float[] lastpos = new float[] { 0f, 0f, 0f };
 		public boolean pause = false;
 		public boolean printing = false;
+		public boolean streaming = false;
+		public boolean sdprint = false;
 		public boolean reset = false;
 		public int timeouts=0;
 		public int timeoutline=0;
@@ -332,6 +338,11 @@ public class SerialPrinter implements Runnable, Printer {
 	public void moveStep(Axis move, int sign) {
 		moveStep(move, sign, movespeed);
 	}
+	
+	public void listSDCard() {
+		sdfiles.setLength(0);
+		addToPrintQueue(M20, true);
+	}
 
 	public void moveStep(Axis move, int sign, int speed) {
 		cons.appendText("Move " + move);
@@ -397,9 +408,17 @@ public class SerialPrinter implements Runnable, Printer {
 		if (System.currentTimeMillis() - lastTempWatch < tempwatchintervall || (!state.printing && !printQueue.isManualEmpty())) {
 			if (state.printing && !state.pause) {
 				code = printQueue.pollAuto(); // poll for auto ops
-				state.lastgcode = code;// remember last code to sync with UI
-				if (code == null)
-					setPrintMode(false); // Finish printing
+				if (code == null){
+					state.lastgcode = G0;
+					if(state.sdprint){
+						code=M27; //get SD status
+					}else{
+						setPrintMode(false); // Finish printing
+					}
+				}else{
+					state.lastgcode = code;// remember last code to sync with UI
+				}
+					
 				if(logerrors && Constants.lastGarbage-garbagetime > 0){
 					garbagetime=Constants.lastGarbage;
 					cons.appendText("Garbage collector run during print !");
@@ -494,6 +513,24 @@ public class SerialPrinter implements Runnable, Printer {
 						cons.log("ERROR", "Swallow OK");
 					}
 					continue;
+				}else if(code == M20){
+					sdfiles.append(recv.toString());
+					String[] fout = sdfiles.toString().toLowerCase().split("\n");
+					if(fout.length > 3){
+						//remove begin & end & ok
+						String[] fnew = new String[fout.length-3];
+						System.arraycopy(fout, 1, fnew, 0, fout.length-3);
+						cons.chooseDialog(fnew,fnew,2);
+					}else{
+						cons.chooseDialog(null,null,2);
+					}
+						
+					
+				}else if(code == M27){
+					state.percentCompleted=recv.parseSDStatus();
+					if(state.percentCompleted >= 100){
+						state.sdprint=false; //end printing
+					}
 				}
 
 				// if(state.debug){
@@ -520,19 +557,43 @@ public class SerialPrinter implements Runnable, Printer {
 				cons.log("ERROR", "Unexpected response from printer");
 				//break; Do not break because e.g. makibox always returns with unexpected responses
 			}
+			
+			if(code == M20){
+				cons.log("serial", "Add file output:"+recv.toString());
+				sdfiles.append(recv.toString());
+			}
 		}
 
 //		int dtime = (int)(System.currentTimeMillis() - starttime);
 //		bufferedGCodetime = Math.max(0,(bufferedGCodetime-dtime));
 //		cons.log("TIME","BGTTime:"+bufferedGCodetime);
 		//Update progress bar percentage. Only update if percent changes.
-		if(isPrinting() && state.percentCompleted != printQueue.getPercentCompleted()){
-			state.percentCompleted = printQueue.getPercentCompleted();
-			cons.updateState(States.PRINTING, getRemainingtime() ,state.percentCompleted );
+		if(isPrinting()){
+			if(state.sdprint){
+				cons.updateState(States.STREAMING, "unknown" ,state.percentCompleted );
+			}else if(state.percentCompleted != printQueue.getPercentCompleted()){
+				state.percentCompleted = printQueue.getPercentCompleted();
+				if(state.streaming){
+					cons.updateState(States.STREAMING, "unknown" ,state.percentCompleted );
+				}else{
+					cons.updateState(States.PRINTING, getRemainingtime() ,state.percentCompleted );
+				}
+			}
 		}
+		
+		
 	}
 
-	public void printModel(Model pm) throws InterruptedException {
+	/**
+	 * Print 
+	 * if sdfilename == null then print model
+	 * if sdfilename is not null and model is not null, stream model to sd card on printer
+	 * if sdfilename is not null but model is not, start sd print		
+	 * @param pm Model 
+	 * @param sdfilename  filename on sd card
+	 * @throws InterruptedException
+	 */
+	public void printModel(Model pm,String sdfilename) throws InterruptedException {
 		if (state.connecting) {
 			cons.appendText("Still connecting. Please wait until connecting is established.");
 			return;
@@ -541,10 +602,29 @@ public class SerialPrinter implements Runnable, Printer {
 			cons.appendText("Not connected");
 			return;
 		}
-		printQueue.addModel(pm);
+		
+		
+		if(sdfilename == null){
+			printQueue.addModel(pm);	
+			if (state.debug)
+				cons.appendText("Model added, Printing:" + state.printing);
+		}else if (pm != null ){
+			printQueue.putAuto(GCodeFactory.getGCode("M28 "+sdfilename, -28));
+			state.streaming=true;
+			printQueue.addModel(pm);
+			printQueue.putAuto(GCodeFactory.getGCode("M29 "+sdfilename, -28));
+			if (state.debug)
+				cons.appendText("Model streamed, Printing:" + state.printing);
+		}else{
+			printQueue.putAuto(GCodeFactory.getGCode("M23 "+sdfilename, -23));
+			printQueue.putAuto(GCodeFactory.getGCode("M24", -24));
+			state.sdprint=true;
+			if (state.debug)
+				cons.appendText("SD print, Printing:" + state.printing);
+           }
+				
 		setPrintMode(true);
-		if (state.debug)
-			cons.appendText("Model added, Printing:" + state.printing);
+		
 	}
 	
 	/**
@@ -663,14 +743,21 @@ public class SerialPrinter implements Runnable, Printer {
 				state.testrun = false;
 			}
 			state.lastgcode = GCodeFactory.getGCode("G0", 0);
+			if(state.streaming) addToPrintQueue(GCodeFactory.getGCode("M29", -29), true); //Stop sd streaming
 			cons.updateState(States.FINISHED,fin,-1);
+			state.sdprint=false;
+			state.streaming = false;
 			if(state.debug) cons.appendText(showDebugData());
 			cons.log("DEBUG",showDebugData());
 		} else {
 			System.gc(); //Force garbage collection to avoid gc during print
 			printstart = System.currentTimeMillis();
 			garbagetime =printstart+12000;
-			cons.updateState(States.PRINTING,getRemainingtime(),0);
+			if(state.streaming || state.sdprint){
+				cons.updateState(States.STREAMING,"unknown",0);
+			}else{
+				cons.updateState(States.PRINTING,getRemainingtime(),0);
+			}
 		}
 
 	}
@@ -734,8 +821,24 @@ public class SerialPrinter implements Runnable, Printer {
 	}
 
 	public void togglePause() {
-
-		state.pause = !state.pause;
+		
+		if(state.sdprint){
+			//Execute commands to pause
+			if(state.pause){
+				state.pause=false; //Continue and resume
+				addToPrintQueue(GCodeFactory.getGCode("M24",-24), false);
+			}else{
+				addToPrintQueue(GCodeFactory.getGCode("M25",-25), false);
+				try {
+					Thread.sleep(1000); //wait for printqueue to execute command before toggle pause
+				} catch (InterruptedException e) {
+				}
+				state.pause=true;
+			}
+			
+		}else{
+			state.pause = !state.pause;
+		}
 		if (state.pause) {
 			cons.appendText("Pause");
 			if(state.debug){
@@ -776,6 +879,10 @@ public class SerialPrinter implements Runnable, Printer {
 			
 			str.append("Printing:");
 			str.append(state.printing);
+			str.append(Constants.newlinec);
+			
+			str.append("Streaming:");
+			str.append(state.streaming);
 			str.append(Constants.newlinec);
 			
 			str.append("Serial Port:");

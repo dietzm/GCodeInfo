@@ -5,7 +5,7 @@ public interface ConsoleIf {
 	public void appendTextNoCR(CharSequence ... txt);
 	public void setTemp(CharSequence temp);
 	public void clearConsole();	
-	public int chooseDialog(final String[] items,final String[] values);
+	public int chooseDialog(final String[] items,final String[] values, int type);
 	public void setWakeLock(boolean active);
 	public void setPrinting(boolean printing);
 	public void log(String tag, String value, ReceiveBuffer buf );

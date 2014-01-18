@@ -103,6 +103,38 @@ public class ReceiveBuffer implements CharSequence {
 		return false; //ASCII
 	}
 	
+	public boolean startsWithSD(){
+		if(len<2) return false;
+		return array[0]==83 && array[1]==68;
+	}
+	
+	/**
+	 * parse output:
+	 * sd printing byte 0/0
+	 * 
+	 * @return percent complete
+	 */
+	public int parseSDStatus(){
+		if(len<17) return 0;
+		//Starts with SD
+		int sdtext=17;
+		if(startsWithSD()){
+			int idx = indexOf('/');
+			if(idx == -1) return 0;
+			int done;
+			int total;
+			try {
+				done = Integer.parseInt(subSequence(sdtext, idx).toString());
+				total = Integer.parseInt(subSequence(idx+1,len-4).toString());
+			} catch (NumberFormatException e) {
+				return 0; //todo
+			}
+			if(total == 0) return 100;
+			if(done == 0) return 0;
+			return done/(total/100);
+		}
+		return 0; //ASCII
+	}
 	
 	public boolean startsWithEcho(){
 		if(len<4) return false;
