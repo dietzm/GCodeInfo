@@ -22,8 +22,8 @@ import de.dietzm.print.Printer;
  */
 public class GcodePainter implements Runnable {
 	public static enum Commands {STEPBACK,STEP50X,STEP50XBACK,RESTART,NEXTLAYER,NEXTLAYER10,REPAINTLABEL,DEBUG,EXIT,OPENFILE,NOOP,PRINT,REPAINTLAYERS,PREVIOUSLAYER,HELP,REANALYSE}; 
-	public static final int bedsizeX = 200;
-	public static final int bedsizeY = 200;
+	public int bedsizeX = 200;
+	public int bedsizeY = 200;
 	public int colNR = 7;
 	public boolean painttravel = true;
 	public boolean isPainttravel() {
@@ -286,9 +286,11 @@ public class GcodePainter implements Runnable {
 		colNR=g.getColorNr()-2; //-1 size vs index , -2 travel + border colors
 	}
 	
-	public GcodePainter(GraphicRenderer g, boolean modeldetails, float zoomlevel){
+	public GcodePainter(GraphicRenderer g, boolean modeldetails, float zoomlevel,int bedx, int bedy){
 		this(g);
 		this.zoom=zoomlevel;
+		bedsizeX=bedx;
+		bedsizeY=bedy;
 		
 	}
 
@@ -381,7 +383,7 @@ public class GcodePainter implements Runnable {
 		g2.setColor(lay.getNumber() % colNR);
 		float boxheight=(bedsizeX*zoom)/12f;
 		int linegap=(int)((4*zoom)+3.2f);
-		float size=2.5f+(3.10f*zoom);
+		float size=2.5f+(3.10f*zoom)/200*bedsizeX;
 		g2.setFontSize(size);
 		
 		// bed
@@ -442,7 +444,8 @@ public class GcodePainter implements Runnable {
 		float boxpos=((bedsizeX*zoom+gap)/100)*boxposp;
 		float boxheight=(bedsizeX*zoom)/12f;
 		float gapz=zoom;
-		float size=2+9.6f*(zoom);
+		float size=10.15f*(zoom)/200*bedsizeX;
+		System.out.println("Fontsize:"+size+" zoom:"+zoom);
 		g2.clearrect(boxpos+2,bedsizeY*zoom+2, boxsize-3,boxheight-2,print?1:0);
 		g2.setColor(colNR);//white
 		g2.drawrect(boxpos,bedsizeY*zoom, boxsize,boxheight+1);
@@ -539,7 +542,7 @@ public class GcodePainter implements Runnable {
 		float boxheight=(bedsizeX*zoom)/12f;
 		g2.drawrect(bedsizeX * zoom + gap, 0,  bedsizeX*zoomsmall*2, bedsizeY * zoom+boxheight+1); // Draw print		
 		
-		float fsize=2+5f*(zoom);
+		float fsize=2+5f*(zoom)/200*bedsizeX;
 		g2.setFontSize(fsize);
 		
 		g2.drawtext("Front View", bedsizeX * zoom + gap+bedsizeX*zoomsmall,fsize+2,bedsizeX*zoomsmall);

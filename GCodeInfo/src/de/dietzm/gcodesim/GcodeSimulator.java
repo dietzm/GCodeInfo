@@ -106,6 +106,7 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
+	int bedsizeX=200,bedsizeY=200;
 	
 	//Properties
 	static String networkip = "192.168.0.50";
@@ -118,8 +119,8 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	}
 	
 	public void init(String filename,InputStream in) throws IOException{
-		awt = new AWTGraphicRenderer(GcodePainter.bedsizeX, GcodePainter.bedsizeY,this);
-		gp = new GcodePainter(awt);
+		awt = new AWTGraphicRenderer(bedsizeX, bedsizeY,this);
+		gp = new GcodePainter(awt); //todo pass bedsize
 		updateSize(showdetails);
 		setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource( "/icon.png" )));
 		
@@ -428,7 +429,7 @@ public class GcodeSimulator extends Frame implements ActionListener {
 					updateSize(showdetails);
 				}else{
 					//Speedup (only if in left box
-					if(arg0.getPoint().x < GcodePainter.bedsizeX * gp.getZoom()+gp.gap ){
+					if(arg0.getPoint().x < bedsizeX * gp.getZoom()+gp.gap ){
 						if( mwrot > 0){
 							gp.toggleSpeed(false);
 						}else{
@@ -470,13 +471,13 @@ public class GcodeSimulator extends Frame implements ActionListener {
 				}else if(arg0.getButton() == MouseEvent.BUTTON2){
 						gp.showHelp();
 				}else{
-					int speedboxpos = (int)(((GcodePainter.bedsizeX*gp.getZoom()+gp.gap)/100)*82)+6;
-					int speedboxsize=(int)((GcodePainter.bedsizeX*gp.getZoom()+gp.gap)/100)*12;
+					int speedboxpos = (int)(((bedsizeX*gp.getZoom()+gp.gap)/100)*82)+6;
+					int speedboxsize=(int)((bedsizeX*gp.getZoom()+gp.gap)/100)*12;
 					int mousex=arg0.getPoint().x;
 					//if clicked on speedup label, toggle pause
-					if(mousex >= speedboxpos && mousex <= speedboxpos+speedboxsize && arg0.getPoint().y > GcodePainter.bedsizeY*gp.getZoom()+55){
+					if(mousex >= speedboxpos && mousex <= speedboxpos+speedboxsize && arg0.getPoint().y > bedsizeY*gp.getZoom()+55){
 						gp.togglePause();
-					}else if(arg0.getPoint().x > GcodePainter.bedsizeX * gp.getZoom()+gp.gap ){
+					}else if(arg0.getPoint().x > bedsizeX * gp.getZoom()+gp.gap ){
 						gp.toggleType();
 					}else{
 						if(arg0.isAltDown() || arg0.isControlDown()){
@@ -511,7 +512,7 @@ public class GcodeSimulator extends Frame implements ActionListener {
 				if(currsize!=size){
 					//System.out.println("Size:"+size+" Curr:"+currsize);
 					//float fac = size/currsize;
-					float fac = (size-(55+(size/12)))/GcodePainter.bedsizeY;
+					float fac = (size-(55+(size/12)))/bedsizeY;
 					//float z = gp.getZoom();
 					//System.out.println("Zoom:"+z);
 					//gp.setZoom(z*(fac));
@@ -625,7 +626,7 @@ public class GcodeSimulator extends Frame implements ActionListener {
 							}
 							
 							@Override
-							public int chooseDialog(String[] items, String[] values) {
+							public int chooseDialog(String[] items, String[] values, int type) {
 								// TODO Auto-generated method stub
 								return 0;
 							}
