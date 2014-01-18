@@ -445,7 +445,6 @@ public class GcodePainter implements Runnable {
 		float boxheight=(bedsizeX*zoom)/12f;
 		float gapz=zoom;
 		float size=10.15f*(zoom)/200*bedsizeX;
-		System.out.println("Fontsize:"+size+" zoom:"+zoom);
 		g2.clearrect(boxpos+2,bedsizeY*zoom+2, boxsize-3,boxheight-2,print?1:0);
 		g2.setColor(colNR);//white
 		g2.drawrect(boxpos,bedsizeY*zoom, boxsize,boxheight+1);
