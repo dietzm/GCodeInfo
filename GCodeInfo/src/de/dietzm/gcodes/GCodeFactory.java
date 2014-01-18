@@ -78,7 +78,7 @@ public class GCodeFactory {
 		Character id;		
 		//String[] segments = codelinevar.split(" ");
 		String[] segments = Constants.splitbyLetter2(codelinevar);
-		codelinevar=codelinevar.substring(Math.min(segments[0].length()+1,codelinevar.length())); //Cut GX to save string memory
+		codelinevar=codelinevar.substring(Math.min(segments[0].length(),codelinevar.length())); //Cut GX to save string memory
 		
 		try {
 			tmpgcode = Constants.GCDEF.getGCDEF(segments[0]);
