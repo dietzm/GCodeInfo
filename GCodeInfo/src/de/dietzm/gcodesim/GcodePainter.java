@@ -770,6 +770,7 @@ public class GcodePainter implements Runnable {
 		g2.repaint();
 		A: while (true) {
 			if (layers != null) {
+				if ( model.getGcodecount() < 50) pause = 999999; //Activate pause when small file is loaded to prevent fast loops
 				Position pos = new Position(0,0);
 				Position lastpos = new Position(0,0);
 				fanspeed=0;
