@@ -1,5 +1,6 @@
 package de.dietzm.print;
 
+import de.dietzm.Constants.GCDEF;
 import de.dietzm.gcodes.GCode;
 import de.dietzm.gcodes.MemoryEfficientString;
 
@@ -11,12 +12,15 @@ public class Dummy implements PrinterConnection {
 	boolean odd = false;
 	byte[] memT = new MemoryEfficientString("ok T:179.2 /0.0 B:50.6 /0.0 T0:14.9 /0.0 @:0 B@:0\n").getBytes();
 	byte[] memT1 = new MemoryEfficientString("ok T:181.2 /0.0 B:48.6 /0.0 T0:10.9 /0.0 @:0 B@:0\n").getBytes();
+
 	byte[] memS = new MemoryEfficientString("start grbl\n").getBytes();
 	SerialPrinter sio;
 	ConsoleIf cons;
 	GCode[] buffer = new GCode[16];
 	int buffercnt=0;
 	int bufferpos=0;
+	int sdcnt = 0;
+	String sendbuf="";
 	
 	public Dummy(SerialPrinter sio,ConsoleIf cons) {
 		this.sio=sio;
@@ -80,6 +84,7 @@ public class Dummy implements PrinterConnection {
 		if(wbuf.length() >=4 && wbuf.charAt(0)=='M' && wbuf.charAt(1)=='1' &&wbuf.charAt(2)=='0' &&wbuf.charAt(3)=='5'   ){
 			isM105=true;
 		}
+		sendbuf=wbuf.toString();
 		isSend=true;
 		buffer[bufferpos++] = sio.state.lastgcode;
 		buffercnt++;
@@ -110,6 +115,23 @@ public class Dummy implements PrinterConnection {
 			}
 			odd = !odd;
 			isM105=false;
+		}else if(sendbuf.startsWith("M20")){
+			byte[] sd1 = new MemoryEfficientString("begin\nfile1.gco\nfile2.gco\nfile3.gco\nfile4.gco\nend\nok\n").getBytes();
+			System.arraycopy(sd1, 0, rbuf.array, 0, sd1.length);
+			rbuf.setlength(sd1.length);
+		}else if(sendbuf.startsWith("M27")){
+			sdcnt++;
+			if(sdcnt<10){
+				byte[] sd1 = new MemoryEfficientString("SD printing byte "+(sdcnt*100)+"/1000\nok\n").getBytes();
+				System.arraycopy(sd1, 0, rbuf.array, 0, sd1.length);
+				rbuf.setlength(sd1.length);
+			}else{
+				byte[] sd1 = new MemoryEfficientString("SD printing byte 1000/1000\nok\nPrinting done\nok\n").getBytes();
+				System.arraycopy(sd1, 0, rbuf.array, 0, sd1.length);
+				rbuf.setlength(sd1.length);
+				if(sdcnt>15) sdcnt=0;
+			}
+			
 		}else if(isReset){
 			System.arraycopy(memS, 0, rbuf.array, 0, memS.length);
 			rbuf.setlength(memS.length);
