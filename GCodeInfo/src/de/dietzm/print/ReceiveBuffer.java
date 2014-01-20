@@ -93,6 +93,13 @@ public class ReceiveBuffer implements CharSequence {
 		}
 		return -1; //ASCII
 	}
+	public int indexOf(char ch, int start){
+		if(len<1) return -1;
+		for (int i = start; i < len-1; i++) {
+			if(array[i]==ch) return i;
+		}
+		return -1; //ASCII
+	}
 	
 	//Repetier firmware sends when send delay was too large ?! 
 	public boolean containsWait(){
@@ -125,7 +132,12 @@ public class ReceiveBuffer implements CharSequence {
 			int total;
 			try {
 				done = Integer.parseInt(subSequence(sdtext, idx).toString());
-				total = Integer.parseInt(subSequence(idx+1,len-4).toString());
+				int idx2 = indexOf('\n',idx+1);
+				if(idx2 == -1){
+					return 0;
+				}
+				String remain = subSequence(idx+1,idx2).toString();
+				total = Integer.parseInt(remain);
 			} catch (NumberFormatException e) {
 				return 0; //todo
 			}
