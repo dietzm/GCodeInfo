@@ -132,9 +132,10 @@ public class SerialPrinter implements Runnable, Printer {
 	 * Add a gcode to the print queue for async execution
 	 * 
 	 * @param code
+	 * @param allow during manual operation only
 	 * @return true if the command has been added to the queue successfully
 	 */
-	public boolean addToPrintQueue(GCode code, boolean manual) {
+	public boolean addToPrintQueue(GCode code, boolean manualOnly) {
 		if (!code.isPrintable()) {
 			// Just skip
 			return true;
@@ -151,12 +152,8 @@ public class SerialPrinter implements Runnable, Printer {
 			cons.appendText("Still resetting....");
 			return false;
 		}
-		if (manual && state.printing && !state.pause) {
+		if (manualOnly && state.printing && !state.pause) {
 			cons.appendText("Stop or Pause printing first");
-			return false;
-		}
-		if (!manual && !state.printing) {
-			cons.appendText("Printing stopped");
 			return false;
 		}
 		try {
@@ -406,7 +403,7 @@ public class SerialPrinter implements Runnable, Printer {
 		GCode code = null;
 		// do temp watch every 10 sec if busy
 		if (System.currentTimeMillis() - lastTempWatch < tempwatchintervall || (!state.printing && !printQueue.isManualEmpty()) || state.streaming) {
-			if (state.printing && !state.pause) {
+			if (state.printing && !state.pause && printQueue.isManualEmpty()) {
 				code = printQueue.pollAuto(); // poll for auto ops
 				if (code == null){
 					state.lastgcode = G0;
@@ -427,8 +424,7 @@ public class SerialPrinter implements Runnable, Printer {
 					cons.appendText("Garbage collector run during print !");
 					cons.log("GC", String.valueOf(garbagetime));
 				}
-			}
-			if (!state.printing || state.pause) {
+			}else{
 				code = printQueue.pollManual(1); // poll for manual ops
 			}
 		} else {
@@ -813,10 +809,10 @@ public class SerialPrinter implements Runnable, Printer {
 	public void toggleFan() {
 		if (state.fan) {
 			cons.appendText("Disable Fan");
-			addToPrintQueue(GCodeFactory.getGCode("M107", 0), true);
+			addToPrintQueue(GCodeFactory.getGCode("M107", 0), false);
 		} else {
 			cons.appendText("Enable Fan");
-			addToPrintQueue(GCodeFactory.getGCode("M106", 0), true);
+			addToPrintQueue(GCodeFactory.getGCode("M106", 0), false);
 		}
 		state.fan = !state.fan;
 	}
