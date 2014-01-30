@@ -54,7 +54,11 @@ public class Dummy implements PrinterConnection {
 		cons.appendText("Successfully connected !");
 		return true;
 	}
-
+	
+	public int tryrecover(){
+		return 0;
+	}
+	
 	@Override
 	public boolean enumerate() {
 		//requestDevice("TEST");

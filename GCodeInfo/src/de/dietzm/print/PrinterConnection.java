@@ -26,5 +26,7 @@ public interface PrinterConnection {
 	public abstract void read(ReceiveBuffer rbuf);
 	
 	public int getType();
+	
+	public int tryrecover();
 
 }

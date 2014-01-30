@@ -16,7 +16,16 @@ public class ReceiveBuffer implements CharSequence {
 
 	public byte[] array ;
 	int offset, len;
+	boolean timedout =false;
 	
+	protected boolean isTimedout() {
+		return timedout;
+	}
+
+	protected void setTimedout(boolean timedout) {
+		this.timedout = timedout;
+	}
+
 	public ReceiveBuffer(int size){
 		array = new byte[size];
 		offset=0;
@@ -31,6 +40,12 @@ public class ReceiveBuffer implements CharSequence {
 		if(buf.position() > array.length) throw new IndexOutOfBoundsException("ReceiveBuffer size exceeded");
 		System.arraycopy(buf.array(), 0, array, 0, buf.position());
 		len=buf.position();
+	}
+	
+	public void put(byte[] buf){
+		if(buf.length > array.length) throw new IndexOutOfBoundsException("ReceiveBuffer size exceeded");
+		System.arraycopy(buf, 0, array, 0, buf.length);
+		len=buf.length;
 	}
 	
 	/**
@@ -49,6 +64,7 @@ public class ReceiveBuffer implements CharSequence {
 	 */
 	public void clear(){
 		len=0;
+		timedout=false;
 	}
 	
 	public byte[] array() {

@@ -39,6 +39,7 @@ public class SerialPrinter implements Runnable, Printer {
 	private int tempwatchintervall = 10000;
 	private boolean resetoninit=true;
 	private boolean logerrors=true;
+	private boolean recover = false;
 	public boolean isResetoninit() {
 		return resetoninit;
 	}
@@ -190,7 +191,7 @@ public class SerialPrinter implements Runnable, Printer {
 	}
 	
 	public void startRunnerThread(){
-		if (runner == null || !runner.isAlive()) {
+		if (runner == null || !runner.isAlive() || recover) {
 			runner = new Thread(this);
 			runner.start();
 		}
@@ -472,7 +473,7 @@ public class SerialPrinter implements Runnable, Printer {
 				float resptime = Constants.round3digits(((float) (System.currentTimeMillis() - sendtime)) / 1000);
 				cons.appendText("Wait for printer response: ", String.valueOf(resptime) , "s");
 			}
-			if (recv.isEmpty()) {
+			if (recv.isEmpty() || recv.isTimedout()) {
 				state.timeouts++;
 				state.timeoutline=code.getLineindex();
 				if(state.debug || logerrors){
@@ -601,6 +602,7 @@ public class SerialPrinter implements Runnable, Printer {
 		
 		
 		if(sdfilename == null){
+			cons.appendText("Add model to print queue");
 			printQueue.addModel(pm);	
 			if (state.debug)
 				cons.appendText("Model added, Printing:" + state.printing);
@@ -652,10 +654,11 @@ public class SerialPrinter implements Runnable, Printer {
 			} else {
 				if(state.debug){
 					cons.log(serial, "Incomplete response, wait for more inBuffer="+ioBuffer.length());
-				}else{
-					cons.log(serial, "Incomplete response, wait for more");
 				}
 			}
+		}
+		if(isConnected()){
+			ioBuffer.setTimedout(true);
 		}
 		return ioBuffer;
 	}
@@ -677,7 +680,7 @@ public class SerialPrinter implements Runnable, Printer {
 	public void run() {
 		Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
 		Thread.currentThread().setName("SerialRunner");
-		doInit(); //initialize the connection
+		if(!recover) doInit(); //initialize the connection
 		while (state.connected) {
 			if (state.reset) {
 				doReset();
@@ -785,6 +788,21 @@ public class SerialPrinter implements Runnable, Printer {
 		}
 		cons.appendText("Start communication test");
 		state.testrun = true;
+	}
+	
+	public void tryRecovery(){
+		if(mConn == null || (System.currentTimeMillis() - starttime) < 15000){
+			return ; //to early to recover
+		}
+		recover=true;
+		startRunnerThread();
+		try {
+			Thread.sleep(5000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		mConn.tryrecover();
+		
 	}
 
 	public void toggleBaud() {
