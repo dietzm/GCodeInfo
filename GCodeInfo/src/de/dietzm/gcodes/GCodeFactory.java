@@ -78,7 +78,11 @@ public class GCodeFactory {
 		Character id;		
 		//String[] segments = codelinevar.split(" ");
 		String[] segments = Constants.splitbyLetter2(codelinevar);
-		codelinevar=codelinevar.substring(Math.min(segments[0].length(),codelinevar.length())); //Cut GX to save string memory
+		if(codelinevar.length() > segments[0].length() && codelinevar.charAt(segments[0].length())== ' '){
+			codelinevar=codelinevar.substring(Math.min(segments[0].length()+1,codelinevar.length())); //Cut GX to save string memory
+		}else{
+			codelinevar=codelinevar.substring(Math.min(segments[0].length(),codelinevar.length())); //Cut GX to save string memory
+		}
 		
 		try {
 			tmpgcode = Constants.GCDEF.getGCDEF(segments[0]);
@@ -226,7 +230,7 @@ public class GCodeFactory {
 		case UNKNOWN:
 			System.err.println("Unknown Gcode "+linenr+": "+ tmpgcode+" "+codelinevar.substring(0,Math.min(15,codelinevar.length()))+"....");
 		default:
-			return createDefaultGCode(segments[0]+" "+codelinevar,linenr,tmpgcode);
+			return createDefaultGCode(codelinevar,linenr,tmpgcode);
 		}
 		//update used values
 //		if(gcd.isInitialized(Constants.SF_MASK))	{

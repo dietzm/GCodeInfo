@@ -178,7 +178,7 @@ public abstract class GCode {
 	 * @return boolean true if buffered gcodes
 	 */
 	public boolean isLongRunning() {
-		if (Constants.GCDEF.M190.equals(gcode) || Constants.GCDEF.M109.equals(gcode) || Constants.GCDEF.G28.equals(gcode) ){
+		if (Constants.GCDEF.M190.equals(gcode) || Constants.GCDEF.M109.equals(gcode) || Constants.GCDEF.G28.equals(gcode) || Constants.GCDEF.M29.equals(gcode) ){
 			return true;
 		}
 		return false;
