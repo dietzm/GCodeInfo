@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Date;
 
 import de.dietzm.Constants;
+import de.dietzm.Constants.GCDEF;
 import de.dietzm.Model;
 import de.dietzm.SerialIO.States;
 import de.dietzm.gcodes.GCode;
@@ -95,6 +96,7 @@ public class SerialPrinter implements Runnable, Printer {
 		public boolean streaming = false;
 		public boolean sdprint = false;
 		public boolean reset = false;
+		public int printspeed = 100;
 		public int timeouts=0;
 		public int timeoutline=0;
 		public int unexpected=0;
@@ -339,6 +341,7 @@ public class SerialPrinter implements Runnable, Printer {
 	
 	public void listSDCard() {
 		sdfiles.setLength(0);
+		addToPrintQueue(GCodeFactory.getGCode("M21", -21), true);
 		addToPrintQueue(M20, true);
 	}
 
@@ -490,7 +493,11 @@ public class SerialPrinter implements Runnable, Printer {
 				cons.appendTextNoCR(recv);
 			}
 
-
+			if(state.streaming && recv.containsFail()){
+				//e.g. open failed when filename is wrong
+				cons.appendText("Error during streaming, abort");
+				setPrintMode(false);
+			}
 			/*
 			 * Check if printer command is committed with "ok" make sure to
 			 * update temperature in case of M105 command print out debug info
@@ -499,11 +506,12 @@ public class SerialPrinter implements Runnable, Printer {
 			if (recv.containsOK() || recv.containsWait()) {
 				//cons.log(serial, "OK");
 				if (code == M105 && recv.containsTx()) { // Parse temperature
+					int idx1 = recv.indexOf('T');
 					int idx = recv.indexOf('@');
-					if(idx == -1){
+					if(idx == -1 || idx1 ==-1){
 						state.tempstring = recv.subSequence(3, recv.length(),state.tempstring);
 					}else{
-						state.tempstring = recv.subSequence(3, idx,state.tempstring);
+						state.tempstring = recv.subSequence(idx1, idx,state.tempstring);
 					}
 					cons.setTemp(state.tempstring);
 				}else if (code == M105 && recv.isPlainOK()){
@@ -590,7 +598,7 @@ public class SerialPrinter implements Runnable, Printer {
 	 * @param sdfilename  filename on sd card
 	 * @throws InterruptedException
 	 */
-	public void printModel(Model pm,String sdfilename) throws InterruptedException {
+	public void printModel(Model pm,String sdfilename, boolean autostart) throws InterruptedException {
 		if (state.connecting) {
 			cons.appendText("Still connecting. Please wait until connecting is established.");
 			return;
@@ -605,14 +613,22 @@ public class SerialPrinter implements Runnable, Printer {
 			cons.appendText("Add model to print queue");
 			printQueue.addModel(pm);	
 			if (state.debug)
-				cons.appendText("Model added, Printing:" + state.printing);
+				cons.appendText("Filling print queue, Printing:" + state.printing);
 		}else if (pm != null ){
+			printQueue.putAuto(GCodeFactory.getGCode("M21", -21));
 			printQueue.putAuto(GCodeFactory.getGCode("M28 "+sdfilename, -28));
 			state.streaming=true;
-			printQueue.addModel(pm);
-			printQueue.putAuto(GCodeFactory.getGCode("M29 "+sdfilename, -28));
+			GCode finishstream = GCodeFactory.getGCode("M29 "+sdfilename, -29);
+			if(autostart){
+				GCode selectfile = GCodeFactory.getGCode("M23 "+sdfilename, -23);
+				GCode printfile =  GCodeFactory.getGCode("M24", -24);
+				printQueue.addModel(pm,finishstream,selectfile,printfile);
+				state.sdprint=true;
+			}else{
+				printQueue.addModel(pm,finishstream);
+			}
 			if (state.debug)
-				cons.appendText("Model streamed, Printing:" + state.printing);
+				cons.appendText("Filling queue to stream, streaming:" + state.printing);
 		}else{
 			printQueue.putAuto(GCodeFactory.getGCode("M23 "+sdfilename, -23));
 			printQueue.putAuto(GCodeFactory.getGCode("M24", -24));
@@ -725,6 +741,24 @@ public class SerialPrinter implements Runnable, Printer {
 		cons.appendText("Set Extruder Temperature to " + tmp + "°C");
 		return addToPrintQueue(GCodeFactory.getGCode("M104 S" + tmp, 0), true);
 	}
+	
+	public boolean setPrintSpeed(int percentage) {
+		if(percentage <= 0){
+			cons.appendText("Speed to low, please increase speed");
+			return false;
+		}
+		if(percentage > state.printspeed){
+			cons.appendText("Speed-up print to " + percentage + "%");
+		}else{
+			cons.appendText("Slow down print to " + percentage + "%");
+		}
+		state.printspeed=percentage;
+		return addToPrintQueue(GCodeFactory.getGCode("M220 S" + percentage, 0), false);
+	}
+	
+	public int getPrintSpeed() {
+		return state.printspeed;
+	}
 
 	public void setPrintMode(boolean isprinting) {
 		state.printing = isprinting;
@@ -791,7 +825,7 @@ public class SerialPrinter implements Runnable, Printer {
 	}
 	
 	public void tryRecovery(){
-		if(mConn == null || (System.currentTimeMillis() - starttime) < 15000){
+		if(mConn == null || !isPrinting() || (System.currentTimeMillis() - starttime) < 15000){
 			return ; //to early to recover
 		}
 		recover=true;
@@ -908,10 +942,16 @@ public class SerialPrinter implements Runnable, Printer {
 				str.append("Print Start:");
 				str.append(new Date(printstart));
 				str.append(Constants.newlinec);
-				
-				str.append("Filename:");
-				str.append(getModel().getFilename());
+				str.append("SD Card streaming/print:");
+				str.append(state.streaming);
+				str.append('/');
+				str.append(state.sdprint);
 				str.append(Constants.newlinec);
+				if(getModel() != null){
+					str.append("Filename:");
+					str.append(getModel().getFilename());
+					str.append(Constants.newlinec);
+				}
 			}
 			str.append("Temperature:");
 			str.append(state.tempstring.toString().trim());

@@ -1,5 +1,6 @@
 package de.dietzm.print;
 
+import java.util.ArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -12,17 +13,18 @@ import de.dietzm.gcodes.GCode;
  * @author mdietz
  *
  */
-public class PrintQueue  {
+public class PrintQueue implements Runnable {
 	
 	//public static final int MAX_AUTO_CONCURRENT=1;
 	public static final int MAX_MANUAL_CONCURRENT=2000;
 	public Model printModel = null;
 	private float remainingtime=0;
+	Thread addmodelth = null;
 
 	//private boolean clear =false;
 	private LinkedBlockingQueue<GCode> aprintQ = new LinkedBlockingQueue<GCode>();
 	private LinkedBlockingQueue<GCode> mprintQ = new LinkedBlockingQueue<GCode>(MAX_MANUAL_CONCURRENT);
-
+	GCode[] postgc = null;
 	public Model getPrintModel() {
 		return printModel;
 	}
@@ -36,12 +38,31 @@ public class PrintQueue  {
 		remainingtime+=code.getTimeAccel();
 	}
 	
-	
 	public void addModel(Model code) throws InterruptedException{
 		printModel=code;
-		for (GCode gc : code.getGcodes()) {
+		addmodelth = new Thread(this);
+		addmodelth.start();
+	}
+	
+	public void addModel(Model code,GCode ... postcodes  ) throws InterruptedException{
+		printModel=code;
+		postgc=postcodes;
+		addmodelth = new Thread(this);
+		addmodelth.start();
+	}
+	
+	
+	
+	private synchronized void addModeltoQueue() {		
+		for (GCode gc : printModel.getGcodes()) {
+			if(Thread.currentThread().isInterrupted()) return;
 			if(gc.isPrintable()){
 				aprintQ.add(gc);
+			}
+		}
+		if(postgc!= null){
+			for (int i = 0; i < postgc.length; i++) {
+				aprintQ.add(postgc[i]);
 			}
 		}
 		remainingtime=printModel.getTimeaccel();	
@@ -71,10 +92,17 @@ public class PrintQueue  {
 
 	public GCode pollAuto() throws InterruptedException {
 		if(!mprintQ.isEmpty()) return pollManual(1000);
-		GCode gc = aprintQ.poll(2,TimeUnit.SECONDS);
-		if(gc!=null){
-			remainingtime-=gc.getTimeAccel();
+		GCode gc = null;
+		int i = 0;
+		do{
+			gc = aprintQ.poll(2,TimeUnit.SECONDS);
+			if(gc!=null){
+				remainingtime-=gc.getTimeAccel();
+				return gc;
 			}
+			i++;
+			System.out.println("Still filling printqueue, retry");
+		}while(isFillingQueue() && i < 5); //repeat 5x if still filling the queue
 		return gc;
 	}
 
@@ -82,6 +110,9 @@ public class PrintQueue  {
 	public void clear(){
 		//clear=true;
 		//notify(); //notify to ensure the addAUtoOPs is interrupted
+		if(isFillingQueue()){
+			addmodelth.interrupt();
+		}
 		aprintQ.clear();
 		mprintQ.clear();
 		printModel=null;
@@ -99,5 +130,28 @@ public class PrintQueue  {
 	//	int perc = (int) (100 -( remainingtime / (printModel.getTimeaccel() /100)));
 		int perc = (int) (100 -( aprintQ.size() / (printModel.getGcodecount() /100)));
 		return perc;
+	}
+	
+	/**
+	 * Filling thread, put model into queue
+	 */
+	public void run(){
+		try {
+			addModeltoQueue();
+			System.out.println("Model added. Finish filling thread. Intr:"+addmodelth.isInterrupted());
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		//finish thread
+	}
+	
+	/**
+	 * Get the status of the filling thread
+	 * @return true if model is right now added to the queue 
+	 */
+	public boolean isFillingQueue(){
+		if(addmodelth != null && addmodelth.isAlive()) return true;
+		return false;
 	}
 }

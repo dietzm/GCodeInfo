@@ -126,6 +126,14 @@ public class ReceiveBuffer implements CharSequence {
 		return false; //ASCII
 	}
 	
+	public boolean containsFail(){
+		if(len<4) return false;
+		for (int i = 0; i < len-3; i++) {
+			if(array[i]==102 && array[i+1]==97 && array[i+2]==105 && array[i+3]==108) return true;
+		}
+		return false; //ASCII
+	}
+	
 	public boolean startsWithSD(){
 		if(len<2) return false;
 		return array[0]==83 && array[1]==68;
@@ -157,7 +165,7 @@ public class ReceiveBuffer implements CharSequence {
 			} catch (NumberFormatException e) {
 				return 0; //todo
 			}
-			if(total == 0) return 100;
+			if(total == 0 || (total/100) == 0) return 100;
 			if(done == 0) return 0;
 			return done/(total/100);
 		}
