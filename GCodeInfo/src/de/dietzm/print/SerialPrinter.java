@@ -777,6 +777,9 @@ public class SerialPrinter implements Runnable, Printer {
 			}
 			state.lastgcode = GCodeFactory.getGCode("G0", 0);
 			if(state.streaming) addToPrintQueue(GCodeFactory.getGCode("M29", -29), true); //Stop sd streaming
+			//Turn off temperature and move to X/Y 0
+			addToPrintQueue(GCodeFactory.getGCode("M104 S0", -104), true);
+			addToPrintQueue(GCodeFactory.getGCode("M140 S0", -140), true);
 			cons.updateState(States.FINISHED,fin,-1);
 			state.sdprint=false;
 			state.streaming = false;
