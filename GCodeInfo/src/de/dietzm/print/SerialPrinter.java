@@ -41,6 +41,17 @@ public class SerialPrinter implements Runnable, Printer {
 	private boolean resetoninit=true;
 	private boolean logerrors=true;
 	private boolean recover = false;
+	
+	private boolean homexyfinish = false; 
+	
+	protected boolean isHomeXYfinish() {
+		return homexyfinish;
+	}
+
+	public void setHomeXYfinish(boolean homexyfinish) {
+		this.homexyfinish = homexyfinish;
+	}
+
 	public boolean isResetoninit() {
 		return resetoninit;
 	}
@@ -258,6 +269,7 @@ public class SerialPrinter implements Runnable, Printer {
 				state.swallows=0;
 				state.unexpected=0;
 				state.timeouts=0;
+				state.printspeed=100;
 			} catch (Exception e) {
 				if (state.debug)
 					cons.appendText("Reset failed or interrupted:" + e);
@@ -780,6 +792,9 @@ public class SerialPrinter implements Runnable, Printer {
 			//Turn off temperature and move to X/Y 0
 			addToPrintQueue(GCodeFactory.getGCode("M104 S0", -104), true);
 			addToPrintQueue(GCodeFactory.getGCode("M140 S0", -140), true);
+			if(homexyfinish)addToPrintQueue(GCodeFactory.getGCode("G28 X0 Y0", -128), true);
+			if(state.printspeed!=100)addToPrintQueue(GCodeFactory.getGCode("M220 100", -140), true); //set speed back to 100%
+			state.printspeed=100;			
 			cons.updateState(States.FINISHED,fin,-1);
 			state.sdprint=false;
 			state.streaming = false;
