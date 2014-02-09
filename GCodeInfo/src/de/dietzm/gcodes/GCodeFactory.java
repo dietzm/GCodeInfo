@@ -229,6 +229,8 @@ public class GCodeFactory {
 			break;
 		case UNKNOWN:
 			System.err.println("Unknown Gcode "+linenr+": "+ tmpgcode+" "+codelinevar.substring(0,Math.min(15,codelinevar.length()))+"....");
+			gcd=createDefaultGCode(segments[0]+" "+codelinevar,linenr,tmpgcode);
+			break;
 		default:
 			return createDefaultGCode(codelinevar,linenr,tmpgcode);
 		}
