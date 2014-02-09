@@ -108,6 +108,7 @@ public class SerialPrinter implements Runnable, Printer {
 		public boolean sdprint = false;
 		public boolean reset = false;
 		public int printspeed = 100;
+		public int extrfactor = 100;
 		public int timeouts=0;
 		public int timeoutline=0;
 		public int unexpected=0;
@@ -270,6 +271,7 @@ public class SerialPrinter implements Runnable, Printer {
 				state.unexpected=0;
 				state.timeouts=0;
 				state.printspeed=100;
+				state.extrfactor=100;
 			} catch (Exception e) {
 				if (state.debug)
 					cons.appendText("Reset failed or interrupted:" + e);
@@ -518,14 +520,19 @@ public class SerialPrinter implements Runnable, Printer {
 			if (recv.containsOK() || recv.containsWait()) {
 				//cons.log(serial, "OK");
 				if (code == M105 && recv.containsTx()) { // Parse temperature
-					int idx1 = recv.indexOf('T');
-					int idx = recv.indexOf('@');
-					if(idx == -1 || idx1 ==-1){
-						state.tempstring = recv.subSequence(3, recv.length(),state.tempstring);
-					}else{
-						state.tempstring = recv.subSequence(idx1, idx,state.tempstring);
+					try {
+						int idx1 = recv.indexOf('T');
+						int idx = recv.indexOf('@');
+						if(idx == -1 || idx1 ==-1){
+							state.tempstring = recv.subSequence(3, recv.length(),state.tempstring);
+						}else{
+							state.tempstring = recv.subSequence(idx1, idx,state.tempstring);
+						}
+						cons.setTemp(state.tempstring);
+					} catch (Exception e) {
+						cons.appendText("Error parsing temperature: "+recv.toString());
+						e.printStackTrace();
 					}
-					cons.setTemp(state.tempstring);
 				}else if (code == M105 && recv.isPlainOK()){
 						state.swallows++;
 					if(state.debug || logerrors){						
@@ -765,11 +772,29 @@ public class SerialPrinter implements Runnable, Printer {
 			cons.appendText("Slow down print to " + percentage + "%");
 		}
 		state.printspeed=percentage;
-		return addToPrintQueue(GCodeFactory.getGCode("M220 S" + percentage, 0), false);
+		return addToPrintQueue(GCodeFactory.getGCode("M220 S" + percentage, -220), false);
+	}
+	
+	public boolean setExtrusionFactor(int percentage) {
+		if(percentage <= 0){
+			cons.appendText("Factor to low, please increase extrusion");
+			return false;
+		}
+		if(percentage > state.printspeed){
+			cons.appendText("Increase extrusion to " + percentage + "%");
+		}else{
+			cons.appendText("Reduce extrusion to " + percentage + "%");
+		}
+		state.extrfactor=percentage;
+		return addToPrintQueue(GCodeFactory.getGCode("M221 S" + percentage, -221), false);
 	}
 	
 	public int getPrintSpeed() {
 		return state.printspeed;
+	}
+	
+	public int getExtrusionFactor() {
+		return state.extrfactor;
 	}
 
 	public void setPrintMode(boolean isprinting) {
@@ -793,8 +818,10 @@ public class SerialPrinter implements Runnable, Printer {
 			addToPrintQueue(GCodeFactory.getGCode("M104 S0", -104), true);
 			addToPrintQueue(GCodeFactory.getGCode("M140 S0", -140), true);
 			if(homexyfinish)addToPrintQueue(GCodeFactory.getGCode("G28 X0 Y0", -128), true);
-			if(state.printspeed!=100)addToPrintQueue(GCodeFactory.getGCode("M220 100", -140), true); //set speed back to 100%
-			state.printspeed=100;			
+			if(state.printspeed!=100)addToPrintQueue(GCodeFactory.getGCode("M220 100", -220), true); //set speed back to 100%
+			if(state.extrfactor!=100)addToPrintQueue(GCodeFactory.getGCode("M221 100", -221), true); //set extr back to 100%
+			state.printspeed=100;
+			state.extrfactor=100;
 			cons.updateState(States.FINISHED,fin,-1);
 			state.sdprint=false;
 			state.streaming = false;
