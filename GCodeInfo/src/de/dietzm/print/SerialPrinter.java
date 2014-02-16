@@ -304,7 +304,11 @@ public class SerialPrinter implements Runnable, Printer {
 	}
 	
 	public CharSequence getRemainingtime() {
-		int	len = Constants.formatTimetoHHMMSS(printQueue.getRemainingtime(),state.timestring.getBytes());
+		float time = printQueue.getRemainingtime();
+		if(state.printspeed != 100){ //Adjust time by speed
+			time = time / 100 * state.printspeed;
+		}
+		int	len = Constants.formatTimetoHHMMSS(time,state.timestring.getBytes());
 		state.timestring.setlength(len-3); //Cut off seconds
 		return state.timestring;
 	}
