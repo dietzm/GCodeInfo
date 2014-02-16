@@ -228,7 +228,7 @@ public class GCodeFactory {
 			gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
 			break;
 		case UNKNOWN:
-			System.err.println("Unknown Gcode "+linenr+": "+ tmpgcode+" "+codelinevar.substring(0,Math.min(15,codelinevar.length()))+"....");
+			System.err.println("Unknown Gcode "+linenr+": "+ tmpgcode+" "+segments[0]+" "+codelinevar.substring(0,Math.min(15,codelinevar.length()))+"....");
 			gcd=createDefaultGCode(segments[0]+" "+codelinevar,linenr,tmpgcode);
 			break;
 		default:
