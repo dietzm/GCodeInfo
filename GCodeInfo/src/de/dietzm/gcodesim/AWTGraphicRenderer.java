@@ -45,8 +45,8 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 
 	public AWTGraphicRenderer(int bedsizeX, int bedsizeY, Frame frame) {
 		Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
-		int wmax = (int)Math.min(d.getWidth(),1900);
-		int hmax = (int)Math.min(d.getHeight(),1200);
+		int wmax = (int)Math.min(d.getWidth(),1920);
+		int hmax = (int)(Math.min(d.getHeight(),1200));
 		//System.out.println("Window: w:"+wmax+" h:"+hmax);
 		offimg = gfxConf.createCompatibleImage(wmax, hmax);
 		offimg2= gfxConf.createCompatibleImage(wmax,hmax);
@@ -125,16 +125,16 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 
 		Graphics2D gp = (Graphics2D) offimg2.getGraphics();
 		
-		gp.drawImage(offimg, 6, 55, frame);
+		gp.drawImage(offimg, 0, 0, frame);
 
 		if(getPos()[0] != 0){
 			// Paint current print point (nozzle)
 			gp.setColor(g.getColor());
-			gp.fillOval((int) getPos()[0] + 4, (int) getPos()[1] + 53, 4, 4);
+			gp.fillOval((int) getPos()[0] + 4, (int) getPos()[1] , 4, 4);
 			gp.setColor(Color.white);
-			gp.drawOval((int) getPos()[0] - 2, (int) getPos()[1] + 47, 16, 16);
-			gp.drawOval((int) getPos()[0] + 0, (int) getPos()[1] + 49, 12, 12);
-			gp.drawOval((int) getPos()[0] + 2, (int) getPos()[1] + 51, 8, 8);
+			gp.drawOval((int) getPos()[0] - 2, (int) getPos()[1] -6, 16, 16);
+			gp.drawOval((int) getPos()[0] + 0, (int) getPos()[1] -4, 12, 12);
+			gp.drawOval((int) getPos()[0] + 2, (int) getPos()[1] -2, 8, 8);
 	
 		//	paintExtruder(gp,getPos()[2],getPos()[4]);
 			paintExtruder(gp,getPos()[3],getPos()[2],getPos()[4]);
@@ -163,28 +163,28 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 //		
 		//side&front Extruder
 		gp.setColor(Color.white);
-		gp.fillRect(pos + 2, zpos + 51-23, 15, 20); //hotend
-		gp.drawLine(pos+2, zpos + 51-3, pos+2+7, zpos + 51+2); //hotend
-		gp.drawLine(pos+2+14, zpos + 51-3, pos+2+7, zpos + 51+2); //hotend
+		gp.fillRect(pos + 2, zpos -25, 15, 20); //hotend
+		gp.drawLine(pos+2, zpos -5, pos+2+7, zpos ); //hotend
+		gp.drawLine(pos+2+14, zpos -5, pos+2+7, zpos); //hotend
 		
 		 //Extruder
-		gp.fillRect(pos + 2-13, zpos + 51-45, 46, 28); 
+		gp.fillRect(pos + 2-13, zpos -45, 46, 28); 
 		 //gears	
 		gp.setColor(Color.lightGray);
-		gp.fillOval(pos + 2+2, zpos + 51-53, 35, 35);//Large gear
-		gp.fillOval(pos -6, zpos + 51-41, 11, 11); //small gear
+		gp.fillOval(pos + 2+2, zpos -53, 35, 35);//Large gear
+		gp.fillOval(pos -6, zpos -41, 11, 11); //small gear
 		
 //		gp.drawOval(pos + 2+3, zpos + 51-49, 33, 33);
 //		gp.drawOval(pos + 2+4, zpos + 51-48, 31, 31);
 		gp.setColor(Color.white);
-		gp.fillOval(pos + 2+14, zpos + 51-41, 11, 11);
+		gp.fillOval(pos + 2+14, zpos -41, 11, 11);
 //		gp.drawOval(pos + 2+15, zpos + 51-37, 9, 9);		
-		gp.fillOval(pos -2, zpos + 51-37, 3, 3);
+		gp.fillOval(pos -2, zpos -37, 3, 3);
 		
-		gp.fillOval(poss+2, zpos + 52, 3, 3); //sideview
+		gp.fillOval(poss+2, zpos -1, 3, 3); //sideview
 		//Filament
 		gp.setColor(g.getColor());
-		gp.drawArc(pos-185, zpos+51-130, 190, 190, 0, 40);
+		gp.drawArc(pos-185, zpos-130, 190, 190, 0, 40);
 	}
 
 	@Override

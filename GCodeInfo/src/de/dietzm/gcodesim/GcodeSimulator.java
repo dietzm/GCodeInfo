@@ -1,12 +1,18 @@
 package de.dietzm.gcodesim;
 
+import java.awt.BorderLayout;
 import java.awt.Button;
+import java.awt.CheckboxMenuItem;
 import java.awt.Color;
+import java.awt.Desktop;
 import java.awt.Dialog;
+import java.awt.Dimension;
 import java.awt.FileDialog;
 import java.awt.FlowLayout;
 import java.awt.Frame;
 import java.awt.Graphics;
+import java.awt.Image;
+import java.awt.Insets;
 import java.awt.Label;
 import java.awt.Menu;
 import java.awt.MenuBar;
@@ -27,6 +33,8 @@ import java.awt.event.MouseWheelListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
+import java.awt.image.BufferedImage;
+import java.awt.image.ImageFilter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -35,12 +43,32 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.ConnectException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.security.acl.LastOwnerException;
 import java.util.Collections;
 import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
+
+import javax.imageio.ImageIO;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.KeyStroke;
+import javax.swing.border.Border;
+import javax.swing.text.html.ImageView;
 
 import de.dietzm.Model;
 import de.dietzm.SerialIO;
@@ -58,7 +86,7 @@ import de.dietzm.print.SerialPrinter;
  */
 
 @SuppressWarnings("serial")
-public class GcodeSimulator extends Frame implements ActionListener {
+public class GcodeSimulator extends JFrame implements ActionListener {
 
 	/**
 	 * 0.55 Added x/y Offset when gcodes are out of range
@@ -102,11 +130,39 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	 * 1.17 Many performance improvments, Paint extruder, MacOS load bug
 	 * 1.18 label paint errors fixed , config file for networkip & path
 	 */
-	public static final String VERSION = "v1.18";	
+	
+	
+public class PrintrPanel extends JPanel {
+		
+		public PrintrPanel(){
+			
+		}
+}
+	
+	public class PainterPanel extends JPanel {
+		
+		public PainterPanel(){
+			
+		}
+		 public Dimension getPreferredSize() {
+		        return new Dimension(500,500);
+		    }
+		public void paintComponent(Graphics g) {
+			super.paintComponent(g);
+			if(awt != null)	awt.drawImage(g);
+		}
+	}
+	public static final String VERSION = "v1.21";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
 	int bedsizeX=200,bedsizeY=200;
+	BufferedImage img = null;
+	PainterPanel painter = null;
+	JTextArea cons;
+	KeyListener keyl = null;
+	boolean showprintpanel = false;
+	JPanel printpanel = null;
 	
 	//Properties
 	static String networkip = "192.168.0.50";
@@ -116,15 +172,104 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	public GcodeSimulator() {
 		setTitle("GCode Print Simulator " + VERSION);
 		setBackground(Color.black);
+		setLayout(new BorderLayout(0,0));
+		
+		painter = new PainterPanel();
+		add(painter,BorderLayout.CENTER);
+		img = null;
+		try {
+			
+		    img = ImageIO.read(GcodeSimulator.class.getResourceAsStream("/GcodePrintrBanner1.png"));
+		    System.out.println("image read done"+img.getWidth());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		JButton lbl = new JButton(new ImageIcon(img.getScaledInstance(-1, 80, Image.SCALE_SMOOTH)));
+		lbl.setBackground(new Color(0x0872a4));
+		lbl.setOpaque(true);
+		lbl.setPreferredSize(new Dimension(1600, 80));
+		lbl.setActionCommand("GCodePrintr");
+		lbl.addActionListener(this);
+		add(lbl,BorderLayout.NORTH);
+		add(getButtonPanel(),BorderLayout.WEST);
+		if(showprintpanel){
+			printpanel=getPrintButtonPanel();
+			add(printpanel,BorderLayout.EAST);
+		}
+		
+	}
+	
+	public JPanel getButtonPanel(){
+		JPanel bp = new JPanel();
+		bp.setPreferredSize(new Dimension(70, 1000));
+		bp.setLayout(new FlowLayout());
+		addButton(bp,"Load","f");
+		addButton(bp,"Send","x");
+		addButton(bp,"Details","t");
+		addButton(bp,"Speed+","+");
+		addButton(bp,"Speed-","-");
+		addButton(bp,"Next","n");
+		addButton(bp,"Back","b");
+		addButton(bp,"Pause","p");
+		addButton(bp,"Restart","r");
+		addButton(bp,"Exit","q");
+		return bp;
+	}
+	
+	public JPanel getPrintButtonPanel(){
+		JPanel bp = new JPanel();
+		bp.setPreferredSize(new Dimension(210, 1000));
+		bp.setLayout(new FlowLayout());
+		bp.add(new JLabel("        Motor Control       "));
+		addButton(bp,"X-Home","XHome");
+		addButton(bp,"Y+","Y+");
+		addButton(bp,"Z+","Z+");
+		addButton(bp,"X-","X-");
+		addButton(bp,"Z-Home","ZHome");
+		addButton(bp,"X+","X+");
+		addButton(bp,"Y-Home","YHome");
+		addButton(bp,"Y-","Y-");
+		addButton(bp,"Z-","Z-");
+		bp.add(new JLabel("    Extruder & Heat   "));
+		addButton(bp,"Extrude","Extrude");
+		addButton(bp,"Retract","Retract");
+		addButton(bp,"Fan","Fan");
+		bp.add(new JLabel("      Print Control      "));
+		addButton(bp,"Connect","Connect");
+		addButton(bp,"Reset","Reset");
+		addButton(bp,"Print","Print");
+		
+		bp.add(new JLabel("      Console      "));
+		cons = new JTextArea(">");
+		cons.setPreferredSize(new Dimension(200,2000));
+		JScrollPane scp = new JScrollPane(cons);
+		scp.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+		scp.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+		scp.setPreferredSize(new Dimension(205,200));
+		bp.add(scp);
+		return bp;
+	}
+
+	private void addButton(JPanel bp,String title,String cmd) {
+		JButton load = new JButton(title);
+		load.setPreferredSize(new Dimension(65, 60));
+		load.addActionListener(this);
+		load.setActionCommand(cmd);
+		load.setToolTipText(title);
+		load.setMargin(new Insets(0, 0, 0, 0));
+		load.setFont(load.getFont().deriveFont(5));
+		bp.add(load);
 	}
 	
 	public void init(String filename,InputStream in) throws IOException{
 		awt = new AWTGraphicRenderer(bedsizeX, bedsizeY,this);
+		float fac = (awt.getHeight()-(55+(awt.getHeight()/12)))/bedsizeY;
 		gp = new GcodePainter(awt); //todo pass bedsize
+		gp.setZoom((fac));
 		updateSize(showdetails);
 		setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource( "/icon.png" )));
 		
-		setMenuBar(getMyMenubar());
+		setJMenuBar(getMyMenubar());
 		setVisible(true);
 		setBackground(Color.black);
 		
@@ -134,29 +279,31 @@ public class GcodeSimulator extends Frame implements ActionListener {
 
 		
 		gp.start(filename,in,null);	
+		this.requestFocus();
 	}
 	
 	
-	private void addMenuItem(Menu parent, String name, String key, int keycode){
-		MenuItem it = new MenuItem(name);
+	private JMenuItem addMenuItem(JMenu parent, String name, String key, int keycode){
+		JMenuItem it = new JMenuItem(name);
 	    it.addActionListener(this);
 	    it.setActionCommand(key);
 	    //MenuShortcut ms = new MenuShortcut(KeyEvent.getExtendedKeyCodeForChar(key.charAt(0))); ONLY JAVA 1.7
-	    MenuShortcut ms = new MenuShortcut(keycode);
-	    it.setShortcut(ms);
+	//    MenuShortcut ms = new MenuShortcut(keycode);
+	    it.setAccelerator(KeyStroke.getKeyStroke(keycode, 0));
 	    parent.add (it);
+	    return it;
 	}
 	
-	protected MenuBar getMyMenubar () {
-		    MenuBar ml = new MenuBar ();
-		    Menu datei = new Menu ("File");
+	protected JMenuBar getMyMenubar () {
+		    JMenuBar ml = new JMenuBar();
+		    JMenu datei = new JMenu ("File");
 		    addMenuItem(datei, "Load File", "f",KeyEvent.VK_F);
 		    addMenuItem(datei, "Network Send", "x",KeyEvent.VK_X);
 		    addMenuItem(datei, "Exit", "q",KeyEvent.VK_Q);
 
 		    ml.add(datei);		    
 		    
-		    Menu control = new Menu ("Control");
+		    JMenu control = new JMenu ("Control");
 		    addMenuItem(control, "Pause", "p",KeyEvent.VK_P);
 		    control.addSeparator();
 		    addMenuItem(control, "Increase Speed", "+",KeyEvent.VK_PLUS);
@@ -175,18 +322,25 @@ public class GcodeSimulator extends Frame implements ActionListener {
 		    
 		
 		    
-		    Menu view = new Menu ("View");
+		    JMenu view = new JMenu ("View");
 		    addMenuItem(view, "Zoom In", "i",KeyEvent.VK_I);
 		    addMenuItem(view, "Zoom Out", "o",KeyEvent.VK_O);
 		    view.addSeparator();
 		    addMenuItem(view, "Show/Hide Details", "m",KeyEvent.VK_M);
 		    addMenuItem(view, "Toggle Detail type", "t",KeyEvent.VK_T);
 		    		    
-		    Menu about = new Menu ("About");
+		    JMenu about = new JMenu ("About");
 		    addMenuItem(about, "About/Help", "h",KeyEvent.VK_H);
-		    		    
+		    addMenuItem(about, "Settings", "s",KeyEvent.VK_S).setEnabled(false);;
+		    JCheckBoxMenuItem cbmenu = new JCheckBoxMenuItem("Show Print Panel");
+		    cbmenu.setSelected(showprintpanel);
+		    cbmenu.setActionCommand("printpanel");
+		    cbmenu.addActionListener(this);
+		 //   MenuShortcut ms = new MenuShortcut(KeyEvent.VK_Y);
+		    cbmenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y, 0));
+		    about.add(cbmenu);
 		    
-		    Menu edit = new Menu ("Modify (Experimental)");
+		    JMenu edit = new JMenu ("Modify (Experimental)");
 		    edit.add("Experimental Edit Mode");
 		    edit.addSeparator();
 		    addMenuItem(edit, "Speedup Layer by 10%", "w",KeyEvent.VK_W);
@@ -282,22 +436,155 @@ public class GcodeSimulator extends Frame implements ActionListener {
 		
 	}
 	
+	public static void openWebpage(URI uri) {
+	    Desktop desktop = Desktop.isDesktopSupported() ? Desktop.getDesktop() : null;
+	    if (desktop != null && desktop.isSupported(Desktop.Action.BROWSE)) {
+	        try {
+	            desktop.browse(uri);
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	        }
+	    }
+	}
+	
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
+		if(arg0.getActionCommand().equals("GCodePrintr")){		
+					try {
+						openWebpage(new URI("http://gcodeprintr.dietzm.de"));
+					} catch (URISyntaxException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}		
+			this.requestFocus();
+			return;
+		}
+		if(arg0.getActionCommand().equals("printpanel")){		
+			showprintpanel = !showprintpanel;
+			if(showprintpanel){
+				if(printpanel == null){
+					printpanel=getPrintButtonPanel();
+				}
+				add(printpanel,BorderLayout.EAST);
+				revalidate();
+			}else{
+				remove(printpanel);
+				revalidate();
+			}
+			return;
+		}
+		if(arg0.getActionCommand().equals("Connect")){
+			try {
+				
+				ConsoleIf console=new ConsoleIf() {
+					
+					public void updateState(CharSequence statemsg,CharSequence detail, int perc){
+						
+					}
+					
+					@Override
+					public void setWakeLock(boolean active) {
+						// TODO Auto-generated method stub
+						
+					}
+					
+					@Override
+					public void setTemp(CharSequence temp) {
+						// TODO Auto-generated method stub
+						
+					}
+					
+					@Override
+					public void setPrinting(boolean printing) {
+						// TODO Auto-generated method stub
+						
+					}
+					
+					@Override
+					public void log(String tag, String value, ReceiveBuffer buf) {
+						// TODO Auto-generated method stub
+						
+					}
+					
+					@Override
+					public void log(String tag, String value) {
+						// TODO Auto-generated method stub
+						
+					}
+					
+					@Override
+					public boolean hasWakeLock() {
+						// TODO Auto-generated method stub
+						return false;
+					}
+					
+					@Override
+					public void clearConsole() {
+						// TODO Auto-generated method stub
+						
+					}
+					
+					@Override
+					public int chooseDialog(String[] items, String[] values, int type) {
+					System.out.println("Choosedialog");
+					return 1;
+					}
+					
+					@Override
+					public void appendTextNoCR(CharSequence... txt) {
+						for (CharSequence n : txt) {
+							System.out.println(n);
+							cons.append(n.toString());
+				         }
+					}
+					
+					@Override
+					public void appendText(CharSequence... txt) {
+						for (CharSequence n : txt) {
+							System.out.println(n);
+							cons.append(n.toString()+"\n");
+				         }
+														
+					}
+				};
+				SerialPrinter	sio = new SerialPrinter(console);
+				
+				
+				gp.setPrintercon(sio);
+				
+				sio.connect(new Dummy(sio, console),115200);	
+				sio.connectTo("usb");
+				} catch (NoClassDefFoundError er) {
+					//er.printStackTrace();
+					System.out.println("Opening COM Port FAILED ! RXTX Jar Missing.  " + er);
+				} catch (Exception e) {
+					e.printStackTrace();
+					System.out.println("Opening COM Port FAILED ! " + e);
+				} catch (UnsatisfiedLinkError ule){
+					//ule.printStackTrace();
+					System.out.println("Opening COM Port FAILED ! RXTX Jar Missing.  " + ule);
+				}
+		
+				return;
+		}
+		
+		
 		char a = arg0.getActionCommand().charAt(0);
 		//Forward Event to keylistener (don't duplicate code)
-		getKeyListeners()[0].keyTyped(new KeyEvent(this, 0, 0, 0, (int)a,a));
+		keyl.keyTyped(new KeyEvent(this, 0, 0, 0, (int)a,a));
 	}
 	
 	public void showNetworkIPDialog(){
-		final Dialog in = new Dialog(this,"Send to GCode Simulator for Android",true);
+		final JDialog in = new JDialog(this,"Send to GCodeSimulator/GCodePrintr for Android",true);
 		in.setLayout(new FlowLayout());
 		in.setBackground(Color.lightGray);
-		final TextField tf2 = new TextField(15);
-		final Label status = new Label("                                                    ");
+		final JTextField tf2 = new JTextField(15);
+		final JLabel status = new JLabel("                                                    ");
 		tf2.setText(networkip);
 //		tf2.setSize(200,20);
-		Button btn1 = new Button("Ok");
+		JButton btn1 = new JButton("Send");
+		JButton btn2 = new JButton("Cancel");
+		btn2.setActionCommand("Cancel");
 		
 		in.addWindowListener(new WindowListener() {			
 			@Override
@@ -323,6 +610,10 @@ public class GcodeSimulator extends Frame implements ActionListener {
 			
 			@Override
 			public void actionPerformed(ActionEvent e) {
+				if(e.getActionCommand().equals("Cancel")){
+					in.dispose();
+					return;
+				}
 				try {
 					NetworkPrinter netp = new NetworkPrinter();
 					status.setText("Sending file ... please wait");
@@ -350,10 +641,12 @@ public class GcodeSimulator extends Frame implements ActionListener {
 			}
 		};
 		btn1.addActionListener(action);
+		btn2.addActionListener(action);
 		tf2.addActionListener(action);
 		in.add(new Label("Enter IP Address"));
 		in.add(tf2);
 		in.add(btn1);
+		in.add(btn2);
 		in.add(status);
 		in.setSize(330,120);
 		in.setVisible(true);
@@ -410,7 +703,11 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	private void updateSize(boolean details) {
 		if((getExtendedState() & Frame.MAXIMIZED_BOTH) == 0){
 			int[] sz = gp.getSize(details);
-			setSize(sz[0],sz[1]);
+			if(showprintpanel){
+				setSize(sz[0]+280,sz[1]+80);
+			}else{
+				setSize(sz[0]+70,sz[1]+80);
+			}
 		}
 	}
 	
@@ -506,13 +803,14 @@ public class GcodeSimulator extends Frame implements ActionListener {
 			@Override
 			public void componentResized(ComponentEvent e) {
 				super.componentResized(e);
-				float size = getHeight();
+				float size = getHeight()-80;
 				float currsize = gp.getSize(false)[1];
 				
 				if(currsize!=size){
 					//System.out.println("Size:"+size+" Curr:"+currsize);
 					//float fac = size/currsize;
 					float fac = (size-(55+(size/12)))/bedsizeY;
+					//float fac = (size-(55+(size/2)))/bedsizeX;
 					//float z = gp.getZoom();
 					//System.out.println("Zoom:"+z);
 					//gp.setZoom(z*(fac));
@@ -522,7 +820,7 @@ public class GcodeSimulator extends Frame implements ActionListener {
 		
 		});
 		
-		addKeyListener(new KeyListener() {
+		keyl = new KeyListener() {
 
 			@Override
 			public void keyTyped(KeyEvent arg0) {
@@ -573,95 +871,10 @@ public class GcodeSimulator extends Frame implements ActionListener {
 				} else if (arg0.getKeyChar() == 'f') { // open file
 					gp.setCmd(Commands.OPENFILE);
 				} else if (arg0.getKeyChar() == 'p') {
+					System.out.println("Pause");
 					gp.togglePause();
 				} else if (arg0.getKeyChar() == 's') {
-					try {
-						
-						ConsoleIf cons=new ConsoleIf() {
-							
-							public void updateState(CharSequence statemsg,CharSequence detail, int perc){
-								
-							}
-							
-							@Override
-							public void setWakeLock(boolean active) {
-								// TODO Auto-generated method stub
-								
-							}
-							
-							@Override
-							public void setTemp(CharSequence temp) {
-								// TODO Auto-generated method stub
-								
-							}
-							
-							@Override
-							public void setPrinting(boolean printing) {
-								// TODO Auto-generated method stub
-								
-							}
-							
-							@Override
-							public void log(String tag, String value, ReceiveBuffer buf) {
-								// TODO Auto-generated method stub
-								
-							}
-							
-							@Override
-							public void log(String tag, String value) {
-								// TODO Auto-generated method stub
-								
-							}
-							
-							@Override
-							public boolean hasWakeLock() {
-								// TODO Auto-generated method stub
-								return false;
-							}
-							
-							@Override
-							public void clearConsole() {
-								// TODO Auto-generated method stub
-								
-							}
-							
-							@Override
-							public int chooseDialog(String[] items, String[] values, int type) {
-								// TODO Auto-generated method stub
-								return 0;
-							}
-							
-							@Override
-							public void appendTextNoCR(CharSequence... txt) {
-								// TODO Auto-generated method stub
-								
-							}
-							
-							@Override
-							public void appendText(CharSequence... txt) {
-								for (CharSequence n : txt) {
-									System.out.println(n);
-						         }
-																
-							}
-						};
-						SerialPrinter	sio = new SerialPrinter(cons);
-						
-						
-						gp.setPrintercon(sio);
-						
-						sio.connect(new Dummy(sio, cons),115200);			
-						} catch (NoClassDefFoundError er) {
-							//er.printStackTrace();
-							System.out.println("Opening COM Port FAILED ! RXTX Jar Missing.  " + er);
-						} catch (Exception e) {
-							e.printStackTrace();
-							System.out.println("Opening COM Port FAILED ! " + e);
-						} catch (UnsatisfiedLinkError ule){
-							//ule.printStackTrace();
-							System.out.println("Opening COM Port FAILED ! RXTX Jar Missing.  " + ule);
-						}
-					gp.togglePrint();
+					new OptionFrame().setVisible(true);
 				} else if (arg0.getKeyChar() == 'x') {
 					showNetworkIPDialog();
 				} else if (arg0.getKeyChar() == 'h') {
@@ -710,13 +923,16 @@ public class GcodeSimulator extends Frame implements ActionListener {
 				// TODO Auto-generated method stub
 
 			}
-		});
+		};
+		
 	}
 
 	
-	public void paint(Graphics g) {
+	public void paint1(Graphics g) {
 		//g.drawImage(awt.getImage(), 4, 28, this);
-		awt.drawImage(g);
+		//awt.drawImage(g);
+	//	g.drawImage(img,0,(int)(awt.getWidth()/3f),null);
+		
 //		//Paint current print point
 //		g.fillOval((int)awt.getPos()[0]+4,(int)awt.getPos()[1]+53,4,4);
 //		g.setColor(Color.white);
@@ -733,9 +949,9 @@ public class GcodeSimulator extends Frame implements ActionListener {
 	 * 
 	 * @param g
 	 */
-	@Override
-	public void update(Graphics g) {
+	public void update1(Graphics g) {
 		paint(g);
 	}
 
 }
+
