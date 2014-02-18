@@ -129,6 +129,8 @@ public class GcodeSimulator extends JFrame implements ActionListener {
 	 * 1.16 Improved load error handling. print wrong gcodes in window. fixed double whitespace error
 	 * 1.17 Many performance improvments, Paint extruder, MacOS load bug
 	 * 1.18 label paint errors fixed , config file for networkip & path
+	 * 1.21 buttonbar, print panel, gcodeprintr banner
+	 * 1.22 hide banner, settings dialog, bedsize,themes
 	 */
 	
 	
@@ -152,17 +154,21 @@ public class PrintrPanel extends JPanel {
 			if(awt != null)	awt.drawImage(g);
 		}
 	}
-	public static final String VERSION = "v1.21";	
+	public static final String VERSION = "v1.22";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
-	int bedsizeX=200,bedsizeY=200;
+	static int bedsizeX=200;
+	static int bedsizeY=200;
 	BufferedImage img = null;
 	PainterPanel painter = null;
 	JTextArea cons;
 	KeyListener keyl = null;
 	boolean showprintpanel = false;
+	boolean showbanner = true;
 	JPanel printpanel = null;
+	JButton banner = null;
+	static String theme = "default";
 	
 	//Properties
 	static String networkip = "192.168.0.50";
@@ -184,19 +190,27 @@ public class PrintrPanel extends JPanel {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		JButton lbl = new JButton(new ImageIcon(img.getScaledInstance(-1, 80, Image.SCALE_SMOOTH)));
-		lbl.setBackground(new Color(0x0872a4));
-		lbl.setOpaque(true);
-		lbl.setPreferredSize(new Dimension(1600, 80));
-		lbl.setActionCommand("GCodePrintr");
-		lbl.addActionListener(this);
-		add(lbl,BorderLayout.NORTH);
+		
+		if(showbanner){
+			initBanner();
+			add(banner,BorderLayout.NORTH);
+		}
 		add(getButtonPanel(),BorderLayout.WEST);
 		if(showprintpanel){
 			printpanel=getPrintButtonPanel();
 			add(printpanel,BorderLayout.EAST);
 		}
 		
+	}
+
+	private JButton initBanner() {
+		banner = new JButton(new ImageIcon(img.getScaledInstance(-1, 80, Image.SCALE_SMOOTH)));
+		banner.setBackground(new Color(0x0872a4));
+		banner.setOpaque(true);
+		banner.setPreferredSize(new Dimension(1600, 80));
+		banner.setActionCommand("GCodePrintr");
+		banner.addActionListener(this);
+		return banner;
 	}
 	
 	public JPanel getButtonPanel(){
@@ -262,10 +276,11 @@ public class PrintrPanel extends JPanel {
 	}
 	
 	public void init(String filename,InputStream in) throws IOException{
-		awt = new AWTGraphicRenderer(bedsizeX, bedsizeY,this);
+		awt = new AWTGraphicRenderer(bedsizeX, bedsizeY,this,theme);
 		float fac = (awt.getHeight()-(55+(awt.getHeight()/12)))/bedsizeY;
-		gp = new GcodePainter(awt); //todo pass bedsize
-		gp.setZoom((fac));
+		gp = new GcodePainter(awt,true,fac,bedsizeX,bedsizeY); //todo pass bedsize
+		System.out.println("Zoom:"+fac);
+		//gp.setZoom((fac));
 		updateSize(showdetails);
 		setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource( "/icon.png" )));
 		
@@ -331,7 +346,9 @@ public class PrintrPanel extends JPanel {
 		    		    
 		    JMenu about = new JMenu ("About");
 		    addMenuItem(about, "About/Help", "h",KeyEvent.VK_H);
-		    addMenuItem(about, "Settings", "s",KeyEvent.VK_S).setEnabled(false);;
+		    addMenuItem(about, "Settings", "s",KeyEvent.VK_S).setEnabled(true);;
+		   
+		    
 		    JCheckBoxMenuItem cbmenu = new JCheckBoxMenuItem("Show Print Panel");
 		    cbmenu.setSelected(showprintpanel);
 		    cbmenu.setActionCommand("printpanel");
@@ -339,6 +356,13 @@ public class PrintrPanel extends JPanel {
 		 //   MenuShortcut ms = new MenuShortcut(KeyEvent.VK_Y);
 		    cbmenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y, 0));
 		    about.add(cbmenu);
+		    JCheckBoxMenuItem banmenu = new JCheckBoxMenuItem("Show GCodePrintr Banner");
+		    banmenu.setSelected(showbanner);
+		    banmenu.setActionCommand("bannerpanel");
+		    banmenu.addActionListener(this);
+		 //   MenuShortcut ms = new MenuShortcut(KeyEvent.VK_Y);
+		    banmenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, 0));
+		    about.add(banmenu);
 		    
 		    JMenu edit = new JMenu ("Modify (Experimental)");
 		    edit.add("Experimental Edit Mode");
@@ -399,12 +423,18 @@ public class PrintrPanel extends JPanel {
 				prop.load(new FileInputStream(config));
 				lastfilepath = prop.getProperty("lastfilepath",System.getProperty("user.dir"));
 				networkip  = prop.getProperty("networkip","192.168.0.50");
+				String bedsize = prop.getProperty("bedsize","200");
+				theme = prop.getProperty("theme","default");
+				bedsizeX=Integer.parseInt(bedsize);
+				bedsizeY=bedsizeX;
 			} catch (FileNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
+			} catch (NumberFormatException nfe){
+				nfe.printStackTrace();
 			}
 		}else{
 			System.out.println("Config file does not exist:"+config);
@@ -423,6 +453,8 @@ public class PrintrPanel extends JPanel {
 				Properties prop = new Properties();
 				prop.setProperty("lastfilepath", lastfilepath);
 				prop.setProperty("networkip", networkip);
+				prop.setProperty("bedsize", String.valueOf(bedsizeX));
+				prop.setProperty("theme", theme);		
 				prop.store(new FileOutputStream(config),"Gcode Simulator Config");
 			} catch (FileNotFoundException e) {
 				// TODO Auto-generated catch block
@@ -469,6 +501,20 @@ public class PrintrPanel extends JPanel {
 				revalidate();
 			}else{
 				remove(printpanel);
+				revalidate();
+			}
+			return;
+		}
+		if(arg0.getActionCommand().equals("bannerpanel")){		
+			showbanner = !showbanner;
+			if(showbanner){
+				if(banner == null){
+					initBanner();
+				}
+				add(banner,BorderLayout.NORTH);
+				revalidate();
+			}else{
+				remove(banner);
 				revalidate();
 			}
 			return;
@@ -703,11 +749,15 @@ public class PrintrPanel extends JPanel {
 	private void updateSize(boolean details) {
 		if((getExtendedState() & Frame.MAXIMIZED_BOTH) == 0){
 			int[] sz = gp.getSize(details);
+			int width = sz[0]+70; //70 for button bar
+			int height = sz[1];
 			if(showprintpanel){
-				setSize(sz[0]+280,sz[1]+80);
-			}else{
-				setSize(sz[0]+70,sz[1]+80);
+				width=width+210;
 			}
+			if(showbanner){
+				height=height+80;
+			}
+			setSize(width,height);
 		}
 	}
 	
@@ -803,7 +853,10 @@ public class PrintrPanel extends JPanel {
 			@Override
 			public void componentResized(ComponentEvent e) {
 				super.componentResized(e);
-				float size = getHeight()-80;
+				
+				float size = getHeight()-(showbanner?80:0);
+				
+				
 				float currsize = gp.getSize(false)[1];
 				
 				if(currsize!=size){

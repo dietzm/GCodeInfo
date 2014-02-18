@@ -382,8 +382,9 @@ public class GcodePainter implements Runnable {
 	private void printDetails(GraphicRenderer g2, Layer lay) {
 		g2.setColor(lay.getNumber() % colNR);
 		float boxheight=(bedsizeX*zoom)/12f;
-		int linegap=(int)((4*zoom)+3.2f);
+		//int linegap=(int)((4*zoom)+3.2f);
 		float size=2.5f+(3.10f*zoom)/200*bedsizeX;
+		int linegap=(int)size;
 		g2.setFontSize(size);
 		
 		// bed

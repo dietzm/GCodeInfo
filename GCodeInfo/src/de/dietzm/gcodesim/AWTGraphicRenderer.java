@@ -19,7 +19,7 @@ import de.dietzm.SerialIO;
 public class AWTGraphicRenderer implements GraphicRenderer {
 
 	Color[] backcol = new Color[]{Color.BLACK,new Color(0,90,120),Color.red};
-	final Color[] colors = new Color[] { Color.red, Color.cyan, Color.yellow, Color.magenta, Color.green,
+	Color[] colors = new Color[] { Color.red, Color.cyan, Color.yellow, Color.magenta, Color.green,
 			Color.orange, Color.pink, Color.white, Color.darkGray };
 
 	Frame frame;
@@ -43,7 +43,7 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 			new BasicStroke(3.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND),
 			new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND, 1, new float[] { 1, 6 }, 0) };
 
-	public AWTGraphicRenderer(int bedsizeX, int bedsizeY, Frame frame) {
+	public AWTGraphicRenderer(int bedsizeX, int bedsizeY, Frame frame,String theme) {
 		Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
 		int wmax = (int)Math.min(d.getWidth(),1920);
 		int hmax = (int)(Math.min(d.getHeight(),1200));
@@ -69,6 +69,55 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 		// }
 		// colors[colors.length-2]=Color.white;
 		// colors[colors.length-1]=Color.darkGray;
+		//int theme= 5;
+		if(theme.equalsIgnoreCase("default")){
+			backcol= new Color[] { Color.BLACK, new Color(0, 90, 120)};
+			colors= new Color[] { Color.RED, Color.BLUE, Color.YELLOW, Color.CYAN, Color.GREEN, Color.MAGENTA,
+					Color.LIGHT_GRAY, Color.WHITE, Color.DARK_GRAY };
+		}else if(theme.equalsIgnoreCase("gray")){
+			//GRAY Theme
+			backcol= new Color[] { new Color(220,220,220), new Color(0, 90, 120)};
+			colors = new Color[15];
+			int val= 35;
+			for (int i = 0; i < 13; i++) {
+				val=val+13;
+				colors[i]=new Color(val,val,val);
+			}
+			colors[13]=Color.DARK_GRAY;
+			colors[14]=Color.GRAY;
+		}else if(theme.equalsIgnoreCase("autumn")){
+			//Autumn theme
+			backcol= new Color[] { new Color(229,219,170), new Color(171, 200, 165)};
+			colors= new Color[] { new Color(33,144,148),
+					 			new Color(38,130,33),
+					 			new Color(148,147,33),
+					 			new Color(63,78,119), //blau
+					 			new Color(130,33,45),
+					 			new Color(127,86,147),
+					 			new Color(228,95,10),
+					 			Color.DARK_GRAY, 
+					 			new Color(135,94,15)};
+		}
+//		case 4:
+//			backcol= new Color[] { new Color(195,199,255), new Color(198, 240, 220)};
+//			colors= new Color[] { new Color(0x44,0x55,0x90),
+//					 			Color.DARK_GRAY, 
+//					 			Color.CYAN };
+//			//faint=true;
+//			break;
+//		case 5:
+////			//Theme from xml
+////			Resources myres = view.getResources();
+////			backcol = myres.getIntArray(R.array.xmlthemeback);
+////			colors = myres.getIntArray(R.array.xmltheme);
+//			break;
+//		default:
+//			backcol= new Color[] { Color.BLACK, new Color(0, 90, 120)};
+//			colors= new Color[] { Color.RED, Color.BLUE, Color.YELLOW, Color.CYAN, Color.GREEN, Color.MAGENTA,
+//					Color.LIGHT_GRAY, Color.WHITE, Color.DARK_GRAY };
+//			
+//			break;
+//		}
 
 	}
 
