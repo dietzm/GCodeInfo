@@ -201,7 +201,9 @@ public class SerialPrinter implements Runnable, Printer {
 	}
 
 	public void connectTo(String device) {
-		mConn.requestDevice(device);
+		if(mConn != null){
+			mConn.requestDevice(device);
+		}
 	}
 	
 	public void startRunnerThread(){
@@ -306,11 +308,19 @@ public class SerialPrinter implements Runnable, Printer {
 	public CharSequence getRemainingtime() {
 		float time = printQueue.getRemainingtime();
 		if(state.printspeed != 100){ //Adjust time by speed
-			time = time / 100 * state.printspeed;
+			time = time / state.printspeed * 100;
 		}
 		int	len = Constants.formatTimetoHHMMSS(time,state.timestring.getBytes());
 		state.timestring.setlength(len-3); //Cut off seconds
 		return state.timestring;
+	}
+	
+	/**
+	 * Get the size of the manual print queue
+	 * @return
+	 */
+	public int getPrintQueueSize(){
+		return printQueue.getSizeManual();
 	}
 
 	/**
