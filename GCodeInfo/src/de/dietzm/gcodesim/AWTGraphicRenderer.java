@@ -201,7 +201,7 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 			}
 			gp.setColor(Color.GREEN);
 			gp.setFont(gp.getFont().deriveFont(26f));
-			gp.drawString(titletxt, 20 ,90);
+			gp.drawString(titletxt, 20 ,40);
 		}
 		gp1.drawImage(offimg2, 0,0, frame);
 	}

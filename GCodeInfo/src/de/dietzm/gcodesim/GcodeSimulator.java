@@ -131,6 +131,7 @@ public class GcodeSimulator extends JFrame implements ActionListener {
 	 * 1.18 label paint errors fixed , config file for networkip & path
 	 * 1.21 buttonbar, print panel, gcodeprintr banner
 	 * 1.22 hide banner, settings dialog, bedsize,themes
+	 * 1.23 support bfb gcodes, 
 	 */
 	
 	
@@ -154,7 +155,7 @@ public class PrintrPanel extends JPanel {
 			if(awt != null)	awt.drawImage(g);
 		}
 	}
-	public static final String VERSION = "v1.22";	
+	public static final String VERSION = "v1.23";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
@@ -186,7 +187,7 @@ public class PrintrPanel extends JPanel {
 		try {
 			
 		    img = ImageIO.read(GcodeSimulator.class.getResourceAsStream("/GcodePrintrBanner1.png"));
-		    System.out.println("image read done"+img.getWidth());
+		   // System.out.println("image read done"+img.getWidth());
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
