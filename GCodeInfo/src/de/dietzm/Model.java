@@ -76,6 +76,7 @@ public class Model {
 		Layer lastprinted =currLayer;
 		//Current Positions & Speed
 		float xpos=0;
+		Position currpos = new Position(0, 0);
 		float lastxpos=0;
 		float lastypos=0;
 		float lastzpos=0;
@@ -86,6 +87,8 @@ public class Model {
 		float f_old=1000;
 		float f_new=f_old;
 		float bedtemp=0, extemp=0;
+		boolean m101=false; //BFB style extrusion
+		float m108=0; //Bfb style extr.
 
 	
 		
@@ -93,14 +96,7 @@ public class Model {
 			lastxpos=xpos;
 			lastypos=ypos;
 			lastzpos=zpos;
-			//Initialize Axis  
-			if(gc.getGcode() == Constants.GCDEF.G28 || gc.getGcode() == Constants.GCDEF.G92){
-					if(gc.isInitialized(Constants.E_MASK)) epos=gc.getE();
-					if(gc.isInitialized(Constants.X_MASK)) xpos=gc.getX();
-					if(gc.isInitialized(Constants.Y_MASK)) ypos=gc.getY();
-					if(gc.isInitialized(Constants.Z_MASK)) zpos=gc.getZ();
-			}
-			
+	
 			//Update Speed if specified
 			//TODO Clarify if default speed is the last used speed or not
 			if(gc.isInitialized(Constants.F_MASK)){
@@ -208,6 +204,10 @@ public class Model {
 					 	float oldepos=gc.getE();
 					    gc.setExtrusion(gc.getE()-epos);
 					    epos=oldepos;
+				 }else if(m101){
+					  float extr = m108 / 60 * (move / (f_new / 60)); //only for direct drive extr. with r=5
+					 	gc.setInitialized(Constants.E_MASK, extr);
+					 	gc.setExtrusion(extr);
 				 }
 				 
 				 gc.setTime(move / (f_new / 60)); //Set time w/o acceleration
@@ -229,24 +229,29 @@ public class Model {
 					currLayer.addPosition(xpos, ypos,zpos);				
 					pos_changed=true;
 				 }
-			}
-			
-			//Assume that unit is only set once 
-			if(gc.getGcode() == Constants.GCDEF.G20 || gc.getGcode() == Constants.GCDEF.G21){
+			}else if(gc.getGcode() == Constants.GCDEF.G28 || gc.getGcode() == Constants.GCDEF.G92){ 	//Initialize Axis
+					if(gc.isInitialized(Constants.E_MASK)) epos=gc.getE();
+					if(gc.isInitialized(Constants.X_MASK)) xpos=gc.getX();
+					if(gc.isInitialized(Constants.Y_MASK)) ypos=gc.getY();
+					if(gc.isInitialized(Constants.Z_MASK)) zpos=gc.getZ();
+			}else if(gc.getGcode() == Constants.GCDEF.G20 || gc.getGcode() == Constants.GCDEF.G21){ 			//Assume that unit is only set once
 				currLayer.setUnit(gc.getUnit());
-			}
-		
-			if(gc.isInitialized(Constants.SF_MASK)){
+			}else if(gc.getGcode() == Constants.GCDEF.M101){ //bfb style gcode
+				m101=true;
+			}else if(gc.getGcode() == Constants.GCDEF.M103){
+				m101=false;
+			}else if(gc.getGcode() == Constants.GCDEF.M108){
+				if(gc.isInitialized(Constants.E_MASK)) m108=gc.getE();
+			}else if(gc.isInitialized(Constants.SF_MASK)){//update Fan if specified
 				currLayer.setFanspeed((int)gc.getFanspeed());
-			}
-			//update Temperature if specified
-			if(gc.isInitialized(Constants.SE_MASK)){
-				extemp=gc.getExtemp();
-			//Update Bed Temperature if specified
-			}else if(gc.isInitialized(Constants.SB_MASK)){ 
+			}else if(gc.isInitialized(Constants.SE_MASK)){		//update Temperature if specified
+				extemp=gc.getExtemp();			
+			}else if(gc.isInitialized(Constants.SB_MASK)){ //Update Bed Temperature if specified
 				bedtemp=gc.getBedtemp();
 			} 
-			gc.setCurrentPosition( new Position(xpos,ypos));	//TODO reuse position object
+			
+			currpos.updatePos(xpos,ypos); //reuse currposs obj, gcode just copies the floats
+			gc.setCurrentPosition(currpos);
 			//Add Gcode to Layer
 			currLayer.addGcodes(gc);
 		}
@@ -340,6 +345,16 @@ public class Model {
 	}
 	
 	public Material guessMaterial(){
+		String mat = System.getenv("FILAMENT_MATERIAL");
+		if(mat != null){
+			if("PLA".equals(mat)){
+				return Material.PLA;
+			}else{
+				return Material.ABS;
+			}
+			
+		}
+		
 		if(getAvgextemp() <= 205 && getAvgextemp() > 140){
 			return Material.PLA;
 		}

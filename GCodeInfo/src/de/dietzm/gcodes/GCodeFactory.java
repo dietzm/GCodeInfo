@@ -219,12 +219,16 @@ public class GCodeFactory {
 			//System.err.println("Unsupported Gcode M70/M72/M73 found. Ignoring it.");
 			gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
 			break;
-		case M108:
-			System.err.println("Deprecated Gcode M108. Ignoring it.");
+		case M108: //Bfb gcodes
+			//System.err.println("Deprecated Gcode M108. Ignoring it.");
 			gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
+			id = segments[1].charAt(0);
+			if (id=='S' || id=='s'){
+				gcd.setInitialized(Constants.E_MASK,Constants.parseFloat(segments[1],1));
+			}
 			break;
 		case M204:
-			System.err.println("M204 Acceleration control is ignored.");
+			//System.err.println("M204 Acceleration control is ignored.");
 			gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
 			break;
 		case UNKNOWN:
