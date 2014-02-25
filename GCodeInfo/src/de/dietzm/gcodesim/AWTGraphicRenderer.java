@@ -179,11 +179,11 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 		if(getPos()[0] != 0){
 			// Paint current print point (nozzle)
 			gp.setColor(g.getColor());
-			gp.fillOval((int) getPos()[0] + 4, (int) getPos()[1] , 4, 4);
+			gp.fillOval((int) getPos()[0] -2, (int) getPos()[1] -2, 4, 4);
 			gp.setColor(Color.white);
-			gp.drawOval((int) getPos()[0] - 2, (int) getPos()[1] -6, 16, 16);
-			gp.drawOval((int) getPos()[0] + 0, (int) getPos()[1] -4, 12, 12);
-			gp.drawOval((int) getPos()[0] + 2, (int) getPos()[1] -2, 8, 8);
+			gp.drawOval((int) getPos()[0] -8 , (int) getPos()[1] -8, 16, 16);
+			gp.drawOval((int) getPos()[0] -6, (int) getPos()[1] -6, 12, 12);
+			gp.drawOval((int) getPos()[0] -4, (int) getPos()[1] -4, 8, 8);
 	
 		//	paintExtruder(gp,getPos()[2],getPos()[4]);
 			paintExtruder(gp,getPos()[3],getPos()[2],getPos()[4]);
