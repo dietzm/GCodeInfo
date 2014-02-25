@@ -132,6 +132,7 @@ public class GcodeSimulator extends JFrame implements ActionListener {
 	 * 1.21 buttonbar, print panel, gcodeprintr banner
 	 * 1.22 hide banner, settings dialog, bedsize,themes
 	 * 1.23 support bfb gcodes, 
+	 * 1.24 jump to layer added, fixed nozzle offset, fixed help dialog,
 	 */
 	
 	
@@ -155,7 +156,7 @@ public class PrintrPanel extends JPanel {
 			if(awt != null)	awt.drawImage(g);
 		}
 	}
-	public static final String VERSION = "v1.23";	
+	public static final String VERSION = "v1.24";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
@@ -280,7 +281,7 @@ public class PrintrPanel extends JPanel {
 		awt = new AWTGraphicRenderer(bedsizeX, bedsizeY,this,theme);
 		float fac = (awt.getHeight()-(55+(awt.getHeight()/12)))/bedsizeY;
 		gp = new GcodePainter(awt,true,fac,bedsizeX,bedsizeY); //todo pass bedsize
-		System.out.println("Zoom:"+fac);
+	//	System.out.println("Zoom:"+fac);
 		//gp.setZoom((fac));
 		updateSize(showdetails);
 		setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource( "/icon.png" )));
@@ -329,9 +330,10 @@ public class PrintrPanel extends JPanel {
 		    control.addSeparator();
 		    addMenuItem(control, "Next Layer", "n",KeyEvent.VK_N);
 		    addMenuItem(control, "Previous Layer", "b",KeyEvent.VK_B);
+		    addMenuItem(control, "Jump to Layer", "l",KeyEvent.VK_L);
 		    control.addSeparator();
-		    addMenuItem(control, "Step Forward", " ",KeyEvent.VK_SPACE);
-		    addMenuItem(control, "Step Backward", "\b",KeyEvent.VK_BACK_SPACE);
+		    addMenuItem(control, "Step Forward", " ",KeyEvent.VK_RIGHT);
+		    addMenuItem(control, "Step Backward", "\b",KeyEvent.VK_LEFT);
 		    control.addSeparator();
 		    addMenuItem(control, "Restart", "r",KeyEvent.VK_R);
 		    
@@ -620,6 +622,71 @@ public class PrintrPanel extends JPanel {
 		//Forward Event to keylistener (don't duplicate code)
 		keyl.keyTyped(new KeyEvent(this, 0, 0, 0, (int)a,a));
 	}
+	
+	public void showJumpToLayerDialog(){
+		final JDialog in = new JDialog(this,"Jump to layer number",true);
+		in.setLayout(new FlowLayout());
+		in.setBackground(Color.lightGray);
+		final JTextField tf2 = new JTextField(15);
+		final JLabel status = new JLabel("                                                    ");
+		tf2.setText("1");
+//		tf2.setSize(200,20);
+		JButton btn1 = new JButton("Jump");
+		JButton btn2 = new JButton("Cancel");
+		btn2.setActionCommand("Cancel");
+		
+		in.addWindowListener(new WindowListener() {			
+			@Override
+			public void windowOpened(WindowEvent arg0) {}			
+			@Override
+			public void windowIconified(WindowEvent arg0) {	}			
+			@Override
+			public void windowDeiconified(WindowEvent arg0) {}			
+			@Override
+			public void windowDeactivated(WindowEvent arg0) {}			
+			@Override
+			public void windowClosing(WindowEvent arg0) {
+				in.setVisible(false);				
+			}			
+			@Override
+			public void windowClosed(WindowEvent arg0) {
+				in.setVisible(false);				
+			}			
+			@Override
+			public void windowActivated(WindowEvent arg0) {	}
+		});
+		ActionListener action= new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if(e.getActionCommand().equals("Cancel")){
+					in.dispose();
+					return;
+				}
+				String lar = tf2.getText();
+				
+				try {
+					gp.jumptoLayer(Integer.parseInt(lar));
+					in.repaint();
+					in.setVisible(false);
+				} catch (NumberFormatException e1) {
+					status.setText("Invalid Layer Number:"+e1.getMessage());
+					in.repaint();
+				}				
+			}
+		};
+		btn1.addActionListener(action);
+		btn2.addActionListener(action);
+		tf2.addActionListener(action);
+		in.add(new Label("Enter Layer Number"));
+		in.add(tf2);
+		in.add(btn1);
+		in.add(btn2);
+		in.add(status);
+		in.setSize(330,120);
+		in.setVisible(true);
+	}
+
 	
 	public void showNetworkIPDialog(){
 		final JDialog in = new JDialog(this,"Send to GCodeSimulator/GCodePrintr for Android",true);
@@ -933,7 +1000,8 @@ public class PrintrPanel extends JPanel {
 					showNetworkIPDialog();
 				} else if (arg0.getKeyChar() == 'h') {
 					gp.showHelp();
-					
+				} else if (arg0.getKeyChar() == 'l') {
+					showJumpToLayerDialog();
 				//EDIT MODE
 				} else if (arg0.getKeyChar() == 'g') {
 					Model.deleteLayer(Collections.singleton(gp.getCurrentLayer()));

@@ -30,6 +30,13 @@ public class GcodePainter implements Runnable {
 		return painttravel;
 	}
 
+	public void jumptoLayer(int lnr){
+		if(model.getLayercount(true) <= lnr){
+			fftoLayer=model.getLayercount(true);
+		}else{
+			fftoLayer=lnr;				
+		}		
+	}
 
 	public void setPainttravel(boolean painttravel) {
 		this.painttravel = painttravel;
@@ -491,13 +498,14 @@ public class GcodePainter implements Runnable {
 		float ybox=(bedsizeY*zoom)/2-boxsize/2;
 		g.fillrect(xbox,ybox , boxsize+30, boxsize+109);
 		g.drawrect(xbox-3,ybox-3 , boxsize+36, boxsize+115);
-		float gap = 5*zoom;
+		float size=5.5f+(3.10f*zoom)/200*bedsizeX;
+		float gap =(int)size;
 		g.setColor(colNR);
 		
 		g2.drawtext("Gcode Simulator "+GcodeSimulator.VERSION,xbox+3 , ybox+gap);
 		g2.drawtext("________________________",xbox+3 , ybox+gap+1);
-		g2.drawtext("Author: Mathias Dietz ",xbox+3 , ybox+gap*2);
-		g2.drawtext("Contact: gcode@dietzm.de ",xbox+3 , ybox+gap*3);
+		g2.drawtext("Author: Mathias Dietz (gcode@dietzm.de)",xbox+3 , ybox+gap*2);
+		g2.drawtext("Homepage: http://gcodesim.dietzm.de",xbox+3 , ybox+gap*3);
 		
 		g2.drawtext("Key Shortcuts Help: ",xbox+3 , ybox+gap*4+3);
 		g2.drawtext("________________________",xbox+3 , ybox+gap*4+4);
