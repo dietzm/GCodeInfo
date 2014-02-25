@@ -334,7 +334,7 @@ public class SerialPrinter implements Runnable, Printer {
 			code = "G28";
 		}else{
 			cons.appendText("Home " + move.toString() + " axis");
-			code = "G28 " + move.toString();
+			code = "G28 " + move.toString()+"0";
 		}
 		addToPrintQueue(GCodeFactory.getGCode(code, 1), true);
 	}
@@ -531,7 +531,7 @@ public class SerialPrinter implements Runnable, Printer {
 			 * update temperature in case of M105 command print out debug info
 			 * in case of testruns
 			 */
-			if (recv.containsOK() || recv.containsWait()) {
+			if (recv.containsOK()) {
 				//cons.log(serial, "OK");
 				if (code == M105 && recv.containsTx()) { // Parse temperature
 					try {
@@ -553,6 +553,9 @@ public class SerialPrinter implements Runnable, Printer {
 						cons.appendText("Swallow OK");
 						cons.log("ERROR", "Swallow OK");
 					}
+					continue;
+				}else if (code == M105){
+					cons.log(serial, "Wait for temp");
 					continue;
 				}else if(code == M20){
 					sdfiles.append(recv.toString());
@@ -587,8 +590,12 @@ public class SerialPrinter implements Runnable, Printer {
 			if (recv.containsTx()) { // Parse temperature
 				state.tempstring = recv.subSequence(0, recv.length(), state.tempstring);
 				cons.setTemp(state.tempstring);
+				if(code == M105) break;
 			}
-			
+			if( recv.containsWait()){
+				cons.log(serial, "Wait received");
+				continue;
+			}
 			if(code.isBuffered() && !recv.startsWithEcho() && !recv.startsWithGO()){ //For buffered commands we only expect ok
 				state.unexpected++;
 				cons.appendText("Unexpected response from printer: "+recv.toString());
