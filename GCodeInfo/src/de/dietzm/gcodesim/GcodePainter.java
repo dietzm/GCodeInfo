@@ -345,7 +345,11 @@ public class GcodePainter implements Runnable {
 			printLabelBox(g2, 95,5,getFanSpeed(gc.getFanspeed()), Constants.FAN_LABEL,lay.getNumber());
 		}
 		
-		int nr = Constants.formatTimetoHHMMSS(mtime,tempbuf.getBytes());
+		float rmtime = mtime;
+		if(printer != null && printer.isPrinting() && printer.getPrintSpeed() != 100){
+			rmtime = rmtime/printer.getPrintSpeed() *100;
+		}
+		int nr = Constants.formatTimetoHHMMSS(rmtime,tempbuf.getBytes());
 		tempbuf.setlength(nr);
 		printLabelBox(g2, 58,24, tempbuf, Constants.REMTIME_LABEL,lay.getNumber());
 

@@ -68,7 +68,9 @@ public class SerialIO implements SerialPortEventListener, Printer{
 	public GCode getCurrentGCode(){
 		return null;
 	}
-
+	public int getPrintSpeed() {
+		return 100;
+	}
 
 	InputStream inputStream =null;
 	OutputStream outputStream = null;
