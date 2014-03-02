@@ -472,6 +472,7 @@ public class Constants {
 	
 	/**
 	 * User for splitting the GCodes into segments
+	 * NOT THREAD SAVE !!
 	 * @param text
 	 * @return
 	 */

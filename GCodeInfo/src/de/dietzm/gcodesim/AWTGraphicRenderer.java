@@ -178,6 +178,7 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 
 		if(getPos()[0] != 0){
 			// Paint current print point (nozzle)
+			//System.out.println("x"+getPos()[0]+" y"+ getPos()[1]);
 			gp.setColor(g.getColor());
 			gp.fillOval((int) getPos()[0] -2, (int) getPos()[1] -2, 4, 4);
 			gp.setColor(Color.white);

@@ -133,6 +133,7 @@ public class GcodeSimulator extends JFrame implements ActionListener {
 	 * 1.22 hide banner, settings dialog, bedsize,themes
 	 * 1.23 support bfb gcodes, 
 	 * 1.24 jump to layer added, fixed nozzle offset, fixed help dialog,
+	 * 1.25 fixed bug with nozzle pos when painting long lines
 	 */
 	
 	
@@ -156,7 +157,7 @@ public class PrintrPanel extends JPanel {
 			if(awt != null)	awt.drawImage(g);
 		}
 	}
-	public static final String VERSION = "v1.24";	
+	public static final String VERSION = "v1.25";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;

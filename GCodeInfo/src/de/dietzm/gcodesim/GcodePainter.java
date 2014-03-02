@@ -437,7 +437,7 @@ public class GcodePainter implements Runnable {
 			det=modeldetails;
 			break;
 		}
-		g2.clearrect(bedsizeX*zoom+gap+5,(bedsizeY*zoom/zoommod)+2, (bedsizeX * zoom/zoommod*2)-5, bedsizeY * zoom + boxheight -(bedsizeY*zoom/zoommod)-7 ,print?1:0);
+		g2.clearrect(bedsizeX*zoom+gap+5,(bedsizeY*zoom/zoommod)+2, (bedsizeX * zoom/zoommod*2)-7, bedsizeY * zoom + boxheight -(bedsizeY*zoom/zoommod)-7 ,print?1:0);
 		
 		
 		int c=0;
@@ -457,9 +457,9 @@ public class GcodePainter implements Runnable {
 		float boxheight=(bedsizeX*zoom)/12f;
 		float gapz=zoom;
 		float size=10.15f*(zoom)/200*bedsizeX;
-		g2.clearrect(boxpos+2,bedsizeY*zoom+2, boxsize-3,boxheight-2,print?1:0);
+		g2.clearrect(boxpos+2,bedsizeY*zoom+2, boxsize-3,boxheight-1,print?1:0);
 		g2.setColor(colNR);//white
-		g2.drawrect(boxpos,bedsizeY*zoom, boxsize,boxheight+1);
+		g2.drawrect(boxpos,bedsizeY*zoom, boxsize,boxheight+2);
 		g2.setColor(laynr % colNR);
 		g2.setFontSize(size);
 		g2.drawtext(value, boxpos, bedsizeY*zoom+size-gapz,boxsize);
@@ -542,6 +542,7 @@ public class GcodePainter implements Runnable {
 
 	private void printBed(GraphicRenderer g2) {
 		g2.setColor(colNR);
+		g2.setStroke(1);
 		g2.drawrect(0, 0, bedsizeX * zoom, bedsizeY * zoom); // Draw print bed
 		g2.drawrect(bedsizeX * zoom , 0, gap, bedsizeY * zoom); // Draw level bar border
 		
@@ -552,7 +553,7 @@ public class GcodePainter implements Runnable {
 		g2.drawrect(bedsizeX * zoom + gap +bedsizeX*zoomsmall , 0, bedsizeX*zoomsmall, bedsizeY * zoomsmall);
 		//full modeldetails box
 		float boxheight=(bedsizeX*zoom)/12f;
-		g2.drawrect(bedsizeX * zoom + gap, 0,  bedsizeX*zoomsmall*2, bedsizeY * zoom+boxheight+1); // Draw print		
+		g2.drawrect(bedsizeX * zoom + gap, 0,  bedsizeX*zoomsmall*2, bedsizeY * zoom+boxheight+2); // Draw print		
 		
 		float fsize=2+5f*(zoom)/200*bedsizeX;
 		g2.setFontSize(fsize);
@@ -616,7 +617,7 @@ public class GcodePainter implements Runnable {
 					float ly=y1 + (i * stepy);
 					float ny=( y1+ ((i + 1) * stepy));
 					
-					g2.setPos((int)lx,(int)ny);
+					g2.setPos((int)lx,(int)ly);
 					g2.drawline(lx, ly, nx, ny);
 					printLineHorizontal2(g2,lx,ly,nx,ny, zpos,travel);
 					try {
@@ -829,6 +830,9 @@ public class GcodePainter implements Runnable {
 						 * Painting starts here
 						 */
 						if(gcdef == Constants.GCDEF.UNKNOWN || gcdef == Constants.GCDEF.COMMENT){
+							if(fftoGcode != 0 && fftoGcode == gCode.getLineindex()){
+								fftoGcode=0;
+							}//make sure to reset fftogcode even if it is a comment (loop hang)
 							continue;
 						}
 						//System.out.println(gCode);
