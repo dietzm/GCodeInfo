@@ -15,19 +15,17 @@ import de.dietzm.gcodes.GCode;
  */
 public class PrintQueue implements Runnable {
 	
-	//public static final int MAX_AUTO_CONCURRENT=1;
-	public static final int MAX_MANUAL_CONCURRENT=200000;
 	public Model printModel = null;
 	private float remainingtime=0;
 	Thread addmodelth = null;
 
 	//private boolean clear =false;
 	private LinkedBlockingQueue<GCode> aprintQ = new LinkedBlockingQueue<GCode>();
-	private LinkedBlockingQueue<GCode> mprintQ = new LinkedBlockingQueue<GCode>(MAX_MANUAL_CONCURRENT);
+	private LinkedBlockingQueue<GCode> mprintQ = null;
 	GCode[] postgc = null;
 	
-	public PrintQueue(){
-		
+	public PrintQueue(int max_manual){
+		 mprintQ = new LinkedBlockingQueue<GCode>(max_manual);
 	}
 	
 	public Model getPrintModel() {

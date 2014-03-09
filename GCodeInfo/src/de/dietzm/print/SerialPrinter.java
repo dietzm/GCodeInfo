@@ -25,7 +25,7 @@ public class SerialPrinter implements Runnable, Printer {
 	
 	private ConsoleIf cons = null;
 	private PrinterConnection mConn = null;
-	private final PrintQueue printQueue = new PrintQueue();;
+	private PrintQueue printQueue = null;
 	private final ReceiveBuffer ioBuffer = new ReceiveBuffer(4096);
 	private StringBuffer sdfiles = new StringBuffer();
 	
@@ -107,6 +107,7 @@ public class SerialPrinter implements Runnable, Printer {
 		public boolean streaming = false;
 		public boolean sdprint = false;
 		public boolean reset = false;
+		public boolean reseting = false;
 		public int printspeed = 100;
 		public int extrfactor = 100;
 		public int timeouts=0;
@@ -136,6 +137,13 @@ public class SerialPrinter implements Runnable, Printer {
 
 	public SerialPrinter( ConsoleIf console) {
 		this.cons = console;
+		printQueue = new PrintQueue(2000);
+		cons.appendText("Not connected. Press connect button to establish printer connection.");
+	}
+	
+	public SerialPrinter( ConsoleIf console, int manual_queue_size) {
+		this.cons = console;
+		printQueue = new PrintQueue(manual_queue_size);
 		cons.appendText("Not connected. Press connect button to establish printer connection.");
 	}
 	
@@ -257,6 +265,8 @@ public class SerialPrinter implements Runnable, Printer {
 	
 	private void doReset() {
 		if (state.connected) {
+			state.reseting=true;
+			state.reset = false;
 			try {
 				if (state.printing) setPrintMode(false);
 				printQueue.clear();
@@ -279,7 +289,7 @@ public class SerialPrinter implements Runnable, Printer {
 					cons.appendText("Reset failed or interrupted:" + e);
 				e.printStackTrace();
 			}
-			state.reset = false;
+			state.reseting = false;
 		}
 	}
 
@@ -698,7 +708,7 @@ public class SerialPrinter implements Runnable, Printer {
 		ioBuffer.clear();// Make sure the buffer is cleared before
 									// receiving new data
 		long time = System.currentTimeMillis();
-		while ((System.currentTimeMillis() - time) < timeout && isConnected()) {
+		while ((System.currentTimeMillis() - time) < timeout && isConnected() && !state.reset) {
 			mConn.read(ioBuffer);
 			if(state.debug){
 				cons.log(serial, "Data Received:" + ioBuffer.toString().trim() );
@@ -720,7 +730,7 @@ public class SerialPrinter implements Runnable, Printer {
 	}
 
 	public void reset() {
-		if(state.reset){
+		if(state.reset || state.reseting){
 			//reset already 
 			return;
 		}
@@ -976,12 +986,14 @@ public class SerialPrinter implements Runnable, Printer {
 			StringBuilder str = new StringBuilder();
 			str.append("-----------------Debug Data---------------------------");
 			str.append(Constants.newlinec);
-			str.append("Connected/Connecting/reset:");
+			str.append("Connected/Connecting/reset/resetting:");
 			str.append(state.connected);
 			str.append("/");
 			str.append(state.connecting);
 			str.append("/");
 			str.append(state.reset);
+			str.append("/");
+			str.append(state.reseting);
 			str.append(Constants.newlinec);
 			
 			str.append("Baud:");
