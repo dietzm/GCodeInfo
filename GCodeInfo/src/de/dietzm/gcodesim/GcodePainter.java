@@ -26,6 +26,9 @@ public class GcodePainter implements Runnable {
 	public int bedsizeY = 200;
 	public int colNR = 7;
 	public boolean painttravel = true;
+	
+	public Position[] extruderOffset = {new Position(0, 0),new Position(20.5f, 0)}; //TODO make it configureable
+	private int activeExtruder = 0;
 	public boolean isPainttravel() {
 		return painttravel;
 	}
@@ -835,6 +838,12 @@ public class GcodePainter implements Runnable {
 							}//make sure to reset fftogcode even if it is a comment (loop hang)
 							continue;
 						}
+						
+						if(gcdef == Constants.GCDEF.T0){
+							activeExtruder=0;
+						}else if(gcdef == Constants.GCDEF.T1){
+							activeExtruder=1;
+						}//TODO add more
 						//System.out.println(gCode);
 						long starttime=System.currentTimeMillis();
 						float sleeptime =0;
@@ -854,6 +863,8 @@ public class GcodePainter implements Runnable {
 						
 						//Print the lines from last position to current position
 						if(gCode.getCurrentPosition(pos) != null) {
+							
+							//pos.applyOffset(extruderOffset[activeExtruder]);
 							//System.out.println("XXXXX"+gCode);
 			
 						g2.setPos((int)((pos.x+Xoffset)*zoom), (int)((bedsizeY * zoom) - (pos.y+Yoffset)*zoom));

@@ -31,4 +31,13 @@ public class Position {
 		float move = (float) Math.sqrt((xmove * xmove) + (ymove * ymove));
 		return move;
 	}
+	
+	/**
+	 * Apply offet for dual extrusion
+	 * @param off
+	 */
+	public void applyOffset(Position off){
+		x=x+off.x;
+		y=y+off.y;
+	}
 }
