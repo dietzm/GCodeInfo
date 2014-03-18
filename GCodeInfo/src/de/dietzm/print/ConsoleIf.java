@@ -3,7 +3,7 @@ package de.dietzm.print;
 public interface ConsoleIf {
 	public void appendText(CharSequence ... txt);
 	public void appendTextNoCR(CharSequence ... txt);
-	public void setTemp(CharSequence temp);
+	public void setTemp(CharSequence temp, int extruder);
 	public void clearConsole();	
 	public int chooseDialog(final String[] items,final String[] values, int type);
 	public void setWakeLock(boolean active);

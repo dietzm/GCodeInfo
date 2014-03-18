@@ -539,7 +539,7 @@ public class PrintrPanel extends JPanel {
 					}
 					
 					@Override
-					public void setTemp(CharSequence temp) {
+					public void setTemp(CharSequence temp,int extruder) {
 						// TODO Auto-generated method stub
 						
 					}

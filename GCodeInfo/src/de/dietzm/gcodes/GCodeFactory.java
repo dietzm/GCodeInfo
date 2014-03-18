@@ -231,6 +231,10 @@ public class GCodeFactory {
 			//System.err.println("M204 Acceleration control is ignored.");
 			gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
 			break;
+		case M218:
+			//dual extrusion offset marlin
+			gcd=findMatches(segments, codelinevar,linenr,tmpgcode);
+			break;
 		case UNKNOWN:
 			System.err.println("Unknown Gcode "+linenr+": "+ tmpgcode+" "+segments[0]+" "+codelinevar.substring(0,Math.min(15,codelinevar.length()))+"....");
 			gcd=createDefaultGCode(segments[0]+" "+codelinevar,linenr,tmpgcode);
@@ -296,6 +300,8 @@ public class GCodeFactory {
 				break;
 			case 'R':
 			case 'r':
+			case 'T': //Use r for t as well (double used var)
+			case 't':
 				gcd.setInitialized(Constants.R_MASK,Constants.parseFloat(segments[i],1));
 				break;
 			default:
