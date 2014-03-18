@@ -126,6 +126,15 @@ public class ReceiveBuffer implements CharSequence {
 		return false; //ASCII
 	}
 	
+	//Repetier firmware sends Resend:x when command was invalid
+	public boolean containsResend(){
+		if(len<6) return false;
+		for (int i = 0; i < len-3; i++) {
+			if(array[i]=='R' && array[i+1]=='e' && array[i+2]=='s' && array[i+3]=='e' && array[i+4]=='n' && array[i+5]=='d') return true;
+		}
+		return false; //ASCII
+	}
+	
 	public boolean containsFail(){
 		if(len<4) return false;
 		for (int i = 0; i < len-3; i++) {
@@ -171,6 +180,43 @@ public class ReceiveBuffer implements CharSequence {
 		}
 		return 0; //ASCII
 	}
+	
+	/**
+	 * parse output:
+	 * Resend:2
+	 * 
+	 * @return percent complete
+	 */
+	public int parseResend(){
+		if(len<6) return 0;
+		//Starts with resend:
+		int ridx = -1;
+		for (int i = 0; i < len-3; i++) {
+			if(array[i]=='R' && array[i+1]=='e' && array[i+2]=='s' && array[i+3]=='e' && array[i+4]=='n' && array[i+5]=='d'){
+				ridx=i;
+				break;
+			}
+		}
+		
+		if(ridx != -1){
+			int idx = indexOf(':',ridx);
+			if(idx == -1) return 0;
+			int linenr;
+			try {
+				int idx2 = indexOf('\n',idx+1);
+				if(idx2 == -1){
+					return 0;
+				}
+				String remain = subSequence(idx+1,idx2).toString().trim();
+				linenr = Integer.parseInt(remain);
+			} catch (NumberFormatException e) {
+				return 0; //todo
+			}
+			return linenr;
+		}
+		return 0; //ASCII
+	}
+	
 	
 	public boolean startsWithEcho(){
 		if(len<4) return false;

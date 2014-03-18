@@ -20,6 +20,8 @@ public class SerialPrinter implements Runnable, Printer {
 	public static final GCode M105 = GCodeFactory.getGCode("M105", -105);
 	public static final GCode M20 = GCodeFactory.getGCode("M20", -20);
 	public static final GCode M27 = GCodeFactory.getGCode("M27", -20);
+	public static final GCode T0 = GCodeFactory.getGCode("T0", -1000);
+	public static final GCode T1 = GCodeFactory.getGCode("T1", -1001);
 	public static final String serial = "SERIAL"; //log tag
 	public static final String io = "IO"; //log tag	
 	
@@ -98,6 +100,7 @@ public class SerialPrinter implements Runnable, Printer {
 		public boolean debug = false;
 		public float distance = 1;
 		public float extemp = 0;
+		public int activeExtr = 0;
 		public boolean fan = false;
 		public float lastE = 0;
 		public GCode lastgcode = G0;
@@ -111,6 +114,8 @@ public class SerialPrinter implements Runnable, Printer {
 		public int printspeed = 100;
 		public int extrfactor = 100;
 		public int timeouts=0;
+		public int resends=0;
+		public int resendskips=0;
 		public int timeoutline=0;
 		public int unexpected=0;
 		public int swallows=0;
@@ -284,6 +289,8 @@ public class SerialPrinter implements Runnable, Printer {
 				state.timeouts=0;
 				state.printspeed=100;
 				state.extrfactor=100;
+				state.resends=0;
+				state.resendskips=0;
 			} catch (Exception e) {
 				if (state.debug)
 					cons.appendText("Reset failed or interrupted:" + e);
@@ -497,7 +504,7 @@ public class SerialPrinter implements Runnable, Printer {
 		cons.log(io, null, ioBuffer); 				//log buffer to logfile
 		sendtime = System.currentTimeMillis();
 		state.readcalls=0; //reset readcalls var debug only
-
+		int resendcnt=0;
 		/*
 		 * Wait for the response
 		 */
@@ -536,6 +543,33 @@ public class SerialPrinter implements Runnable, Printer {
 				cons.appendText("Error during streaming, abort");
 				setPrintMode(false);
 			}
+			
+			/*
+			 * Resend handling
+			 */
+			if ( recv.containsResend()){
+				resendcnt++;
+				int linenr = recv.parseResend();
+				if(resendcnt <= 1){
+					state.resends++;
+					if(state.debug){
+						cons.appendText("Resend #"+linenr+"detected ... trying to resend last gcode");
+					}
+					String cmd = "N"+linenr+" "+code.getCodeline();
+					ioBuffer.put(cmd.getBytes());
+					ioBuffer.setlength(cmd.length());			
+					mConn.writeBuffer(ioBuffer);				//write buffer
+				}else{
+					state.resendskips++;
+					cons.appendText("Resend retry failed ... skipping");
+					String cmd = "N"+linenr+" M105\n";
+					ioBuffer.put(cmd.getBytes());
+					ioBuffer.setlength(cmd.length());			
+					mConn.writeBuffer(ioBuffer);				//write buffer
+					break;
+				}				
+			}
+			
 			/*
 			 * Check if printer command is committed with "ok" make sure to
 			 * update temperature in case of M105 command print out debug info
@@ -552,7 +586,7 @@ public class SerialPrinter implements Runnable, Printer {
 						}else{
 							state.tempstring = recv.subSequence(idx1, idx,state.tempstring);
 						}
-						cons.setTemp(state.tempstring);
+						cons.setTemp(state.tempstring,state.activeExtr);
 					} catch (Exception e) {
 						cons.appendText("Error parsing temperature: "+recv.toString());
 						e.printStackTrace();
@@ -599,7 +633,7 @@ public class SerialPrinter implements Runnable, Printer {
 			//Check if temperature field needs to be updated (M109,m116,..)
 			if (recv.containsTx()) { // Parse temperature
 				state.tempstring = recv.subSequence(0, recv.length(), state.tempstring);
-				cons.setTemp(state.tempstring);
+				cons.setTemp(state.tempstring,state.activeExtr);
 				if(code == M105) break;
 			}
 			if( recv.containsWait()){
@@ -878,6 +912,22 @@ public class SerialPrinter implements Runnable, Printer {
 
 	}
 	
+	/**
+	 * Set the active extruder
+	 * @param i , if -1 then toggle between dual 0:1
+	 */
+	public void setActiveExtruder(int tool){
+		if(tool == -1 && state.activeExtr == 0){
+			state.activeExtr = 1;
+			addToPrintQueue(T1, true);
+		}else if(tool == -1 && state.activeExtr == 1){
+			state.activeExtr = 0;
+			addToPrintQueue(T0, true);
+		}else{
+			addToPrintQueue(GCodeFactory.getGCode("T"+tool, -1002), true);
+		}		
+	}
+	
 	public void setTempWatchIntervall(int ms) {
 		tempwatchintervall=ms;
 	}
@@ -1054,8 +1104,12 @@ public class SerialPrinter implements Runnable, Printer {
 			str.append(state.unexpected);
 			str.append(Constants.newlinec);
 			
-			str.append("Swallow OK:");
+			str.append("Swallow OK/Resend/Resendskip");
 			str.append(state.swallows);
+			str.append('/');
+			str.append(state.resends);
+			str.append('/');
+			str.append(state.resendskips);
 			str.append(Constants.newlinec);
 			
 			str.append("Read calls:");
