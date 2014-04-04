@@ -120,36 +120,36 @@ public class GCodeUtil {
 		
 		if(option.startsWith("speed=")){
 			int value = Integer.parseInt(option.substring(6));
-			Model.changeSpeed(lays, value);
+			model.changeSpeed(lays, value);
 
 		}else if(option.startsWith("extr=")){
 			int value = Integer.parseInt(option.substring(5));
-			Model.changeExtrusion(lays, value);
+			model.changeExtrusion(lays, value);
 		}else if(option.startsWith("exttemp=")){
 			float value = Float.parseFloat(option.substring(8));
-			Model.changeExtTemp(lays, value);
+			model.changeExtTemp(lays, value);
 		}else if(option.startsWith("bedtemp=")){
 			float value = Float.parseFloat(option.substring(8));
-			Model.changeBedTemp(lays, value);
+			model.changeBedTemp(lays, value);
 		}else if(option.startsWith("layerh=")){
 			int value = Integer.parseInt(option.substring(7));
-			Model.changeLayerHeight(lays, value);
+			model.changeLayerHeight(lays, value);
 		}else if(option.startsWith("zoffset=")){
 			float value = Float.parseFloat(option.substring(8));
-			Model.changeZOffset(lays, value);
+			model.changeZOffset(lays, value);
 		}else if(option.startsWith("yoffset=")){
 			float value = Float.parseFloat(option.substring(8));
-			Model.changeYOffset(lays, value);
+			model.changeYOffset(lays, value);
 		}else if(option.startsWith("xoffset=")){
 			float value = Float.parseFloat(option.substring(8));
-			Model.changeXOffset(lays, value);
+			model.changeXOffset(lays, value);
 		}else if(option.startsWith("fan=")){
 			int value = Integer.parseInt(option.substring(4));
 			System.out.println("Change Fan to "+value);
-			Model.changeFan(lays, value);
+			model.changeFan(lays, value);
 		}else if(option.startsWith("delete")){
 			System.out.println("Delete Layers ");
-			Model.deleteLayer(lays);
+			model.deleteLayer(lays);
 		}else{
 			printUsageandExit();
 		}
@@ -299,7 +299,7 @@ public class GCodeUtil {
 			if(lay.isPrinted()){
 				System.out.println("--------------------------------------------------");
 					System.out.println(lay.getLayerDetailReport()+"\n Percent of time:"+layperc+"%");
-					for (GCode gc : lay.getGcodes()) {
+					for (GCode gc : model.getGcodes(lay)) {
 						System.out.println("\t"+gc.toString());
 					}
 				
@@ -324,7 +324,7 @@ public class GCodeUtil {
 			//float layperc =  GCode.round2digits(lay.getTime()/(model.getTime()/100));
 				//System.out.println("--------------------------------------------------");
 					//System.out.println(lay.getLayerDetailReport()+"\n Percent of time:"+layperc+"%");
-					for (GCode gc : lay.getGcodes()) {
+					for (GCode gc : model.getGcodes(lay)) {
 						System.out.println(lay.getNumber()+";"+gc.toCSV());
 					}
 				

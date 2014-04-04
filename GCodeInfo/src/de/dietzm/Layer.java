@@ -7,6 +7,7 @@ import java.util.TreeMap;
 
 import de.dietzm.SpeedEntry.Speedtype;
 import de.dietzm.gcodes.GCode;
+import de.dietzm.gcodes.GCodeStore;
 
 public class Layer implements Comparable<Layer>{
 	
@@ -26,7 +27,6 @@ public class Layer implements Comparable<Layer>{
 	private float extrusion=0;
 	private float fantime=0; //number of gcodes with fan turned on
 	private int fanspeed=0; 
-	private ArrayList<GCode> gcodes = new ArrayList<GCode>();
 
 	private float Layerheight;
 	private boolean isprinted =false;
@@ -39,6 +39,9 @@ public class Layer implements Comparable<Layer>{
 	private String unit = "mm"; //default is mm
 
 	private float zPosition;
+	 //index of the gcodes in the GCodeStore belonging to this layer
+	public int lowidx = -1;
+	public int highidx = -1;
 
 	public Layer(float zPosition){
 		this.zPosition=zPosition;
@@ -51,8 +54,10 @@ public class Layer implements Comparable<Layer>{
 
 
 
-	void addGcodes(GCode gcode) {
-		this.gcodes.add(gcode);
+	void addGcodes(GCode gcode, int idx) {
+		if(lowidx==-1) lowidx=idx;
+		highidx=idx;
+		
 		time=time+gcode.getTime();
 		timeaccel=timeaccel+gcode.getTimeAccel();
 		distance=distance+gcode.getDistance();
@@ -191,9 +196,7 @@ public class Layer implements Comparable<Layer>{
 		bedtemp=bet;
 	}
 	
-	public ArrayList<GCode> getGcodes() {
-		return gcodes;
-	}
+
 	public float getLayerheight() {
 		return Layerheight;
 	}
@@ -359,9 +362,9 @@ public class Layer implements Comparable<Layer>{
 				var.append(Constants.round2digits(fantime/(time/100f)));
 				var.append('%');
 				var.append("\n GCodes: ");
-				var.append(gcodes.size()); 
+				var.append(lowidx-highidx); 
 				var.append("\n GCode Linenr: ");
-				var.append(gcodes.get(0).getLineindex());
+				var.append(lowidx); //TODO verify that lowidx == line number
 				var.append("\n Dimension: ");
 				var.append(Constants.round2digits(dimension[0]));
 				var.append(unit);
