@@ -12,6 +12,7 @@ import java.util.Date;
 import de.dietzm.Constants;
 import de.dietzm.Model;
 import de.dietzm.gcodes.GCode;
+import de.dietzm.gcodes.GCodeStore;
 
 public class NetworkPrinter implements Runnable{
 	ServerSocket sock =null;
@@ -36,7 +37,7 @@ public class NetworkPrinter implements Runnable{
 		BufferedOutputStream bufout = new BufferedOutputStream(out,32768);
 		byte[] transBuf = new byte[1024];
 		int len=0;
-		ArrayList<GCode> gcodes = mod.getGcodes();
+		GCodeStore gcodes = mod.getGcodes();
 		for (GCode gCode : gcodes) {
 			len= gCode.getCodeline(transBuf);
 			bufout.write(transBuf,0,len);

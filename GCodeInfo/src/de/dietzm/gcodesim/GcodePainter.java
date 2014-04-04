@@ -10,6 +10,7 @@ import de.dietzm.Model;
 import de.dietzm.Position;
 import de.dietzm.Constants.GCDEF;
 import de.dietzm.gcodes.GCode;
+import de.dietzm.gcodes.GCodeStore;
 import de.dietzm.gcodes.MemoryEfficientLenString;
 import de.dietzm.gcodes.MemoryEfficientString;
 import de.dietzm.print.Printer;
@@ -487,9 +488,9 @@ public class GcodePainter implements Runnable {
 				
 			}else{
 				if(model.getFilesize() >0){
-					g.drawtext(Constants.round2digits((model.getReadbytes()/(model.getFilesize()/100f)))+"%  ("+model.getGcodes().size()+")",220,340);
+					g.drawtext(Constants.round2digits((model.getReadbytes()/(model.getFilesize()/100f)))+"%  ("+model.getReadLines()+")",220,340);
 				}else{
-					g.drawtext(model.getGcodes().size()+"",220,340);
+					g.drawtext(model.getReadLines()+"",220,340);
 				}
 			}
 				
@@ -803,6 +804,7 @@ public class GcodePainter implements Runnable {
 					g2.setTitle("Simulation");
 				}
 				 for (Layer lay : layers) {
+					//System.out.println("Layer #"+lay.getNumber()+"  low:"+lay.lowidx+" high:"+lay.highidx);
 					if(oneLayerAtATime){
 						g2.clearrect(2, 2, bedsizeX*zoom-2, bedsizeY*zoom,print?1:0);
 						printBed(g2);
@@ -822,7 +824,7 @@ public class GcodePainter implements Runnable {
 					// Print & Paint all Gcodes
 					
 					//Android guidelines say foreach loops are slower for arraylist
-					ArrayList<GCode> gcarr = lay.getGcodes();
+					GCodeStore gcarr = model.getGcodes(lay);
 					int gcnum = gcarr.size();
 					float zpos=lay.getZPosition();
 					GCDEF gcdef;
@@ -1226,6 +1228,7 @@ public class GcodePainter implements Runnable {
 		if (gcodepainter != null) {
 			errormsg = null;
 			setCmd(Commands.EXIT); // Stop thread
+			if(pause != 0) togglePause();
 			try {
 				gcodepainter.join(10000);
 			} catch (InterruptedException e) {

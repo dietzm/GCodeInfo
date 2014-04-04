@@ -72,6 +72,8 @@ import javax.swing.text.html.ImageView;
 
 import de.dietzm.Model;
 import de.dietzm.SerialIO;
+import de.dietzm.gcodes.GCodeFactory;
+import de.dietzm.gcodes.GCodeFactoryLowMem;
 import de.dietzm.gcodesim.GcodePainter.Commands;
 import de.dietzm.print.ConsoleIf;
 import de.dietzm.print.Dummy;
@@ -281,6 +283,7 @@ public class PrintrPanel extends JPanel {
 	public void init(String filename,InputStream in) throws IOException{
 		awt = new AWTGraphicRenderer(bedsizeX, bedsizeY,this,theme);
 		float fac = (awt.getHeight()-(55+(awt.getHeight()/12)))/bedsizeY;
+		//GCodeFactory.setCustomFactory(new GCodeFactoryLowMem());
 		gp = new GcodePainter(awt,true,fac,bedsizeX,bedsizeY); //todo pass bedsize
 	//	System.out.println("Zoom:"+fac);
 		//gp.setZoom((fac));
@@ -1005,19 +1008,19 @@ public class PrintrPanel extends JPanel {
 					showJumpToLayerDialog();
 				//EDIT MODE
 				} else if (arg0.getKeyChar() == 'g') {
-					Model.deleteLayer(Collections.singleton(gp.getCurrentLayer()));
+					gp.model.deleteLayer(Collections.singleton(gp.getCurrentLayer()));
 					gp.setCmd(Commands.REANALYSE);
 				} else if (arg0.getKeyChar() == 'w') {
-					Model.changeSpeed(Collections.singleton(gp.getCurrentLayer()),10);
+					gp.model.changeSpeed(Collections.singleton(gp.getCurrentLayer()),10);
 					gp.setCmd(Commands.REANALYSE);
 				} else if (arg0.getKeyChar() == 'e') {
-					Model.changeSpeed(Collections.singleton(gp.getCurrentLayer()),-10);
+					gp.model.changeSpeed(Collections.singleton(gp.getCurrentLayer()),-10);
 					gp.setCmd(Commands.REANALYSE);
 				} else if (arg0.getKeyChar() == 'z') {
-					Model.changeExtrusion(Collections.singleton(gp.getCurrentLayer()),10);
+					gp.model.changeExtrusion(Collections.singleton(gp.getCurrentLayer()),10);
 					gp.setCmd(Commands.REANALYSE);
 				} else if (arg0.getKeyChar() == 'u') {
-					Model.changeExtrusion(Collections.singleton(gp.getCurrentLayer()),-10);
+					gp.model.changeExtrusion(Collections.singleton(gp.getCurrentLayer()),-10);
 					gp.setCmd(Commands.REANALYSE);
 				} else if (arg0.getKeyChar() == 'a') {
 					try {
