@@ -48,6 +48,12 @@ public class ReceiveBuffer implements CharSequence {
 		len=buf.length;
 	}
 	
+	public void put(byte[] buf, int offset , int blen){
+		if(blen > array.length) throw new IndexOutOfBoundsException("ReceiveBuffer size exceeded, len:"+blen+" off:"+offset);
+		System.arraycopy(buf, offset, array, 0, blen);
+		len=blen;
+	}
+	
 	/**
 	 * copy the content of the byte buffer from offset 0 up to the current position to the end of this buffer
 	 * @param buf
