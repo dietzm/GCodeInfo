@@ -2,6 +2,7 @@ package de.dietzm;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
@@ -18,6 +19,9 @@ import de.dietzm.Constants.GCDEF;
 import de.dietzm.Layer.Speed;
 import de.dietzm.gcodes.GCode;
 import de.dietzm.gcodes.GCodeFactory;
+import de.dietzm.gcodes.GCodeStore;
+import de.dietzm.gcodesim.GcodeSimulator;
+import de.dietzm.print.ReceiveBuffer;
 
 public class Model {
 
@@ -31,16 +35,15 @@ public class Model {
 	private float dimension[] = { 0, 0, 0 }; // X,y,z
 	private float extrusion=0;
 	private String filename;
-	private ArrayList<GCode> gcodes = new ArrayList<GCode>(1000000);
+	private GCodeStore gcodes;// = GCodeFactory.getGcodeStore(1);
 	//private SortedMap<Float, Layer> layer = new TreeMap<Float, Layer>();
 	private ArrayList<Layer> layer = new ArrayList<Layer>();
-	
 	private int layercount = 0, notprintedLayers = 0;
 	private SortedMap<Float, SpeedEntry> SpeedAnalysisT = new TreeMap<Float, SpeedEntry>();
 	private float time, distance,traveldistance,timeaccel;
 	private String unit = "mm"; //default is mm
 	public enum Material {PLA,ABS,UNKNOWN};
-	private long filesize=0, readbytes=0;
+	private long filesize=0;
 	
 
 
@@ -48,7 +51,10 @@ public class Model {
 		return filesize;
 	}
 	public long getReadbytes() {
-		return readbytes;
+		return GCodeFactory.getReadBytes();
+	}
+	public long getReadLines() {
+		return GCodeFactory.getReadLines();
 	}
 	public Model(String file)  {
 		this.filename = file;
@@ -63,7 +69,7 @@ public class Model {
 		}
 	}
 	
-	public Model(String file, ArrayList<GCode> gcall){
+	public Model(String file, GCodeStore gcall){
 		this(file);
 		gcodes=gcall;		
 	}
@@ -91,8 +97,10 @@ public class Model {
 		float m108=0; //Bfb style extr.
 
 	
-		
-		for (GCode gc : getGcodes()) {
+		GCodeStore gcarr = getGcodes();
+		int gcnum = gcarr.size();
+		for(int ig = 0 ; ig < gcnum; ig++ ){
+			GCode gc = gcarr.get(ig);
 			lastxpos=xpos;
 			lastypos=ypos;
 			lastzpos=zpos;
@@ -109,7 +117,7 @@ public class Model {
 			}
 			
 			if (gc.getGcode() == Constants.GCDEF.G1 || gc.getGcode() == Constants.GCDEF.G0 || gc.getGcode() == Constants.GCDEF.G2 || gc.getGcode() == Constants.GCDEF.G3) {
-				if(currLayer.getGcodes().size() < 5){ //only set layer temp, if not already printed too much 
+				if(currLayer.highidx - currLayer.lowidx < 5){ //only set layer temp, if not already printed too much 
 					currLayer.setBedtemp(bedtemp);
 					currLayer.setExttemp(extemp);
 				}
@@ -122,9 +130,10 @@ public class Model {
 						//Assume zlift
 						//Append non printed layers to last printed one 
 						//Z-lift would otherwise cause thousands of layers
-						for (GCode gco : currLayer.getGcodes()) {
-							lastprinted.addGcodes(gco);
-						}
+//						for (GCode gco : currLayer.getGcodes()) {
+//							lastprinted.addGcodes(gco,ig);
+//						}
+						lastprinted.highidx=ig; //set high index to new index
 						layercount--;
 						layer.remove(currLayer);
 						//Minor problem is that the beginning of a new layer is sometimes without extrusion before the first z-lift
@@ -253,7 +262,7 @@ public class Model {
 			currpos.updatePos(xpos,ypos); //reuse currposs obj, gcode just copies the floats
 			gc.setCurrentPosition(currpos);
 			//Add Gcode to Layer
-			currLayer.addGcodes(gc);
+			currLayer.addGcodes(gc,ig);
 		}
 		//System.out.println("Summarize Layers");
 		for (Layer closelayer : layer) {
@@ -415,7 +424,7 @@ public class Model {
 		
 		//get diameter from comments in gcode file
 		try {
-			ArrayList<GCode> codes = getGcodes();
+			GCodeStore codes = getGcodes();
 			for (GCode gCode : codes) {
 				//Ignore comments behind gcodes
 				if (gCode.isComment()){
@@ -487,8 +496,18 @@ public class Model {
 		return gcodes.size();
 	}
 
-	public ArrayList<GCode> getGcodes() {
+	public GCodeStore getGcodes() {
+		if(gcodes==null) {
+			gcodes = GCodeFactory.getGcodeStore(10000);
+		}
 		return gcodes;
+	}
+	public GCodeStore getGcodes(Layer lay) {
+		GCodeStore gs = new GCodeStore();
+		for (int i = lay.lowidx; i < lay.highidx; i++) {
+			gs.add(gcodes.get(i));
+		}
+		return gs;
 	}
 
 	public ArrayList<Layer> getLayer() {
@@ -549,99 +568,20 @@ public class Model {
 		FileInputStream fread =  new FileInputStream(filename);
 		File f = new File(filename);
 		filesize= f.length();
-		return loadModel(fread);
+		System.out.println("Filesize:"+filesize);
+		gcodes =  GCodeFactory.loadModel(fread);
+		return  gcodes != null;
 	}
-	
 	
 	public boolean loadModel(InputStream in)throws IOException{
-		InputStreamReader fread =  new InputStreamReader(in);
-		BufferedReader gcread= new BufferedReader(fread,32768);
-		ArrayList<GCode> codes = getGcodes();
-		String line;
-		String errors = "Error while parsing gcodes:\n";
-		int idx=1;
-		int errorcnt=0, success=0;
-		long time = System.currentTimeMillis();
-		System.out.println("Load Model started");
-		try{
-		while((line=gcread.readLine())!=null){
-			GCode gc = null;
-			try {
-				gc = GCodeFactory.getGCode(line, idx++);
-			} catch (Exception e) {
-				e.printStackTrace();
-				System.err.println("Error while parsing gcode:"+line+" (line:"+idx+")");
-			}
-			if(gc == null || gc.getGcode() == GCDEF.UNKNOWN){
-					errorcnt++;
-					errors = errors + ("line:"+idx+"     "+line+"\n");
-					if(errorcnt-success > 10 || gc == null){
-						throw new IOException(errors);
-					}	
-			}else{ 
-				success++;
-			}
-			codes.add(gc);
-			readbytes+=line.length(); //might be incorrect for multibyte chars, but getbytes is expensive
-			
-		}
-		}catch(OutOfMemoryError oom){
-			throw new IOException("Out of Memory Error");
-		}
-		gcread.close();
-		System.out.println("Load Model finished in ms:"+(System.currentTimeMillis()-time));
-		if(errorcnt != 0){
-			System.err.println("Detected "+errorcnt+" error(s) during parsing of Gcode file. Results might be wrong.");
-		}
-		return true;
+		gcodes =  GCodeFactory.loadModel(in);
+		return  gcodes != null;
 	}
 	
-	public boolean loadModelNew(InputStream in)throws IOException{
-		InputStreamReader fread =  new InputStreamReader(in);
-		BufferedReader gcread= new BufferedReader(fread,32768);
-		ArrayList<GCode> codes = getGcodes();
-		char[] line = new char[1024];
-		String errors = "Error while parsing gcodes:\n";
-		int idx=1;
-		int errorcnt=0, success=0;
-		long time = System.currentTimeMillis();
-		System.out.println("Load Model started");
-		
-		int i = 0;
-		while((line[i]=(char)gcread.read())!=-1){
-			if(line[i]!='\n'){
-				i++;
-				continue;
-			}
-			
-			
-			GCode gc = null;
-			try {
-				gc = GCodeFactory.getGCode(new String(line,0,i), idx++);
-			} catch (Exception e) {
-				e.printStackTrace();
-				System.err.println("Error while parsing gcode:"+line+" (line:"+idx+")");
-			}
-			if(gc == null || gc.getGcode() == GCDEF.UNKNOWN){
-					errorcnt++;
-					errors = errors + ("line:"+idx+"     "+line+"\n");
-					if(errorcnt-success > 10 || gc == null){
-						throw new IOException(errors);
-					}	
-			}else{ 
-				success++;
-			}
-			codes.add(gc);
-			readbytes+=i; //might be incorrect for multibyte chars, but getbytes is expensive
-			i=0;
-		}
-		gcread.close();
-		System.out.println("Load Model finished in ms:"+(System.currentTimeMillis()-time));
-		if(errorcnt != 0){
-			System.err.println("Detected "+errorcnt+" error(s) during parsing of Gcode file. Results might be wrong.");
-		}
-		return true;
-	}
+	
+	
+	
+
 	public void saveModel(String newfilename)throws IOException{
 		FileWriter fwr =  new FileWriter(newfilename);
 		BufferedWriter gcwr= new BufferedWriter(fwr);
@@ -847,65 +787,65 @@ public class Model {
 	public float getTimeaccel() {
 		return timeaccel;
 	}
-	public static void deleteLayer(Collection<Layer> lays) {
+	public  void deleteLayer(Collection<Layer> lays) {
 		System.out.println("Delete Layer "+lays);
 		for (Layer layer : lays) {
-			ArrayList<GCode> gcodes = layer.getGcodes();
+			GCodeStore gcodes = getGcodes(layer);
 			for (GCode gCode : gcodes) {
 				GCodeMod.changeToComment(gCode);
 				//TODO GCodeMod.parseGcode(gCode,gCode.getCodeline().toString());
 			}
 		}
 	}
-	public static void changeFan(Collection<Layer> lays, int value) {
+	public  void changeFan(Collection<Layer> lays, int value) {
 		for (Layer layer : lays) {
-			ArrayList<GCode> gcodes = layer.getGcodes();
+			GCodeStore gcodes = getGcodes(layer);
 			for (GCode gCode : gcodes) {
 				GCodeMod.changeFan(gCode,value);
 				//todo... add fan value if not exits
 			}
 		}
 	}
-	public static void changeXOffset(Collection<Layer> lays, float value) {
+	public  void changeXOffset(Collection<Layer> lays, float value) {
 		System.out.println("Add X Offset "+value);
 		for (Layer layer : lays) {
-			ArrayList<GCode> gcodes = layer.getGcodes();
+			GCodeStore gcodes = getGcodes(layer);
 			for (GCode gCode : gcodes) {
 				GCodeMod.changeXOffset(gCode,value);
 			}
 		}
 	}
-	public static void changeYOffset(Collection<Layer> lays, float value) {
+	public  void changeYOffset(Collection<Layer> lays, float value) {
 		System.out.println("Add Y Offset "+value);
 		for (Layer layer : lays) {
-			ArrayList<GCode> gcodes = layer.getGcodes();
+			GCodeStore gcodes = getGcodes(layer);
 			for (GCode gCode : gcodes) {
 				GCodeMod.changeYOffset(gCode,value);
 			}
 		}
 	}
-	public static void changeZOffset(Collection<Layer> lays, float value) {
+	public  void changeZOffset(Collection<Layer> lays, float value) {
 		System.out.println("Add Z Offset "+value);
 		for (Layer layer : lays) {
-			ArrayList<GCode> gcodes = layer.getGcodes();
+			GCodeStore gcodes = getGcodes(layer);
 			for (GCode gCode : gcodes) {
 				GCodeMod.changeZOffset(gCode,value);
 			}
 		}
 	}
-	public static void changeLayerHeight(Collection<Layer> lays, int value) {
+	public  void changeLayerHeight(Collection<Layer> lays, int value) {
 		System.out.println("Change Layerheight by "+value+"%");
 		for (Layer layer : lays) {
-			ArrayList<GCode> gcodes = layer.getGcodes();
+			GCodeStore gcodes = getGcodes(layer);
 			for (GCode gCode : gcodes) {
 				GCodeMod.changeLayerHeight(gCode,value);
 			}
 		}
 	}
-	public static void changeBedTemp(Collection<Layer> lays, float value) {
+	public  void changeBedTemp(Collection<Layer> lays, float value) {
 		System.out.println("Set Bed temp to "+value);
 		for (Layer layer : lays) {
-			ArrayList<GCode> gcodes = layer.getGcodes();
+			GCodeStore gcodes = getGcodes(layer);
 		for (GCode gCode : gcodes) {
 			GCodeMod.changeBedTemp(gCode,value);
 				//update temps, but always add a temp at the beginning of the layer
@@ -913,10 +853,10 @@ public class Model {
 		}
 		}
 	}
-	public static void changeExtTemp(Collection<Layer> lays, float value) {
+	public  void changeExtTemp(Collection<Layer> lays, float value) {
 		System.out.println("Set Extruder temp to "+value);
 		for (Layer layer : lays) {
-			ArrayList<GCode> gcodes = layer.getGcodes();
+			GCodeStore gcodes = getGcodes(layer);
 		for (GCode gCode : gcodes) {
 			GCodeMod.changeExtTemp(gCode,value);
 				//update temps, but always add a temp at the beginning of the layer
@@ -924,19 +864,19 @@ public class Model {
 		}
 		}
 	}
-	public static void changeExtrusion(Collection<Layer> lays, int value) {
+	public void changeExtrusion(Collection<Layer> lays, int value) {
 		System.out.println("Change Extrusion by "+value+"%");
 		for (Layer layer : lays) {
-			ArrayList<GCode> gcodes = layer.getGcodes();
+			GCodeStore gcodes = getGcodes(layer);
 			for (GCode gCode : gcodes) {
 				GCodeMod.changeExtrusion(gCode,value);
 			}
 		}
 	}
-	public static void changeSpeed(Collection<Layer> lays, int value) {
+	public  void changeSpeed(Collection<Layer> lays, int value) {
 		System.out.println("Change Speed by "+value+"%" );
 		for (Layer layer : lays) {
-			ArrayList<GCode> gcodes = layer.getGcodes();
+			GCodeStore gcodes = getGcodes(layer);
 			for (GCode gCode : gcodes) {
 				GCodeMod.changeSpeed(gCode,value,true);
 			}
