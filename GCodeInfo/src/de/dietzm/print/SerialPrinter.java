@@ -1,15 +1,11 @@
 package de.dietzm.print;
 
-
-import java.util.ArrayList;
 import java.util.Date;
-
 import de.dietzm.Constants;
-import de.dietzm.Constants.GCDEF;
 import de.dietzm.Model;
-import de.dietzm.SerialIO.States;
 import de.dietzm.gcodes.GCode;
 import de.dietzm.gcodes.GCodeFactory;
+import de.dietzm.gcodes.GCodeStore;
 import de.dietzm.gcodes.MemoryEfficientLenString;
 import de.dietzm.gcodes.MemoryEfficientString;
 
@@ -63,6 +59,7 @@ public class SerialPrinter implements Runnable, Printer {
 	}
 
 	private int movespeed = 3000;
+	private int extspeed = 100;
 	int timeout = 10000;
 	
 	
@@ -70,8 +67,9 @@ public class SerialPrinter implements Runnable, Printer {
 		this.timeout = timeout;
 	}
 
-	public void setMovespeed(int movespeed) {
+	public void setMovespeed(int movespeed, int extspeed) {
 		this.movespeed = movespeed;
+		this.extspeed=extspeed;
 	}
 
 	// Print status & Control
@@ -303,7 +301,7 @@ public class SerialPrinter implements Runnable, Printer {
 	private void doTestRun() throws InterruptedException {
 	//	printQueue.putAuto(GCodeFactory.getGCode("G90", 0)); // absolute
 		Model mod = new Model("testrun");
-		ArrayList<GCode> arr = mod.getGcodes();
+		GCodeStore arr = mod.getGcodes();
 		arr.add(GCodeFactory.getGCode("G90", 0));
 		for (int i = 0; i < 5000; i++) {
 			GCode gco = GCodeFactory.getGCode("G1 X10 Y10", i);
@@ -381,7 +379,11 @@ public class SerialPrinter implements Runnable, Printer {
 	}
 
 	public void moveStep(Axis move, int sign) {
-		moveStep(move, sign, movespeed);
+		if(move == Axis.E){
+			moveStep(move, sign, extspeed);
+		}else{
+			moveStep(move, sign, movespeed);
+		}
 	}
 	
 	public void listSDCard() {
@@ -399,7 +401,7 @@ public class SerialPrinter implements Runnable, Printer {
 			res = addToPrintQueue(GCodeFactory.getGCode(code, 0), true);
 		if (res)
 			res = addToPrintQueue(GCodeFactory.getGCode("G90", 0), true); // absolute
-		if (res)
+		if (res && state.debug)
 			addToPrintQueue(GCodeFactory.getGCode("M114", 0), true);
 
 	}
@@ -926,6 +928,7 @@ public class SerialPrinter implements Runnable, Printer {
 		}else{
 			addToPrintQueue(GCodeFactory.getGCode("T"+tool, -1002), true);
 		}		
+		cons.appendText("Set Active extruder:"+state.activeExtr);
 	}
 	
 	public void setTempWatchIntervall(int ms) {
@@ -1154,3 +1157,4 @@ public class SerialPrinter implements Runnable, Printer {
 	}
 
 }
+
