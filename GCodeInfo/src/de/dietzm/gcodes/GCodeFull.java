@@ -10,7 +10,7 @@ import de.dietzm.Constants.GCDEF;
  * @author mdietz
  *
  */
-public class GCodeFull extends GCode {
+public class GCodeFull extends GCodeAbstract {
 	
     private byte[] data; //Store String in a more memory efficient way
 	private short gcode;
@@ -676,7 +676,7 @@ public class GCodeFull extends GCode {
 		return false;
 	}
 
-	protected void setUnit(String unit){
+	public void setUnit(String unit){
 		if(ext==null) ext = new Extended();
 		ext.unit=unit;
 	}

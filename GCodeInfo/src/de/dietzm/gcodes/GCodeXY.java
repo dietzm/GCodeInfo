@@ -5,7 +5,7 @@ import de.dietzm.Position;
 import de.dietzm.Constants.GCDEF;
 
 
-public class GCodeXY extends GCode {
+public class GCodeXY extends GCodeAbstract {
 
 	private float x=Float.MAX_VALUE;//will be initalitzed with current pos x
 	private float y=Float.MAX_VALUE;//will be initalitzed with current pos y
@@ -117,7 +117,7 @@ public class GCodeXY extends GCode {
 
 
 	@Override
-	protected void setUnit(String unit) {
+	public void setUnit(String unit) {
 		// TODO Auto-generated method stub
 		
 	}

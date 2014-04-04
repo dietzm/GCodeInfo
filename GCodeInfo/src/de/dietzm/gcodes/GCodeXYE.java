@@ -5,7 +5,7 @@ import de.dietzm.Position;
 import de.dietzm.Constants.GCDEF;
 
 
-public class GCodeXYE extends GCode {
+public class GCodeXYE extends GCodeAbstract {
 
 	private float x=Float.MAX_VALUE;//will be initalitzed with current pos x
 	private float y=Float.MAX_VALUE;//will be initalitzed with current pos y
@@ -52,7 +52,8 @@ public class GCodeXYE extends GCode {
 
 	@Override
 	public String toString() {		
-		String var = lineindex+":  "+toStringRaw();
+		//String var = lineindex+":  "+toStringRaw();
+		String var = lineindex+":  "+getLineindex();
 		var+="\tExtrusion:"+e;
 		var+="\tDistance:"+distance;
 		var+="\tPosition:"+x+"x"+y;
@@ -120,7 +121,7 @@ public class GCodeXYE extends GCode {
 
 
 	@Override
-	protected void setUnit(String unit) {
+	public void setUnit(String unit) {
 		// TODO Auto-generated method stub
 		
 	}

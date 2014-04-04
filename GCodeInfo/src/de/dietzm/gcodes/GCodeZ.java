@@ -6,7 +6,7 @@ import de.dietzm.Constants.GCDEF;
 
 
 
-public class GCodeZ extends GCode {
+public class GCodeZ extends GCodeAbstract {
 		
 	private float z=Float.MAX_VALUE;
 			
@@ -116,7 +116,7 @@ public class GCodeZ extends GCode {
 		return null;
 	}
 	
-	protected void setUnit(String unit){
+	public void setUnit(String unit){
 
 	}
 

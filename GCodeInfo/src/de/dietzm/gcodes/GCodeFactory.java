@@ -1,13 +1,23 @@
 package de.dietzm.gcodes;
 
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+
 import de.dietzm.Constants;
 import de.dietzm.Constants.GCDEF;
+import de.dietzm.gcodesim.GcodeSimulator;
+import de.dietzm.print.ReceiveBuffer;
 
 
 public class GCodeFactory {
 
 	static GCodeFactory factory = new GCodeFactory();
+	private long readbytes=0, readlines=0;
+	
+	byte[] modeldata;
 	
 	public GCodeFactory() {}
 	
@@ -18,7 +28,34 @@ public class GCodeFactory {
 	public static GCode getGCode(String line, int linenr){
 		return factory.parseGcode(line, linenr);
 	}
+	
+	public static GCodeStore loadModel(InputStream in)throws IOException{
+		System.out.println("Load Model started ("+factory.getClass().getName()+")");
+		return factory.loadGcodeModel(in);
+	}
+	
+	public static long getReadBytes(){
+		return factory.readbytes;
+	}
+	public static long getReadLines(){
+		return factory.readlines;
+	}
+	
+	
 
+
+	public static GCodeStore getGcodeStore(int size){
+		return factory.createStore(size);
+	}
+	
+	/**
+	 * Called to create a new GCodeStore instance
+	 * @param size
+	 * @return GCodeStore
+	 */
+	protected GCodeStore createStore(int size){
+		return new GCodeStore(size);
+	}
 	
 	public static void main(String[] args) {
 //		Pattern temppattern = Pattern.compile( "[ZF]" ); 
@@ -94,11 +131,11 @@ public class GCodeFactory {
 		switch (tmpgcode) {
 		case G0:
 		case G1:
-			gcd=findMatches(segments, codelinevar,linenr,tmpgcode);
+			gcd=fillGcodeFields(segments, codelinevar,linenr,tmpgcode);
 			break;
 		case G2:
 		case G3:
-			gcd=findMatches(segments, codelinevar,linenr,tmpgcode);
+			gcd=fillGcodeFields(segments, codelinevar,linenr,tmpgcode);
 			System.err.println("Experimental support of Gcode G2/G3.");
 			break;
 		case G4: //Dwell
@@ -106,7 +143,7 @@ public class GCodeFactory {
 			gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
 			break;
 		case G92:
-			gcd=findMatches(segments, codelinevar,linenr,tmpgcode);
+			gcd=fillGcodeFields(segments, codelinevar,linenr,tmpgcode);
 			break;
 		case M140: //set bed temp and not wait
 		case M190: //set bed temp and wait
@@ -233,7 +270,7 @@ public class GCodeFactory {
 			break;
 		case M218:
 			//dual extrusion offset marlin
-			gcd=findMatches(segments, codelinevar,linenr,tmpgcode);
+			gcd=fillGcodeFields(segments, codelinevar,linenr,tmpgcode);
 			break;
 		case UNKNOWN:
 			System.err.println("Unknown Gcode "+linenr+": "+ tmpgcode+" "+segments[0]+" "+codelinevar.substring(0,Math.min(15,codelinevar.length()))+"....");
@@ -253,7 +290,15 @@ public class GCodeFactory {
 		return gcd;
 	}
 
-	protected GCode findMatches(String[] segments,String line, int linenr, GCDEF code) {
+	/**
+	 * Parse the segments and fill the fields in the gcode instance
+	 * @param segments
+	 * @param line
+	 * @param linenr
+	 * @param code
+	 * @return
+	 */
+	protected GCode fillGcodeFields(String[] segments,String line, int linenr, GCDEF code) {
 		GCode gcd = createOptimizedGCode(segments,line, linenr, code);
 		
 		Character id;
@@ -310,8 +355,6 @@ public class GCodeFactory {
 		}
 		return gcd;
 	}
-
-
 	
 	/**
 	 * Called for the movement GCodes (G1,G2,G3,..) which allows the Factory to choose alternative implementations.
@@ -337,7 +380,7 @@ public class GCodeFactory {
 		gcd = new GCodeMemSave(line, linenr, code);
 		return gcd;
 	}
-
+	
 	/**
 	 * Find comments and strip them, init the comment filed
 	 * @param clv
@@ -354,6 +397,62 @@ public class GCodeFactory {
 		}
 		return clv.trim();
 	}
+	
+	/**
+	 * Load the model from input stream
+	 * @param in
+	 * @return
+	 * @throws IOException
+	 */
+	protected GCodeStore loadGcodeModel(InputStream in)throws IOException{
+		GCodeStore codes = createStore(100000);
+		readbytes=0;
+		readlines=0;
+		InputStreamReader fread =  new InputStreamReader(in);
+		BufferedReader gcread= new BufferedReader(fread,32768);
+	
+		String line;
+		String errors = "Error while parsing gcodes:\n";
+		int idx=1;
+		int errorcnt=0, success=0;
+		long time = System.currentTimeMillis();
+		
+		try{
+		while((line=gcread.readLine())!=null){
+			GCode gc = null;
+			try {
+				gc = parseGcode(line, idx++);
+			} catch (Exception e) {
+				e.printStackTrace();
+				System.err.println("Error while parsing gcode:"+line+" (line:"+idx+")");
+			}
+			if(gc == null || gc.getGcode() == GCDEF.UNKNOWN){
+					errorcnt++;
+					errors = errors + ("line:"+idx+"     "+line+"\n");
+					if(errorcnt-success > 10 || gc == null){
+						throw new IOException(errors);
+					}	
+			}else{ 
+				success++;
+			}
+			codes.add(gc);
+			readbytes+=line.length(); //might be incorrect for multibyte chars, but getbytes is expensive
+			readlines++;
+			
+		}
+		}catch(OutOfMemoryError oom){
+			throw new IOException("Out of Memory Error");
+		}
+		gcread.close();
+		codes.commit();
+		System.out.println("Load Model finished in ms:"+(System.currentTimeMillis()-time));
+		if(errorcnt != 0){
+			System.err.println("Detected "+errorcnt+" error(s) during parsing of Gcode file. Results might be wrong.");
+		}
+		return codes;
+	}
+	
+	
 	
 
 }

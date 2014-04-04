@@ -12,7 +12,7 @@ import de.dietzm.Constants.GCDEF;
  * @author mdietz
  *
  */
-public class GCodeMemSave extends GCode {
+public class GCodeMemSave extends GCodeAbstract {
 		
 	//Parsed values, not changed by analyse 
 	private float e=Float.MAX_VALUE;
@@ -72,6 +72,10 @@ public class GCodeMemSave extends GCode {
 
 	
 	public GCodeMemSave(String line,int linenr,GCDEF gc){
+		super(line,linenr,gc);
+	}
+	
+	public GCodeMemSave(byte[] line,int linenr,GCDEF gc){
 		super(line,linenr,gc);
 	}
 
@@ -164,7 +168,7 @@ public class GCodeMemSave extends GCode {
 		return ext.unit;
 	}
 	
-	protected void setUnit(String unit){
+	public void setUnit(String unit){
 		if(ext==null) ext = new Extended();
 		ext.unit=unit;
 	}

@@ -5,7 +5,7 @@ import de.dietzm.Position;
 import de.dietzm.Constants.GCDEF;
 
 
-public class GCodeE extends GCode {
+public class GCodeE extends GCodeAbstract {
 
 	private float e=Float.MAX_VALUE; //will be initalitzed with absolut extrusion 
 	
@@ -106,7 +106,7 @@ public class GCodeE extends GCode {
 
 
 	@Override
-	protected void setUnit(String unit) {
+	public void setUnit(String unit) {
 		// TODO Auto-generated method stub
 		
 	}
