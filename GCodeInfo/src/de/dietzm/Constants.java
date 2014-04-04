@@ -6,6 +6,7 @@ import java.util.List;
 
 import de.dietzm.gcodes.MemoryEfficientLenString;
 import de.dietzm.gcodes.MemoryEfficientString;
+import de.dietzm.print.ReceiveBuffer;
 
 public class Constants {
 
@@ -365,6 +366,18 @@ public class Constants {
 		 return false;
 	}
 	
+	/**
+	 * returns true if it starts with G or M (should be trimmed and uppercase already)
+	 * @return boolean gcode
+	 */
+	public static boolean isValidGCode(ReceiveBuffer codeline){
+		 if(codeline == null || codeline.isEmpty()) return false;
+		 if (codeline.charAt(0) == 'G' || codeline.charAt(0) == 'g') return true;
+		 if (codeline.charAt(0) == 'M' || codeline.charAt(0) == 'm') return true;
+		 if (codeline.charAt(0) == 'T' || codeline.charAt(0) == 't') return true;
+		 return false;
+	}
+	
 	public static float round3digits(float num){
 		return Math.round((num)*1000f)/1000f;
 	}
@@ -477,6 +490,40 @@ public class Constants {
 	 * @return
 	 */
 	public static String[] splitbyLetter2(String text){
+        list.clear();
+        int pos = 0;
+        int len = text.length();      
+        boolean first=true;
+        
+        
+        for (int i = 0; i < len; i++) {
+        	char c = text.charAt(i);
+			if(c > 58){ //ASCII no number and no whitespace
+				if(first){
+					first=false;
+					buffer[pos++]=c;
+					continue;
+				}
+				list.add(new String(buffer,0,pos));
+				pos=0;
+				buffer[pos++]=c;
+			}else if (c == 32 || c == 10){
+				//ignore spaces and newlines
+			}else{
+				buffer[pos++]=c;
+			}
+		}
+        list.add(new String(buffer,0,pos));
+        return list.toArray(new String[list.size()]);
+}
+	
+	/**
+	 * User for splitting the GCodes into segments
+	 * NOT THREAD SAVE !!
+	 * @param text
+	 * @return
+	 */
+	public static String[] splitbyLetter2(ReceiveBuffer text){
         list.clear();
         int pos = 0;
         int len = text.length();      
