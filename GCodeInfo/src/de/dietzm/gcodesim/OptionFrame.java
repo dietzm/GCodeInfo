@@ -1,6 +1,5 @@
 package de.dietzm.gcodesim;
 
-import java.awt.GraphicsConfiguration;
 import java.awt.GridLayout;
 import java.awt.HeadlessException;
 import java.awt.event.ActionEvent;
@@ -8,12 +7,15 @@ import java.awt.event.ActionListener;
 
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
-import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
+import javax.swing.JTextField;
+
+import de.dietzm.Constants;
+import de.dietzm.Position;
 
 public class OptionFrame extends JFrame implements ActionListener{
 
@@ -50,8 +52,24 @@ public class OptionFrame extends JFrame implements ActionListener{
 			setVisible(false);
 			return;
 		}
+		if(arg0.getActionCommand().equals("offset")){		
+			JTextField txt=	(JTextField) arg0.getSource();
+			String text = txt.getText();
+			if(Constants.parseOffset(text)!= null){
+				GcodeSimulator.dualoffsetXY=text;
+				GcodeSimulator.storeConfig();
+				JOptionPane.showMessageDialog(null, "Please restart GCodeSimulator now");
+				setVisible(false);
+			}else{
+				JOptionPane.showMessageDialog(null, "Invalid Offset, Please enter x:y");
+			}
+			return;
+		}
 		
 	}
+
+
+
 
 
 	public OptionFrame() throws HeadlessException {
@@ -118,6 +136,13 @@ public class OptionFrame extends JFrame implements ActionListener{
 		pan.add(dl );
 		pan.add(debug );
 		
+		//extruder Offset
+		JLabel oz = new JLabel("Dual Extruder offset (X:Y):");
+		JTextField txt = new JTextField(GcodeSimulator.dualoffsetXY);
+		txt.setActionCommand("offset");
+		txt.addActionListener(this);
+		pan.add(oz);
+		pan.add(txt);
 		
 		
 		return pan;
