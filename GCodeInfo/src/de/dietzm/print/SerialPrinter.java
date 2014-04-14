@@ -20,6 +20,7 @@ public class SerialPrinter implements Runnable, Printer {
 	public static final GCode T1 = GCodeFactory.getGCode("T1", -1001);
 	public static final String serial = "SERIAL"; //log tag
 	public static final String io = "IO"; //log tag	
+	public static final int MAX_EXTRUDER_NR = 4;
 	
 	private ConsoleIf cons = null;
 	private PrinterConnection mConn = null;
@@ -41,6 +42,7 @@ public class SerialPrinter implements Runnable, Printer {
 	private boolean recover = false;
 	
 	private boolean homexyfinish = false; 
+	private int extrnr = 1;
 	
 	protected boolean isHomeXYfinish() {
 		return homexyfinish;
@@ -88,16 +90,17 @@ public class SerialPrinter implements Runnable, Printer {
 		public static final String PRINTING="Printing";
 		public static final String STREAMING="Streaming to SD";
 		public static final String PAUSED="Printing Paused";
+		public static final String RESET="Resetting Printer";
 		public static final String CONNECTMSG = "Please connect";
 		public static final String CONNECTINGMSG ="Establishing printer connection";
 		public static final String CONNECTEDMSG ="Ready to start printing";
+		public static final String RESETMSG ="Resetting ..please wait";
 		public int baud = 115200;
 		public float bedtemp = 0;
 		public boolean connected = false;
 		public boolean connecting = false;
 		public boolean debug = false;
 		public float distance = 1;
-		public float extemp = 0;
 		public int activeExtr = 0;
 		public boolean fan = false;
 		public float lastE = 0;
@@ -122,6 +125,8 @@ public class SerialPrinter implements Runnable, Printer {
 		public int percentCompleted=0;
 		public MemoryEfficientString tempstring = new MemoryEfficientString(new byte[64]);
 		public MemoryEfficientLenString timestring = new MemoryEfficientLenString(new byte[32]);
+		public float exttemp=0;
+		public float[] exttemps = new float[MAX_EXTRUDER_NR];
 		// public boolean absolute
 		boolean testrun = false;
 
@@ -272,16 +277,9 @@ public class SerialPrinter implements Runnable, Printer {
 			state.reset = false;
 			try {
 				if (state.printing) setPrintMode(false);
-				printQueue.clear();
-				mConn.reset();
-				ReceiveBuffer recv = readResponse(10000);
-				if (recv.isEmpty()) {
-					cons.appendText("No printer response after reset ! Your hardware might not support reset over serial.");
-				} else {
-					cons.appendTextNoCR(recv);
-				}
 				state.lastE = 0;
 				state.lastpos = new float[3];
+				state.exttemps = new float[MAX_EXTRUDER_NR];
 				state.swallows=0;
 				state.unexpected=0;
 				state.timeouts=0;
@@ -289,12 +287,22 @@ public class SerialPrinter implements Runnable, Printer {
 				state.extrfactor=100;
 				state.resends=0;
 				state.resendskips=0;
+				printQueue.clear();
+				cons.updateState(States.RESET,States.RESETMSG,0);
+				mConn.reset();
+				ReceiveBuffer recv = readResponse(10000);
+				if (recv.isEmpty()) {
+					cons.appendText("No printer response after reset ! Your hardware might not support reset over serial.");
+				} else {
+					cons.appendTextNoCR(recv);
+				}			
 			} catch (Exception e) {
 				if (state.debug)
 					cons.appendText("Reset failed or interrupted:" + e);
 				e.printStackTrace();
 			}
 			state.reseting = false;
+			cons.updateState(States.CONNECTED,States.CONNECTEDMSG,0);
 		}
 	}
 
@@ -825,7 +833,15 @@ public class SerialPrinter implements Runnable, Printer {
 
 	public boolean setExtruderTemp(float tmp) {
 		cons.appendText("Set Extruder Temperature to " + tmp + "°C");
-		return addToPrintQueue(GCodeFactory.getGCode("M104 S" + tmp, 0), true);
+		boolean ret = addToPrintQueue(GCodeFactory.getGCode("M104 S" + tmp, 0), true);
+		if(ret){
+			state.exttemp=tmp;
+		}
+		return ret;
+	}
+	
+	public float getExtruderTemp(){
+		return state.exttemp; //TODO Could be done with gcode
 	}
 	
 	public boolean setPrintSpeed(int percentage) {
@@ -880,13 +896,7 @@ public class SerialPrinter implements Runnable, Printer {
 				state.testrun = false;
 			}
 			state.lastgcode = GCodeFactory.getGCode("G0", 0);
-			if(state.streaming) addToPrintQueue(GCodeFactory.getGCode("M29", -29), true); //Stop sd streaming
-			//Turn off temperature and move to X/Y 0
-			addToPrintQueue(GCodeFactory.getGCode("M104 S0", -104), true);
-			addToPrintQueue(GCodeFactory.getGCode("M140 S0", -140), true);
-			if(homexyfinish)addToPrintQueue(GCodeFactory.getGCode("G28 X0 Y0", -128), true);
-			if(state.printspeed!=100)addToPrintQueue(GCodeFactory.getGCode("M220 100", -220), true); //set speed back to 100%
-			if(state.extrfactor!=100)addToPrintQueue(GCodeFactory.getGCode("M221 100", -221), true); //set extr back to 100%
+			onFinish();
 			state.printspeed=100;
 			state.extrfactor=100;
 			cons.updateState(States.FINISHED,fin,-1);
@@ -907,6 +917,27 @@ public class SerialPrinter implements Runnable, Printer {
 		}
 
 	}
+	/**
+	 * GCodes will be executed when the print is finished/stopped
+	 */
+	private void onFinish() {
+		if(state.streaming) addToPrintQueue(GCodeFactory.getGCode("M29", -29), true); //Stop sd streaming
+		//Turn off temperature and move to X/Y 0
+		if(extrnr == 1){
+			//single extr.
+			addToPrintQueue(GCodeFactory.getGCode("M104 S0", -104), true);
+		}else{
+			for (int i = 0; i < extrnr; i++) {
+				addToPrintQueue(GCodeFactory.getGCode("T"+i, -1002), true);
+				addToPrintQueue(GCodeFactory.getGCode("M104 S0", -104), true);
+			}
+			addToPrintQueue(GCodeFactory.getGCode("T0", -1002), true);
+		}	
+		addToPrintQueue(GCodeFactory.getGCode("M140 S0", -140), true); //bed
+		if(homexyfinish)addToPrintQueue(GCodeFactory.getGCode("G28 X0 Y0", -128), true);
+		if(state.printspeed!=100)addToPrintQueue(GCodeFactory.getGCode("M220 100", -220), true); //set speed back to 100%
+		if(state.extrfactor!=100)addToPrintQueue(GCodeFactory.getGCode("M221 100", -221), true); //set extr back to 100%
+	}
 
 	public void setStepSize(float steps) {
 		cons.appendText("Set move distance to " + steps + "mm");
@@ -918,17 +949,37 @@ public class SerialPrinter implements Runnable, Printer {
 	 * Set the active extruder
 	 * @param i , if -1 then toggle between dual 0:1
 	 */
-	public void setActiveExtruder(int tool){
-		if(tool == -1 && state.activeExtr == 0){
-			state.activeExtr = 1;
-			addToPrintQueue(T1, true);
-		}else if(tool == -1 && state.activeExtr == 1){
-			state.activeExtr = 0;
-			addToPrintQueue(T0, true);
-		}else{
-			addToPrintQueue(GCodeFactory.getGCode("T"+tool, -1002), true);
-		}		
-		cons.appendText("Set Active extruder:"+state.activeExtr);
+	public boolean setActiveExtruder(int tool){
+		if(tool == -1){
+			if(state.activeExtr == 0){
+				tool=1;
+			}else{
+				tool=0;
+			}
+		}
+		if(tool > MAX_EXTRUDER_NR-1){
+			cons.appendText("Max extruder number is "+(MAX_EXTRUDER_NR-1));
+			return false;
+		}
+		boolean ret = addToPrintQueue(GCodeFactory.getGCode("T"+tool, -1002), true);
+		if(ret){
+			state.exttemps[state.activeExtr]=state.exttemp; //Store and retrieve temp for extruder
+			state.activeExtr=tool;			
+			state.exttemp=state.exttemps[state.activeExtr];
+			cons.appendText("Set Active extruder:"+state.activeExtr+ " Temp:"+state.exttemp);
+		}
+		return ret;
+	}
+	
+	/**
+	 * Set Number of extruders
+	 */
+	public boolean setExtruderNumber(int nr){
+		if(nr == 0 || nr > MAX_EXTRUDER_NR-1){
+			return false;
+		}
+		extrnr=nr;
+		return true;
 	}
 	
 	public void setTempWatchIntervall(int ms) {
