@@ -489,7 +489,7 @@ public class Constants {
 	 * @param text
 	 * @return
 	 */
-	public static String[] splitbyLetter2(String text){
+	public static String[] splitbyLetter2(CharSequence text){
         list.clear();
         int pos = 0;
         int len = text.length();      
@@ -507,7 +507,7 @@ public class Constants {
 				list.add(new String(buffer,0,pos));
 				pos=0;
 				buffer[pos++]=c;
-			}else if (c == 32 || c == 10){
+			}else if (c == 32 || c == 10 || c ==47){
 				//ignore spaces and newlines
 			}else{
 				buffer[pos++]=c;
@@ -517,39 +517,16 @@ public class Constants {
         return list.toArray(new String[list.size()]);
 }
 	
-	/**
-	 * User for splitting the GCodes into segments
-	 * NOT THREAD SAVE !!
-	 * @param text
-	 * @return
-	 */
-	public static String[] splitbyLetter2(ReceiveBuffer text){
-        list.clear();
-        int pos = 0;
-        int len = text.length();      
-        boolean first=true;
-        
-        
-        for (int i = 0; i < len; i++) {
-        	char c = text.charAt(i);
-			if(c > 58){ //ASCII no number and no whitespace
-				if(first){
-					first=false;
-					buffer[pos++]=c;
-					continue;
-				}
-				list.add(new String(buffer,0,pos));
-				pos=0;
-				buffer[pos++]=c;
-			}else if (c == 32 || c == 10){
-				//ignore spaces and newlines
-			}else{
-				buffer[pos++]=c;
-			}
+	public static Position parseOffset(String text) {
+		try{
+		String[] item = text.split(":");
+		float x = Float.parseFloat(item[0]);
+		float y = Float.parseFloat(item[1]);
+		return new Position(x,y);
+		}catch(Exception e){
 		}
-        list.add(new String(buffer,0,pos));
-        return list.toArray(new String[list.size()]);
-}
+		return null;
+	}
 
 
 }
