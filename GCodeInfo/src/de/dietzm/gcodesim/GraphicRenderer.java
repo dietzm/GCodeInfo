@@ -1,5 +1,6 @@
 package de.dietzm.gcodesim;
 
+import de.dietzm.Position;
 import de.dietzm.gcodes.GCode;
 
 public interface GraphicRenderer {
@@ -16,7 +17,8 @@ public interface GraphicRenderer {
 	public void fillrect(float x,float y, float w,float h);
 	public void drawtext(CharSequence text,float x, float y);
 	public void clearrect(float x,float y, float w,float h,int colitem);
-	
+	public void setActiveExtruder(int ex);
+	public void setExtruderOffset(Position[] offset,float zoom);
 	public void faintRect(float x,float y, float w,float h);
 	public int getWidth();
 	public int getHeight();

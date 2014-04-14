@@ -28,7 +28,7 @@ public class GcodePainter implements Runnable {
 	public int colNR = 7;
 	public boolean painttravel = true;
 	
-	public Position[] extruderOffset = {new Position(0, 0),new Position(20.5f, 0)}; //TODO make it configureable
+	public Position[] extruderOffset = {null,null,null,null}; //TODO make it configureable
 	private int activeExtruder = 0;
 	public boolean isPainttravel() {
 		return painttravel;
@@ -56,6 +56,10 @@ public class GcodePainter implements Runnable {
 
 	public void setOneLayerAtATime(boolean oneLayerAtATime) {
 		this.oneLayerAtATime = oneLayerAtATime;
+	}
+	
+	public void setExtruderOffset(int nr, Position pos){
+		extruderOffset[nr] = pos;
 	}
 
 	private float fanspeed = 0;
@@ -795,6 +799,7 @@ public class GcodePainter implements Runnable {
 				updateDetailLabels();
 				updateSpeedupLabel();
 				g2.clearrect(0, 0, g2.getWidth(),g2.getHeight(),print?1:0);
+				g2.setExtruderOffset(extruderOffset,zoom);
 				calculateOffset();
 				mtime = model.getTimeaccel(); //remaining time
 				printBed(g2);
@@ -843,8 +848,10 @@ public class GcodePainter implements Runnable {
 						
 						if(gcdef == Constants.GCDEF.T0){
 							activeExtruder=0;
+							g2.setActiveExtruder(activeExtruder);
 						}else if(gcdef == Constants.GCDEF.T1){
 							activeExtruder=1;
+							g2.setActiveExtruder(activeExtruder);
 						}//TODO add more
 						//System.out.println(gCode);
 						long starttime=System.currentTimeMillis();
@@ -865,8 +872,9 @@ public class GcodePainter implements Runnable {
 						
 						//Print the lines from last position to current position
 						if(gCode.getCurrentPosition(pos) != null) {
-							
-							//pos.applyOffset(extruderOffset[activeExtruder]);
+							if(extruderOffset[activeExtruder] != null){
+								pos.applyOffset(extruderOffset[activeExtruder]);
+							}
 							//System.out.println("XXXXX"+gCode);
 			
 						g2.setPos((int)((pos.x+Xoffset)*zoom), (int)((bedsizeY * zoom) - (pos.y+Yoffset)*zoom));

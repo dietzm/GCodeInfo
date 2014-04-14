@@ -13,6 +13,7 @@ import java.awt.Toolkit;
 import java.awt.geom.Line2D;
 import java.awt.image.BufferedImage;
 
+import de.dietzm.Position;
 import de.dietzm.SerialIO;
 
 
@@ -29,9 +30,12 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 			.getDefaultScreenDevice().getDefaultConfiguration();
 	BufferedImage offimg , offimg2;
 	int[] pos = new int[5];
+	int activeEx = 0;
 	SerialIO sio = null;
 	String titletxt = null;	
 	long titletime=0;
+	float zoom = 1;
+	Position[] extruderoffset = null;
 
 	// Color[] colors = new Color[] { new Color(0xffAAAA), new Color(0xffBAAA),
 	// new Color(0xffCAAA), new Color(0xffDAAA),
@@ -175,22 +179,22 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 		Graphics2D gp = (Graphics2D) offimg2.getGraphics();
 		
 		gp.drawImage(offimg, 0, 0, frame);
-
 		if(getPos()[0] != 0){
-			// Paint current print point (nozzle)
-			//System.out.println("x"+getPos()[0]+" y"+ getPos()[1]);
-			gp.setColor(g.getColor());
-			gp.fillOval((int) getPos()[0] -2, (int) getPos()[1] -2, 4, 4);
-			gp.setColor(Color.white);
-			gp.drawOval((int) getPos()[0] -8 , (int) getPos()[1] -8, 16, 16);
-			gp.drawOval((int) getPos()[0] -6, (int) getPos()[1] -6, 12, 12);
-			gp.drawOval((int) getPos()[0] -4, (int) getPos()[1] -4, 8, 8);
-	
+			paintNozzle(gp,getPos()[0],getPos()[1],true);
+			if(extruderoffset != null && extruderoffset[1] != null){
+				for (int i = 0; i < extruderoffset.length; i++) {
+					if(extruderoffset[i] != null && activeEx!=i && extruderoffset[activeEx] != null ){
+						int xoff = (int)(getPos()[0]+((extruderoffset[i].x-extruderoffset[activeEx].x)*zoom) );
+						int yoff = (int)(getPos()[1]+((extruderoffset[i].y-extruderoffset[activeEx].y)*zoom));
+						paintNozzle(gp,xoff,yoff,false);
+					}
+				}				
+			}
+
 		//	paintExtruder(gp,getPos()[2],getPos()[4]);
 			paintExtruder(gp,getPos()[3],getPos()[2],getPos()[4]);
 
 		}
-		
 		//gp.drawOval((int) getPos()[2] + 2, (int) getPos()[4] + 51, 8, 8);
 		//gp.drawOval((int) getPos()[3] + 2, (int) getPos()[4] + 51, 8, 8);
 		
@@ -205,6 +209,23 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 			gp.drawString(titletxt, 20 ,40);
 		}
 		gp1.drawImage(offimg2, 0,0, frame);
+	}
+
+	private void paintNozzle(Graphics2D gp, int x , int y, boolean active) {
+			// Paint current print point (nozzle)
+			//System.out.println("x"+getPos()[0]+" y"+ getPos()[1]);
+			if(active){
+				gp.setColor(g.getColor());
+				gp.fillOval((int) x -2, (int) y -2, 4, 4);
+				gp.setColor(Color.white);
+			}else{
+				gp.setColor(Color.lightGray);
+			}
+			gp.drawOval((int) x -8 , (int) y -8, 16, 16);
+			gp.drawOval((int) x -6, (int) y -6, 12, 12);
+			gp.drawOval((int)x -4, (int) y -4, 8, 8);
+	
+		
 	}
 
 	private void paintExtruder(Graphics2D gp, int pos,int poss, int zpos) {
@@ -273,6 +294,10 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 	public synchronized int[] getPos() {
 		return pos;
 	}
+	
+	public void setActiveExtruder(int ex){
+		activeEx=ex;
+	}
 
 	public int getWidth() {
 		return offimg.getWidth();
@@ -291,6 +316,15 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 		// wait(10);
 		// } catch (InterruptedException e) {
 		// }
+	}
+	
+	/**
+	 * Set the offset and implicit the number of extruders
+	 * @param offset
+	 */
+	public void setExtruderOffset(Position[] offset,float zoom){
+		extruderoffset=offset;
+		this.zoom=zoom;
 	}
 
 	public void setColor(int idx) {

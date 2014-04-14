@@ -70,7 +70,9 @@ import javax.swing.KeyStroke;
 import javax.swing.border.Border;
 import javax.swing.text.html.ImageView;
 
+import de.dietzm.Constants;
 import de.dietzm.Model;
+import de.dietzm.Position;
 import de.dietzm.SerialIO;
 import de.dietzm.gcodes.GCodeFactory;
 import de.dietzm.gcodes.GCodeFactoryLowMem;
@@ -165,6 +167,7 @@ public class PrintrPanel extends JPanel {
 	boolean showdetails =true;
 	static int bedsizeX=200;
 	static int bedsizeY=200;
+	static String dualoffsetXY = "0:0";
 	BufferedImage img = null;
 	PainterPanel painter = null;
 	JTextArea cons;
@@ -285,6 +288,11 @@ public class PrintrPanel extends JPanel {
 		float fac = (awt.getHeight()-(55+(awt.getHeight()/12)))/bedsizeY;
 		//GCodeFactory.setCustomFactory(new GCodeFactoryLowMem());
 		gp = new GcodePainter(awt,true,fac,bedsizeX,bedsizeY); //todo pass bedsize
+		if(!dualoffsetXY.equals("0:0")){
+			Position pos = Constants.parseOffset(dualoffsetXY);
+			gp.setExtruderOffset(1, pos);
+			gp.setExtruderOffset(0, new Position(0,0));
+		}
 	//	System.out.println("Zoom:"+fac);
 		//gp.setZoom((fac));
 		updateSize(showdetails);
@@ -432,6 +440,7 @@ public class PrintrPanel extends JPanel {
 				networkip  = prop.getProperty("networkip","192.168.0.50");
 				String bedsize = prop.getProperty("bedsize","200");
 				theme = prop.getProperty("theme","default");
+				dualoffsetXY=prop.getProperty("dualoffsetXY","0:0");
 				bedsizeX=Integer.parseInt(bedsize);
 				bedsizeY=bedsizeX;
 			} catch (FileNotFoundException e) {
@@ -461,7 +470,8 @@ public class PrintrPanel extends JPanel {
 				prop.setProperty("lastfilepath", lastfilepath);
 				prop.setProperty("networkip", networkip);
 				prop.setProperty("bedsize", String.valueOf(bedsizeX));
-				prop.setProperty("theme", theme);		
+				prop.setProperty("theme", theme);
+				prop.setProperty("dualoffsetXY", dualoffsetXY);	
 				prop.store(new FileOutputStream(config),"Gcode Simulator Config");
 			} catch (FileNotFoundException e) {
 				// TODO Auto-generated catch block
