@@ -13,7 +13,7 @@ import de.dietzm.print.ReceiveBuffer;
 public class GCodeFactoryBuffer extends GCodeFactory {
 
 	static GCodeFactoryBuffer factory = new GCodeFactoryBuffer();
-	private long readbytes=0, readlines=0;
+	//private long readbytes=0, readlines=0;
 	
 	byte[] modeldata;
 	
@@ -115,7 +115,7 @@ public class GCodeFactoryBuffer extends GCodeFactory {
 		return gcd;
 	}
 
-	protected GCodeStore loadGcodeModel(InputStream in)throws IOException{
+	protected GCodeStore loadGcodeModel(InputStream in,long filesize)throws IOException{
 		readbytes=0;
 		readlines=0;
 //		InputStreamReader fread =  new InputStreamReader(in);
@@ -124,7 +124,11 @@ public class GCodeFactoryBuffer extends GCodeFactory {
 		ReceiveBuffer buf = new ReceiveBuffer(2048);
 //		String line;
 		String errors = "Error while parsing gcodes:\n";
-		modeldata = new byte[40000000];
+		if(filesize >0){
+			modeldata = new byte[(int) filesize+32768];
+		}else{
+			modeldata = new byte[40000000];
+		}
 		int idx=1;
 		int offset=0;
 		int len;
@@ -160,7 +164,7 @@ public class GCodeFactoryBuffer extends GCodeFactory {
 			}
 			codes.add(gc);
 			readbytes=i; //might be incorrect for multibyte chars, but getbytes is expensive
-			readlines++;
+			readlines=idx;
 			
 		}
 		}catch(OutOfMemoryError oom){

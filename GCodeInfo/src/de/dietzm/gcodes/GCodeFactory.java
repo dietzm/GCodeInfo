@@ -8,14 +8,13 @@ import java.io.InputStreamReader;
 
 import de.dietzm.Constants;
 import de.dietzm.Constants.GCDEF;
-import de.dietzm.gcodesim.GcodeSimulator;
-import de.dietzm.print.ReceiveBuffer;
+
 
 
 public class GCodeFactory {
 
 	static GCodeFactory factory = new GCodeFactory();
-	private long readbytes=0, readlines=0;
+	protected long readbytes=0, readlines=0;
 	
 	byte[] modeldata;
 	
@@ -29,9 +28,9 @@ public class GCodeFactory {
 		return factory.parseGcode(line, linenr);
 	}
 	
-	public static GCodeStore loadModel(InputStream in)throws IOException{
+	public static GCodeStore loadModel(InputStream in, long fsize)throws IOException{
 		System.out.println("Load Model started ("+factory.getClass().getName()+")");
-		return factory.loadGcodeModel(in);
+		return factory.loadGcodeModel(in,fsize);
 	}
 	
 	public static long getReadBytes(){
@@ -401,10 +400,11 @@ public class GCodeFactory {
 	/**
 	 * Load the model from input stream
 	 * @param in
+	 * @param fsize might be 0
 	 * @return
 	 * @throws IOException
 	 */
-	protected GCodeStore loadGcodeModel(InputStream in)throws IOException{
+	protected GCodeStore loadGcodeModel(InputStream in, long fsize)throws IOException{
 		GCodeStore codes = createStore(100000);
 		readbytes=0;
 		readlines=0;
