@@ -120,7 +120,7 @@ public class Dummy implements PrinterConnection {
 			odd = !odd;
 			isM105=false;
 		}else if(sendbuf.startsWith("M20")){
-			byte[] sd1 = new MemoryEfficientString("begin\nfile1.gco\nfile2.gco\nfile3.gco\nfile4.gco\nend\nok\n").getBytes();
+			byte[] sd1 = new MemoryEfficientString("begin\nfile1.gco\n/folder/file2.gco\nfile3.gco\n/folder/FILE.gco\nend\nok\n").getBytes();
 			System.arraycopy(sd1, 0, rbuf.array, 0, sd1.length);
 			rbuf.setlength(sd1.length);
 		}else if(sendbuf.startsWith("M27")){
