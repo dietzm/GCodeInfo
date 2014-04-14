@@ -181,8 +181,6 @@ public class Model {
 				}else if (gc.isInitialized(Constants.X_MASK) && gc.isInitialized(Constants.Y_MASK)) {
 					float xmove = Math.abs(xpos - gc.getX());
 					float ymove = Math.abs(ypos - gc.getY());
-					if (xmove + ymove == 0)
-						continue;
 					xpos = gc.getX();
 					ypos = gc.getY();
 					move = (float) Math.sqrt((xmove * xmove) + (ymove * ymove));
@@ -569,12 +567,12 @@ public class Model {
 		File f = new File(filename);
 		filesize= f.length();
 		System.out.println("Filesize:"+filesize);
-		gcodes =  GCodeFactory.loadModel(fread);
+		gcodes =  GCodeFactory.loadModel(fread,filesize);
 		return  gcodes != null;
 	}
 	
 	public boolean loadModel(InputStream in)throws IOException{
-		gcodes =  GCodeFactory.loadModel(in);
+		gcodes =  GCodeFactory.loadModel(in,0);
 		return  gcodes != null;
 	}
 	
