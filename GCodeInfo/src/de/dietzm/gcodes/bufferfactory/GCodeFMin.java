@@ -1,39 +1,58 @@
-package de.dietzm.gcodes;
+package de.dietzm.gcodes.bufferfactory;
 
 import de.dietzm.Constants;
 import de.dietzm.Position;
 import de.dietzm.Constants.GCDEF;
+import de.dietzm.gcodes.MemoryEfficientLenString;
+import de.dietzm.gcodes.MemoryEfficientString;
 
 
-public class GCodeXYF extends GCodeAbstract {
+public class GCodeFMin extends GCodeAbstractNoData {
 
-	private float x=Float.MAX_VALUE;//will be initalitzed with current pos x
-	private float y=Float.MAX_VALUE;//will be initalitzed with current pos y
-	private float f=Float.MAX_VALUE; //will be initalitzed with absolut speed 
-	
+	//private float e=Float.MAX_VALUE; //will be initalitzed with absolut extrusion 
+	private float f=Float.MAX_VALUE;  
 	//Dynamic values updated by analyse	 (7MB for 300000 gcodes)
 	private float time;
 	private float timeaccel; //track acceleration as extra time 
-	private float distance;
-	//private short fanspeed; //remember with less accuracy (just for display)
+//	private float distance;
+	//private float extrusion; //remember with less accuracy (just for display)
 	
 	
-	public GCodeXYF(String line, int linenr, GCDEF code) {
-		super(line, linenr, code);
+	public GCodeFMin(String line,  GCDEF code) {
+		super(  code);
 	}
 
+	@Override
+	public MemoryEfficientString getCodeline() {
+		byte[] buf = new byte[256]; //TODO 256 might be too small
+		int len = getCodeline(buf);
+		return new MemoryEfficientLenString(buf,len);
+	}
+
+
+
+	@Override
+	public int getCodeline(byte[] buffer) {
+		int len = 0;
+		//G1 
+		byte[] gc1=getGcode().getBytes();
+		System.arraycopy(gc1,0,buffer,0,gc1.length);
+		len=gc1.length;
+		
+		buffer[len++]=Constants.spaceb;
+		buffer[len++]=Constants.Fb;
+		len = Constants.floatToString0(f,buffer,len);
+		
+			
+		buffer[len++]=Constants.newlineb;	
+		return len;
+	}
 
 	@Override
 	public void setInitialized(short mask, float value) {
 		switch (mask) {
 		case Constants.F_MASK:
 			f = value;
-			break;
-		case Constants.X_MASK:
-			x  = value;
-			break;
-		case Constants.Y_MASK:
-			y = value;
 			break;
 		default:
 			break;
@@ -43,9 +62,8 @@ public class GCodeXYF extends GCodeAbstract {
 	@Override
 	public String toCSV() {		
 		String var = String.valueOf(getSpeed());
-		var+=";"+0;
-		var+=";"+distance;
-		var+=";"+time;
+		var+=";";
+		var+=";";
 		return var;
 	}
 	
@@ -53,15 +71,11 @@ public class GCodeXYF extends GCodeAbstract {
 
 	@Override
 	public String toString() {		
-		String var = lineindex+":  "+toStringRaw();
-		var+="\tExtrusion:"+0;
-		var+="\tDistance:"+distance;
-		var+="\tPosition:"+x+"x"+y;
-		var+="\tTime:"+time;
+		String var = ":  ";
 		return var;
 	}
 	
-
+	
 
 
 	@Override
@@ -72,6 +86,7 @@ public class GCodeXYF extends GCodeAbstract {
 
 	@Override
 	public float getF() {
+		// TODO Auto-generated method stub
 		return f;
 	}
 
@@ -91,9 +106,7 @@ public class GCodeXYF extends GCodeAbstract {
 	 */
 	@Override
 	public Position getCurrentPosition(Position pos) {
-		pos.x=x;
-		pos.y=y;
-		return pos;
+		return null;
 	}
 	
 	
@@ -133,46 +146,38 @@ public class GCodeXYF extends GCodeAbstract {
 
 	@Override
 	public float getDistance() {
-		return distance;
+		return 0;
 	}
 
 
 
 	@Override
 	public float getE() {
-		return 0;
+		return Float.MAX_VALUE;
 	}
 
 
 
 	@Override
 	public float getExtrusion() {
-		return 0;	
-	}
-
-
-
-	/**
-	 * Get Extrusion speed (mm/min)
-	 * @return
-	 */
-	@Override
-	public float getExtrusionSpeed(){
 		return 0;
 	}
 
 
 
+
+
 	//private float extemp,bedtemp;	
-		@Override
-		public short getFanspeed() {
-			return Short.MAX_VALUE;
-		}
+	@Override
+	public short getFanspeed() {
+		return 0;
+	}
+
 
 
 	@Override
 	public Position getPosition(Position reference){
-		return new Position( isInitialized(Constants.X_MASK)?x:reference.x,isInitialized(Constants.Y_MASK)?y:reference.y);
+		return null;
 	}
 
 
@@ -183,7 +188,7 @@ public class GCodeXYF extends GCodeAbstract {
 	 */
 	@Override
 	public float getSpeed(){
-		return Constants.round2digits((distance/time));
+		return f;
 	}
 
 
@@ -197,7 +202,7 @@ public class GCodeXYF extends GCodeAbstract {
 
 	@Override
 	public float getTimeAccel() {
-		return this.timeaccel;
+		return timeaccel;
 	}
 
 
@@ -206,14 +211,14 @@ public class GCodeXYF extends GCodeAbstract {
 
 	@Override
 	public float getX() {
-		return x;
+		return 0;
 	}
 
 
 
 	@Override
 	public float getY() {
-		return y;
+		return 0;
 	}
 
 
@@ -235,7 +240,7 @@ public class GCodeXYF extends GCodeAbstract {
 	 */
 	@Override
 	public boolean isExtruding(){
-		return false;
+		return false; //( isInitialized(Constants.E_MASK) && extrusion > 0 );
 	}
 
 
@@ -251,10 +256,6 @@ public class GCodeXYF extends GCodeAbstract {
 		switch (mask) {
 		case Constants.F_MASK:
 			return f != Float.MAX_VALUE;
-		case Constants.X_MASK:
-			return x != Float.MAX_VALUE;
-		case Constants.Y_MASK:
-			return y != Float.MAX_VALUE;
 		default:
 			break;
 		}
@@ -276,15 +277,13 @@ public class GCodeXYF extends GCodeAbstract {
 	
 		@Override
 		public void setCurrentPosition(Position currentPosition) {
-			x=currentPosition.x; //overwrite to save memory
-			y=currentPosition.y;
+			
 		}
 
 
 
 	@Override
 	public void setDistance(float distance) {
-		this.distance = distance;
 	}
 
 
@@ -292,7 +291,6 @@ public class GCodeXYF extends GCodeAbstract {
 	
 		@Override
 		public void setExtrusion(float extrusion) {
-			
 		}
 
 
@@ -304,6 +302,7 @@ public class GCodeXYF extends GCodeAbstract {
 	 */
 	@Override
 	public void setFanspeed(float fanspeed) {
+		//this.fanspeed = (short)0;
 	}
 
 
@@ -360,6 +359,12 @@ public class GCodeXYF extends GCodeAbstract {
 	public String getUnit() {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+
+	@Override
+	public float getExtrusionSpeed() {
+		return 0;
 	}
 
 }

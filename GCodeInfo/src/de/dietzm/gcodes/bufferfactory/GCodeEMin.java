@@ -1,23 +1,49 @@
-package de.dietzm.gcodes;
+package de.dietzm.gcodes.bufferfactory;
 
 import de.dietzm.Constants;
 import de.dietzm.Position;
 import de.dietzm.Constants.GCDEF;
+import de.dietzm.gcodes.MemoryEfficientLenString;
+import de.dietzm.gcodes.MemoryEfficientString;
 
 
-public class GCodeFE extends GCodeAbstract {
+public class GCodeEMin extends GCodeAbstractNoData {
 
 	private float e=Float.MAX_VALUE; //will be initalitzed with absolut extrusion 
-	private float f=Float.MAX_VALUE; //will be initalitzed with absolut extrusion 
+	
 	//Dynamic values updated by analyse	 (7MB for 300000 gcodes)
 	private float time;
 	private float timeaccel; //track acceleration as extra time 
+	private float extrusion;
 //	private float distance;
-	private short fanspeed; //remember with less accuracy (just for display)
+	//private short fanspeed; //remember with less accuracy (just for display)
 	
 	
-	public GCodeFE(String line, int linenr, GCDEF code) {
-		super(line, linenr, code);
+	public GCodeEMin(String line, GCDEF code) {
+		super( code);
+	}
+
+	@Override
+	public int getCodeline(byte[] buffer) {
+		int len = 0;
+		//G1 
+		byte[] gc1=getGcode().getBytes();
+		System.arraycopy(gc1,0,buffer,0,gc1.length);
+		len=gc1.length;
+		
+		buffer[len++]=Constants.spaceb;
+		buffer[len++]=Constants.Eb;
+		len = Constants.floatToString5(e,buffer,len);
+		
+		buffer[len++]=Constants.newlineb;	
+		return len;
+	}
+	
+	@Override
+	public MemoryEfficientString getCodeline() {
+		byte[] buf = new byte[256]; //TODO 256 might be too small
+		int len = getCodeline(buf);
+		return new MemoryEfficientLenString(buf,len);
 	}
 
 
@@ -26,9 +52,6 @@ public class GCodeFE extends GCodeAbstract {
 		switch (mask) {
 		case Constants.E_MASK:
 			e = value;
-			break;
-		case Constants.F_MASK:
-			f = value;
 			break;
 		default:
 			break;
@@ -39,7 +62,6 @@ public class GCodeFE extends GCodeAbstract {
 	public String toCSV() {		
 		String var = String.valueOf(getSpeed());
 		var+=";"+e;
-		var+=";"+fanspeed;
 		return var;
 	}
 	
@@ -47,7 +69,7 @@ public class GCodeFE extends GCodeAbstract {
 
 	@Override
 	public String toString() {		
-		String var = lineindex+":  "+toStringRaw();
+		String var = ":  ";
 		var+="\tExtrusion:"+e;
 		return var;
 	}
@@ -64,7 +86,7 @@ public class GCodeFE extends GCodeAbstract {
 	@Override
 	public float getF() {
 		// TODO Auto-generated method stub
-		return f;
+		return 0;
 	}
 
 
@@ -138,19 +160,17 @@ public class GCodeFE extends GCodeAbstract {
 	@Override
 	public float getExtrusion() {
 		if(!isInitialized(Constants.E_MASK)) return 0;
-		return e;
+		return extrusion;
 	}
-
 
 
 
 
 	//private float extemp,bedtemp;	
-	@Override
-	public short getFanspeed() {
-		return fanspeed;
-	}
-
+		@Override
+		public short getFanspeed() {
+			return Short.MAX_VALUE;
+		}
 
 
 	@Override
@@ -207,7 +227,7 @@ public class GCodeFE extends GCodeAbstract {
 	 */
 	@Override
 	public boolean isExtrudeOrRetract(){
-		return ( isInitialized(Constants.E_MASK) && e != 0 );
+		return ( isInitialized(Constants.E_MASK) && extrusion != 0 );
 	}
 
 
@@ -218,7 +238,7 @@ public class GCodeFE extends GCodeAbstract {
 	 */
 	@Override
 	public boolean isExtruding(){
-		return ( isInitialized(Constants.E_MASK) && e > 0 );
+		return ( isInitialized(Constants.E_MASK) && extrusion > 0 );
 	}
 
 
@@ -234,8 +254,6 @@ public class GCodeFE extends GCodeAbstract {
 		switch (mask) {
 		case Constants.E_MASK:
 			return e != Float.MAX_VALUE;
-		case Constants.F_MASK:
-			return f != Float.MAX_VALUE;
 		default:
 			break;
 		}
@@ -271,7 +289,7 @@ public class GCodeFE extends GCodeAbstract {
 	
 		@Override
 		public void setExtrusion(float extrusion) {
-			e = extrusion; //overwrite to save memory 
+			this.extrusion = extrusion; //overwrite to save memory 
 		}
 
 
@@ -283,21 +301,20 @@ public class GCodeFE extends GCodeAbstract {
 	 */
 	@Override
 	public void setFanspeed(float fanspeed) {
-		this.fanspeed = (short)fanspeed;
 	}
 
 
 
 	@Override
 	public void setTime(float time) {
-		this.time = time;
+		this.time=time;
 	}
 
 
 
 	@Override
 	public void setTimeAccel(float time) {
-		this.timeaccel = time;
+		this.timeaccel=time;
 	}
 
 
@@ -345,8 +362,7 @@ public class GCodeFE extends GCodeAbstract {
 
 	@Override
 	public float getExtrusionSpeed() {
-		// TODO Auto-generated method stub
-		return 0;
+		return (extrusion/getTimeAccel())*60f;
 	}
 
 }

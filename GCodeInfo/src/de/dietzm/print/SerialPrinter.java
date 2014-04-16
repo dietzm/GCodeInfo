@@ -129,6 +129,7 @@ public class SerialPrinter implements Runnable, Printer {
 		public float[] exttemps = new float[MAX_EXTRUDER_NR];
 		// public boolean absolute
 		boolean testrun = false;
+		int lineidx=0;
 
 		public float getX() {
 			return lastpos[0];
@@ -328,6 +329,10 @@ public class SerialPrinter implements Runnable, Printer {
 		return state.lastgcode;
 	}
 	
+	public int getCurrentLine() {
+		return state.lineidx;
+	}
+	
 	public CharSequence getRemainingtime() {
 		float time = printQueue.getRemainingtime();
 		if(state.printspeed != 100){ //Adjust time by speed
@@ -476,6 +481,7 @@ public class SerialPrinter implements Runnable, Printer {
 					}
 				}else{
 					state.lastgcode = code;// remember last code to sync with UI
+					state.lineidx++;
 				}
 					
 				if(logerrors && Constants.lastGarbage-garbagetime > 0){
@@ -495,7 +501,7 @@ public class SerialPrinter implements Runnable, Printer {
 
 		starttime = System.currentTimeMillis();
 		if (state.debug) {
-			cons.appendTextNoCR(String.valueOf(code.getLineindex()),": ", code.getCodeline());
+			cons.appendTextNoCR(String.valueOf(state.lineidx),": ", code.getCodeline());
 			if (code.isBuffered() && code.getTimeAccel() > 0.2) {
 				cons.appendText("(Est.Time:", String.valueOf(Constants.round3digits(code.getTimeAccel())) , "s)");
 			}
@@ -505,7 +511,7 @@ public class SerialPrinter implements Runnable, Printer {
 		 * Write the gcode to the printer Measure time and lof
 		 */
 		if(state.debug){
-			cons.log(serial, "write gcode line:"+code.getLineindex());
+			cons.log(serial, "write gcode line:"+state.lineidx);
 			cons.log(serial, code.getGcode().toString());
 		}
 		int len = code.getCodeline(ioBuffer.array); //Get codeline into buffer
@@ -533,7 +539,7 @@ public class SerialPrinter implements Runnable, Printer {
 			}
 			if (recv.isEmpty() || recv.isTimedout()) {
 				state.timeouts++;
-				state.timeoutline=code.getLineindex();
+				state.timeoutline=state.lineidx;
 				if(state.debug || logerrors){
 					//This can even happen in normal cases e.g. when the move is very long (1st in the buffer)
 					String logm = "Timeout waiting for printer response at line #"+state.timeoutline+"("+ String.valueOf((System.currentTimeMillis() - starttime))+ "ms)";
@@ -633,7 +639,7 @@ public class SerialPrinter implements Runnable, Printer {
 				if (state.testrun) {
 					testrunavg = testrunavg + diff;
 					if (diff > 50) {
-						cons.log("GCodeLongTime", String.valueOf(code.getLineindex())); 
+						cons.log("GCodeLongTime", String.valueOf(state.lineidx)); 
 						cons.log("GCodeLongTime", String.valueOf(diff));
 						cons.appendText("Took (overall ms): ", String.valueOf(diff));
 					}
@@ -890,6 +896,7 @@ public class SerialPrinter implements Runnable, Printer {
 			cons.log(serial, fin);
 			cons.appendText(fin);
 			printQueue.clear();
+			state.lineidx=0;
 			if (state.testrun) {
 				cons.appendText("Testrun completed, average response time (ms):" + testrunavg / 5002);
 				testrunavg = 0;
@@ -905,9 +912,10 @@ public class SerialPrinter implements Runnable, Printer {
 			if(state.debug) cons.appendText(showDebugData());
 			cons.log("DEBUG",showDebugData());
 		} else {
-			System.gc(); //Force garbage collection to avoid gc during print
 			printstart = System.currentTimeMillis();
 			garbagetime =printstart+12000;
+			System.gc(); //Force garbage collection to avoid gc during print
+			state.lineidx=0;
 			state.percentCompleted=0;
 			if(state.streaming || state.sdprint){
 				cons.updateState(States.STREAMING,"unknown",0);
@@ -1071,7 +1079,7 @@ public class SerialPrinter implements Runnable, Printer {
 		if (state.pause) {
 			cons.appendText("Pause");
 			if(state.debug){
-				cons.appendText("Pause at GCode line number:" + state.lastgcode.getLineindex());
+				cons.appendText("Pause at GCode line number:" + state.lineidx);
 				cons.appendText(showDebugData());
 			}
 		} else {

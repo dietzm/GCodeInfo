@@ -1,10 +1,10 @@
-package de.dietzm.gcodes;
-
-import java.io.UnsupportedEncodingException;
+package de.dietzm.gcodes.bufferfactory;
 
 import de.dietzm.Constants;
 import de.dietzm.Position;
 import de.dietzm.Constants.GCDEF;
+import de.dietzm.gcodes.GCode;
+import de.dietzm.gcodes.MemoryEfficientString;
 
 /**
  * Abstract Class GCode
@@ -19,22 +19,13 @@ import de.dietzm.Constants.GCDEF;
  * @author mdietz
  *
  */
-public abstract class GCodeAbstract2 implements GCode {
+public abstract class GCodeAbstractNoData implements GCode {
 
    // protected byte[] data; //Store String in a more memory efficient way
     protected short gcode;
-	protected int lineindex;
-	
-	public GCodeAbstract2(String line,int linenr,GCDEF code){
-		//updateDataArray(line);
-		lineindex=linenr;
-		gcode=code.getId();
-	}
-	
-	
-	public GCodeAbstract2(byte[] line,int linenr,GCDEF code){
+
+	public GCodeAbstractNoData(GCDEF code){
 	//	data=line;
-		lineindex=linenr;
 		gcode=code.getId();
 	}
 
@@ -54,13 +45,7 @@ public abstract class GCodeAbstract2 implements GCode {
 		 return Constants.GCDEF.COMMENT.equals(gcode); 
 	}
 	
-	/* (non-Javadoc)
-	 * @see de.dietzm.gcodes.GCode#setLineindex(int)
-	 */
-	@Override
-	public void setLineindex(int lineindex) {
-		this.lineindex = lineindex;
-	}
+
 	
 	/**
 	 * Find comments and strip them, init the comment filed
@@ -109,7 +94,7 @@ public abstract class GCodeAbstract2 implements GCode {
 //			newdata[gc1.length]=' ';
 //			newdata[len-1]='\n';			
 //			
-			return new MemoryEfficientString("");	
+			return new MemoryEfficientString("UNKNOWN codeline :"+getGcode());	
 	}
 	
 	
@@ -143,13 +128,7 @@ public abstract class GCodeAbstract2 implements GCode {
 
 	
 
-	/* (non-Javadoc)
-	 * @see de.dietzm.gcodes.GCode#getLineindex()
-	 */
-	@Override
-	public int getLineindex() {
-		return lineindex;
-	}
+
 	/* (non-Javadoc)
 	 * @see de.dietzm.gcodes.GCode#getGcode()
 	 */

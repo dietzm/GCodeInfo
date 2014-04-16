@@ -2,7 +2,9 @@ package de.dietzm;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Formatter;
 import java.util.List;
+import java.util.Locale;
 
 import de.dietzm.gcodes.MemoryEfficientLenString;
 import de.dietzm.gcodes.MemoryEfficientString;
@@ -13,7 +15,47 @@ public class Constants {
 	static char[] buffer = new char[1024];
 	static List<String> list = new ArrayList<String>();
 	public static long lastGarbage=0;
+	static ReceiveBuffer tmpformatbuf = new ReceiveBuffer(256);
+	static Formatter tmpformat = new Formatter(tmpformatbuf);
 	
+	
+	public static class CharSeqBufView implements CharSequence{
+
+		ReceiveBuffer srcbuf;
+		int offset =0 ;
+		int len = 0;
+		
+		public CharSeqBufView(){
+			//init empty
+		}
+		
+		public void setcontent(ReceiveBuffer rbuf,int off, int length){
+			this.srcbuf=rbuf;
+			this.offset=off;
+			this.len=length;
+		}
+		
+		@Override
+		public int length() {
+			return len;
+		}
+
+		@Override
+		public char charAt(int index) {
+			return srcbuf.charAt(offset+index);
+		}
+
+		@Override
+		public CharSequence subSequence(int start, int end) {
+			return srcbuf.subSequence(offset+start, offset+end);
+		}
+		
+		@Override
+		public String toString() {
+			return new String(srcbuf.array,offset,len);
+		}
+		
+	}
 	public static enum GCDEF {
 		G0(0),G1(1),G2(2),G3(3),G4(4),G20(20),G21(21),G28(28),G29(29),G30(30),G31(31),G32(32),G90(90),G91(91),G92(92),G130(130),G161(161),G162(162),M0(1000),M1(1001),M6(1006),M18(1018),M20(1020),M21(1021),M22(1022),M23(1023),M24(1024),M25(1025),M26(1026),M27(1027),M28(1028),M29(1029),M70(1070),M72(1072),M73(1073),M92(1092),M80(1080),M81(1081),M101(1101),M103(1103),M104(1104),M105(1105),M106(1106),M107(1107),M108(1108),M109(1109),M112(1112),M113(1113),M114(1114),M116(1116),M117(1117),M126(1126),M127(1127),M130(1130),M132(1132),M133(1133),M134(1134),M135(1135),M136(1136),M137(1137),M140(1140),M190(1190),M204(1204),M218(1218),M220(1220),M221(1221),M226(1226),M227(1227),M228(1228),M82(1082),M83(1083),M84(1084),T0(5000),T1(5001),UNKNOWN(Short.MAX_VALUE),COMMENT(Short.MIN_VALUE);
 		
@@ -44,22 +86,56 @@ public class Constants {
 		   
 		   
 		   public static GCDEF getGCDEF(String val) {
-			   if(val.equalsIgnoreCase("G1")){
+			   if(val.equals("G1")){
 				    return G1;
 			   }
-			   if(val.equalsIgnoreCase("G2")){
+			   if(val.equals("G0")){
+				    return G0;
+			   }
+			   if(val.equals("G2")){
 				    return G2;
 			   }
-			   if(val.equalsIgnoreCase("G3")){
+			   if(val.equals("G3")){
 				    return G3;
 			   }
-			   if(val.equalsIgnoreCase("G92")){
+			   if(val.equals("G92")){
 				    return G92;
 			   }
 			   if(val.charAt(0) > 97){ //Check if lowercase
 				   return GCDEF.valueOf(val.toUpperCase());   
 			   }else{
 				   return GCDEF.valueOf(val);
+			   }
+			   
+			   
+		   }
+		   
+		   public static GCDEF getGCDEF(CharSequence val) {
+			   if(val.length() == 2 && val.charAt(0) == 'G'){
+				   if(val.charAt(1) == '1'){
+					    return G1;
+				   }
+				   if(val.charAt(1) == '0'){
+					    return G0;
+				   }
+				   if(val.charAt(1) == '2'){
+					    return G2;
+				   }
+				   if(val.charAt(1) == '3'){
+					    return G3;
+				   }
+				   if(val.charAt(1) == '4'){
+					    return G4;
+				   }
+			   }
+			   if(val.length() ==3 && val.charAt(1) == '9'  && val.charAt(2) == '2'){
+				    return G92;
+			   }
+			   
+			   if(val.charAt(0) > 97){ //Check if lowercase
+				   return GCDEF.valueOf(val.toString().toUpperCase());   
+			   }else{
+				   return GCDEF.valueOf(val.toString());
 			   }
 			   
 			   
@@ -123,6 +199,11 @@ public class Constants {
 	
 	public final static byte newlineb = 10;
 	public final static byte spaceb = 32;
+	public final static byte Xb = 'X';
+	public final static byte Yb = 'Y';
+	public final static byte Zb = 'Z';
+	public final static byte Eb = 'E';
+	public final static byte Fb = 'F';
 	
 	public final static byte[] newline = new byte[]{newlineb};
 	public final static char newlinec = '\n';
@@ -330,23 +411,29 @@ public class Constants {
 	}
 	
 	public static void main(String[] args) {
-		MemoryEfficientString me = new MemoryEfficientString(new byte[12]);
-		formatTimetoHHMMSS(393699, me.getBytes());
-		System.out.println(me.toString());
-		floattoChar(1.1f, me.getBytes(),2);
-		System.out.println(me.toString());
-		
-		floattoChar(-0.1f, me.getBytes(),2);
-		System.out.println(me.toString());	
-		
-		floattoChar(0.99f, me.getBytes(),2);
-		System.out.println(me.toString());	
-		inttoChar(Integer.MIN_VALUE, me.getBytes());
-		
-		//Failure case
-		float f = 0.0054454f;
-		System.out.println(parseFloat("0.0054454545", 0));
+//		MemoryEfficientString me = new MemoryEfficientString(new byte[12]);
+//		formatTimetoHHMMSS(393699, me.getBytes());
+//		System.out.println(me.toString());
+//		floattoChar(1.1f, me.getBytes(),2);
+//		System.out.println(me.toString());
+//		
+//		floattoChar(-0.1f, me.getBytes(),2);
+//		System.out.println(me.toString());	
+//		
+//		floattoChar(0.99f, me.getBytes(),2);
+//		System.out.println(me.toString());	
+//		inttoChar(Integer.MIN_VALUE, me.getBytes());
+//		
+//		//Failure case
+//		float f = 0.0054454f;
+//		System.out.println(parseFloat("0.0054454545", 0));
 		//System.out.println(Float.MIN_VALUE);
+		ReceiveBuffer rb = new ReceiveBuffer(20);
+		rb.put("M107\n".getBytes());
+//		rb.put("M107 X\n".getBytes());
+		CharSeqBufView[] preallocSegment = {new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView()};
+		splitbyLetter3(rb,preallocSegment);
+		System.out.println("'"+preallocSegment[0].toString()+"'");
 	}
 	
 
@@ -399,7 +486,7 @@ public class Constants {
 	 * @param startpos
 	 * @return
 	 */
-	public static float parseFloat(String f,int startpos) {
+	public static float parseFloat(CharSequence f,int startpos) {
 		final int len   = f.length();
 		float     ret   = 0f;         // return value
 		int       pos   = startpos;          // read pointer position
@@ -507,7 +594,7 @@ public class Constants {
 				list.add(new String(buffer,0,pos));
 				pos=0;
 				buffer[pos++]=c;
-			}else if (c == 32 || c == 10 || c ==47){
+			}else if (c == 32 || c == 10 || c ==47 || c ==13){
 				//ignore spaces and newlines
 			}else{
 				buffer[pos++]=c;
@@ -516,6 +603,78 @@ public class Constants {
         list.add(new String(buffer,0,pos));
         return list.toArray(new String[list.size()]);
 }
+	
+	/**
+	 * User for splitting the GCodes into segments
+	 * NOT THREAD SAVE !!
+	 * @param text
+	 * @return
+	 */
+	public static int splitbyLetter3(ReceiveBuffer text, CharSeqBufView[] fillArr){
+        //list.clear();
+		int arrnumber=0;
+        int pos = 0;
+        int pos2=0;
+        int len = text.length();      
+        boolean first=true;
+        
+        
+        for (int i = 0; i < len; i++) {
+        	char c = text.charAt(i);
+			if(c > 58){ //ASCII no number and no whitespace
+				if(first){
+					first=false;
+					pos=i;
+					continue;
+				}
+				//list.add(new String(buffer,0,pos));
+				fillArr[arrnumber++].setcontent(text, pos, pos2-pos);
+				pos=i;
+			}else if (c == 32 || c == 10 || c ==47 || c == 13){
+				//ignore spaces and newlines
+			}else{
+				pos2=i+1;
+			}
+		}
+        fillArr[arrnumber++].setcontent(text, pos, pos2-pos);
+        
+//        CharSequence[] out = new CharSequence[arrnumber];
+//        System.arraycopy(preallocSegment, 0, out, 0, arrnumber);
+        return arrnumber;
+}
+	/**
+	 * Find comments and strip them, init the comment filed
+	 * @param clv
+	 * @return
+	 */
+	public static String stripComment(String clv) {
+		int idx;
+		if((idx = clv.indexOf(';')) != -1){
+			//is a comment
+			clv=clv.substring(0, idx);
+		}else if((idx = clv.indexOf("(")) != -1){ //INCLUDES (<
+			//is a comment
+			clv=clv.substring(0, idx);
+		}
+		return clv.trim();
+	}
+	
+	/**
+	 * Find comments and strip them, init the comment filed
+	 * @param clv
+	 * @return
+	 */
+	public static ReceiveBuffer stripComment(ReceiveBuffer clv) {
+		int idx;
+		if((idx = clv.indexOf(';')) != -1){
+			//is a comment
+			clv.setlength(idx);
+		}else if((idx = clv.indexOf('(')) != -1){ //INCLUDES (<
+			//is a comment
+			clv.setlength(idx);
+		}
+		return clv; //TODO trim
+	}
 	
 	public static Position parseOffset(String text) {
 		try{
@@ -527,6 +686,74 @@ public class Constants {
 		}
 		return null;
 	}
+
+	/**
+	 * Do some tricks to make sure that the saved output file is 100% equal to the input file (if nothing has been changed)
+	 * @param prefix
+	 * @param val
+	 * @param digits
+	 * @return
+	 */
+	public static String getIfInit2(String prefix,float val,int digits){
+		if(val==Float.MAX_VALUE) return "";
+		if(digits==0){
+			String var = String.format(Locale.US," "+prefix+"%.1f", val);
+			return removeTrailingZeros(var); //remove trailing zero
+		}
+		if("E".equals(prefix) && val == 0) return " E0";  //replace E0.0000 with E0 
+		return String.format(Locale.US," "+prefix+"%."+digits+"f", val);		
+	}
+	/**
+	 * Float to string with 3 digits
+	 * @param val
+	 * @param buffer
+	 * @param offset
+	 * @return new length of the byte[] 
+	 */
+	public static int floatToString3(float val, byte[] buffer, int offset){
+		tmpformatbuf.clear();		
+		tmpformat.format(Locale.US,"%.3f", val);
+		//TODO formatter allocate string and char[] ...fix it
+		System.arraycopy(tmpformatbuf.array,0,buffer,offset,tmpformatbuf.length());
+				
+		return offset+tmpformatbuf.length();		
+	}
+	/**
+	 * Float to string with 5 digits
+	 * @param prefix
+	 * @param val
+	 * @param digits
+	 * @return
+	 */
+	public static int floatToString5(float val,byte[] buffer, int offset){
+		if(val != 0){
+			tmpformatbuf.clear();		
+			tmpformat.format(Locale.US,"%.5f", val);
+			System.arraycopy(tmpformatbuf.array,0,buffer,offset,tmpformatbuf.length());
+			return offset+tmpformatbuf.length();
+		}else{ 
+			buffer[offset]='0';
+			return offset+1;
+		}
+				
+					
+	}
+	/**
+	 * Float to string with 0 digits
+	 * @param prefix
+	 * @param val
+	 * @param digits
+	 * @return
+	 */
+	public static int floatToString0(float val,byte[] buffer, int offset){
+		tmpformatbuf.clear();		
+		tmpformat.format(Locale.US,"%d", (int)val);
+		System.arraycopy(tmpformatbuf.array,0,buffer,offset,tmpformatbuf.length());
+				
+		return offset+tmpformatbuf.length();		
+	}
+	
+
 
 
 }

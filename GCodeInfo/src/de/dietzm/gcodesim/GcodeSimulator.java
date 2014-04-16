@@ -75,7 +75,7 @@ import de.dietzm.Model;
 import de.dietzm.Position;
 import de.dietzm.SerialIO;
 import de.dietzm.gcodes.GCodeFactory;
-import de.dietzm.gcodes.GCodeFactoryLowMem;
+import de.dietzm.gcodes.lowmemfactory.GCodeFactoryLowMem;
 import de.dietzm.gcodesim.GcodePainter.Commands;
 import de.dietzm.print.ConsoleIf;
 import de.dietzm.print.Dummy;

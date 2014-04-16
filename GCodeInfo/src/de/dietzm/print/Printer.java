@@ -12,6 +12,7 @@ public interface Printer {
 	public boolean isPrinting();
 	public boolean isPause();
 	public GCode getCurrentGCode();
+	public int getCurrentLine();
 	public int getPrintSpeed();
 	
 	

@@ -1,5 +1,6 @@
 package de.dietzm.print;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import de.dietzm.Constants;
@@ -12,7 +13,32 @@ import de.dietzm.gcodes.MemoryEfficientString;
  * @author mdietz
  *
  */
-public class ReceiveBuffer implements CharSequence {
+public class ReceiveBuffer implements CharSequence,Appendable {
+
+	@Override
+	public Appendable append(char c) throws IOException {
+		if(len+1 > array.length) throw new IndexOutOfBoundsException("ReceiveBuffer size exceeded");
+		array[len++]=(byte)c;
+		return this;
+	}
+
+	@Override
+	public Appendable append(CharSequence csq) throws IOException {
+		if(len+csq.length() > array.length) throw new IndexOutOfBoundsException("ReceiveBuffer size exceeded");
+		for (int i = 0; i < csq.length(); i++) {
+			array[len++]=(byte)csq.charAt(i);
+		}
+		return this;
+	}
+
+	@Override
+	public Appendable append(CharSequence csq, int start, int end) throws IOException {
+		if(len+(end-start) > array.length) throw new IndexOutOfBoundsException("ReceiveBuffer size exceeded");
+		for (int i = start; i < end; i++) {
+			array[len++]=(byte)csq.charAt(i);
+		}
+		return this;
+	}
 
 	public byte[] array ;
 	int offset, len;
@@ -52,6 +78,12 @@ public class ReceiveBuffer implements CharSequence {
 		if(blen > array.length) throw new IndexOutOfBoundsException("ReceiveBuffer size exceeded, len:"+blen+" off:"+offset);
 		System.arraycopy(buf, offset, array, 0, blen);
 		len=blen;
+	}
+	
+	public void put(byte[] buf, int offset , int targetoff, int blen){
+		if((targetoff+blen) > array.length) throw new IndexOutOfBoundsException("ReceiveBuffer size exceeded, len:"+blen+" off:"+offset);
+		System.arraycopy(buf, offset, array, targetoff, blen);
+		len=targetoff+blen;
 	}
 	
 	/**
@@ -148,6 +180,17 @@ public class ReceiveBuffer implements CharSequence {
 		}
 		return false; //ASCII
 	}
+	
+	public boolean startsWithString(String start){
+		if(len<start.length()) return false;
+		for (int i = 0; i < start.length(); i++) {
+			if(array[i] != start.charAt(i)){
+				return false;
+			}
+		}
+		return true;
+	}
+	
 	
 	public boolean startsWithSD(){
 		if(len<2) return false;

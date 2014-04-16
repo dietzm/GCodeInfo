@@ -1,23 +1,24 @@
-package de.dietzm.gcodes;
+package de.dietzm.gcodes.lowmemfactory;
 
 import de.dietzm.Constants;
 import de.dietzm.Position;
 import de.dietzm.Constants.GCDEF;
+import de.dietzm.gcodes.GCodeAbstract;
 
 
-public class GCodeE extends GCodeAbstract {
+public class GCodeFE extends GCodeAbstract {
 
 	private float e=Float.MAX_VALUE; //will be initalitzed with absolut extrusion 
-	
+	private float f=Float.MAX_VALUE; //will be initalitzed with absolut extrusion 
 	//Dynamic values updated by analyse	 (7MB for 300000 gcodes)
 	private float time;
 	private float timeaccel; //track acceleration as extra time 
 //	private float distance;
-	//private short fanspeed; //remember with less accuracy (just for display)
+	private short fanspeed; //remember with less accuracy (just for display)
 	
 	
-	public GCodeE(String line, int linenr, GCDEF code) {
-		super(line, linenr, code);
+	public GCodeFE(String line,  GCDEF code) {
+		super(line,  code);
 	}
 
 
@@ -26,6 +27,9 @@ public class GCodeE extends GCodeAbstract {
 		switch (mask) {
 		case Constants.E_MASK:
 			e = value;
+			break;
+		case Constants.F_MASK:
+			f = value;
 			break;
 		default:
 			break;
@@ -36,6 +40,7 @@ public class GCodeE extends GCodeAbstract {
 	public String toCSV() {		
 		String var = String.valueOf(getSpeed());
 		var+=";"+e;
+		var+=";"+fanspeed;
 		return var;
 	}
 	
@@ -43,7 +48,7 @@ public class GCodeE extends GCodeAbstract {
 
 	@Override
 	public String toString() {		
-		String var = lineindex+":  "+toStringRaw();
+		String var = ":  "+toStringRaw();
 		var+="\tExtrusion:"+e;
 		return var;
 	}
@@ -60,7 +65,7 @@ public class GCodeE extends GCodeAbstract {
 	@Override
 	public float getF() {
 		// TODO Auto-generated method stub
-		return 0;
+		return f;
 	}
 
 
@@ -140,11 +145,13 @@ public class GCodeE extends GCodeAbstract {
 
 
 
+
 	//private float extemp,bedtemp;	
-		@Override
-		public short getFanspeed() {
-			return Short.MAX_VALUE;
-		}
+	@Override
+	public short getFanspeed() {
+		return fanspeed;
+	}
+
 
 
 	@Override
@@ -228,6 +235,8 @@ public class GCodeE extends GCodeAbstract {
 		switch (mask) {
 		case Constants.E_MASK:
 			return e != Float.MAX_VALUE;
+		case Constants.F_MASK:
+			return f != Float.MAX_VALUE;
 		default:
 			break;
 		}
@@ -275,20 +284,21 @@ public class GCodeE extends GCodeAbstract {
 	 */
 	@Override
 	public void setFanspeed(float fanspeed) {
+		this.fanspeed = (short)fanspeed;
 	}
 
 
 
 	@Override
 	public void setTime(float time) {
-		this.time=time;
+		this.time = time;
 	}
 
 
 
 	@Override
 	public void setTimeAccel(float time) {
-		this.timeaccel=time;
+		this.timeaccel = time;
 	}
 
 

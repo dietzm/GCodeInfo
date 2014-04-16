@@ -7,7 +7,7 @@ public class GCodeStore implements Iterable<GCode> {
 
 	private final ArrayList<GCode> list;
 	
-	protected GCodeStore(int size) {
+	public GCodeStore(int size) {
 		 list = new ArrayList<GCode>(size);
 	}
 	public GCodeStore() {

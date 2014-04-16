@@ -68,6 +68,10 @@ public class SerialIO implements SerialPortEventListener, Printer{
 	public GCode getCurrentGCode(){
 		return null;
 	}
+	
+	public int getCurrentLine(){
+		return 0;
+	}
 	public int getPrintSpeed() {
 		return 100;
 	}
@@ -184,7 +188,7 @@ public class SerialIO implements SerialPortEventListener, Printer{
 		SerialIO sio=new SerialIO();
 		sio.connect("/dev/ttyUSB0");
 		while(true){
-			sio.addToPrintQueue(new GCodeMemSave("M114\n", 1,null),true);
+			sio.addToPrintQueue(new GCodeMemSave("M114\n", null),true);
 			Thread.sleep(1000);
 		}
 		

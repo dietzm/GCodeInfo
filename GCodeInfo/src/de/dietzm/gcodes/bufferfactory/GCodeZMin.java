@@ -1,12 +1,14 @@
-package de.dietzm.gcodes;
+package de.dietzm.gcodes.bufferfactory;
 
 import de.dietzm.Constants;
 import de.dietzm.Position;
 import de.dietzm.Constants.GCDEF;
+import de.dietzm.gcodes.MemoryEfficientLenString;
+import de.dietzm.gcodes.MemoryEfficientString;
 
 
 
-public class GCodeZ extends GCodeAbstract {
+public class GCodeZMin extends GCodeAbstractNoData {
 		
 	private float z=Float.MAX_VALUE;
 			
@@ -35,12 +37,10 @@ public class GCodeZ extends GCodeAbstract {
 
 
 	
-	public GCodeZ(String line,int linenr,GCDEF gc){
-		super(line,linenr,gc);
-	}
 
-	public GCodeZ(String line,GCDEF gc){
-		super(line,0,gc);
+
+	public GCodeZMin(String line,GCDEF gc){
+		super(gc);
 	}
 
 	
@@ -215,10 +215,38 @@ public class GCodeZ extends GCodeAbstract {
 		return 0;
 	}
 	
+	@Override
+	public MemoryEfficientString getCodeline() {
+		byte[] buf = new byte[256]; //TODO 256 might be too small
+		int len = getCodeline(buf);
+		return new MemoryEfficientLenString(buf,len);
+	}
+
+
+
+	@Override
+	public int getCodeline(byte[] buffer) {
+		int len = 0;
+		//G1 
+		byte[] gc1=getGcode().getBytes();
+		System.arraycopy(gc1,0,buffer,0,gc1.length);
+		len=gc1.length;
+		
+		
+		buffer[len++]=Constants.spaceb;
+		buffer[len++]=Constants.Zb;
+		len = Constants.floatToString3(z,buffer,len);
+				
+		buffer[len++]=Constants.newlineb;	
+		return len;
+	}
+	
+
+	
 
 	@Override
 	public String toString() {		
-		String var = lineindex+":  "+toStringRaw();
+		String var = ":  ";
 		var+="\tExtrusion:"+0;
 		var+="\tDistance:"+distance;
 		var+="\tPosition:"+0+"x"+0;

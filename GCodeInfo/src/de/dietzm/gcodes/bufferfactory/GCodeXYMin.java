@@ -1,33 +1,32 @@
-package de.dietzm.gcodes;
+package de.dietzm.gcodes.bufferfactory;
 
 import de.dietzm.Constants;
 import de.dietzm.Position;
 import de.dietzm.Constants.GCDEF;
+import de.dietzm.gcodes.MemoryEfficientLenString;
+import de.dietzm.gcodes.MemoryEfficientString;
 
 
-public class GCodeXYE extends GCodeAbstract {
+public class GCodeXYMin extends GCodeAbstractNoData {
 
 	private float x=Float.MAX_VALUE;//will be initalitzed with current pos x
 	private float y=Float.MAX_VALUE;//will be initalitzed with current pos y
-	private float e=Float.MAX_VALUE; //will be initalitzed with absolut extrusion 
-	
+		
 	//Dynamic values updated by analyse	 (7MB for 300000 gcodes)
 	private float time;
+	private float timeaccel; //track acceleration as extra time 
 	private float distance;
-
+	private short fanspeed; //remember with less accuracy (just for display)
 	
 	
-	public GCodeXYE(String line, int linenr, GCDEF code) {
-		super(line, linenr, code);
+	public GCodeXYMin(String line,  GCDEF code) {
+		super( code);
 	}
 
 
 	@Override
 	public void setInitialized(short mask, float value) {
 		switch (mask) {
-		case Constants.E_MASK:
-			e = value;
-			break;
 		case Constants.X_MASK:
 			x  = value;
 			break;
@@ -42,9 +41,9 @@ public class GCodeXYE extends GCodeAbstract {
 	@Override
 	public String toCSV() {		
 		String var = String.valueOf(getSpeed());
-		var+=";"+e;
 		var+=";"+distance;
 		var+=";"+time;
+		var+=";"+fanspeed;
 		return var;
 	}
 	
@@ -52,16 +51,41 @@ public class GCodeXYE extends GCodeAbstract {
 
 	@Override
 	public String toString() {		
-		//String var = lineindex+":  "+toStringRaw();
-		String var = lineindex+":  "+getLineindex();
-		var+="\tExtrusion:"+e;
+		String var = ":  ";
+		var+="\tExtrusion:"+0;
 		var+="\tDistance:"+distance;
 		var+="\tPosition:"+x+"x"+y;
 		var+="\tTime:"+time;
 		return var;
 	}
+	@Override
+	public int getCodeline(byte[] buffer) {
+		int len = 0;
+		//G1 
+		byte[] gc1=getGcode().getBytes();
+		System.arraycopy(gc1,0,buffer,0,gc1.length);
+		len=gc1.length;
+		
+		
+		buffer[len++]=Constants.spaceb;
+		buffer[len++]=Constants.Xb;
+		len = Constants.floatToString3(x,buffer,len);
+				
+		buffer[len++]=Constants.spaceb;
+		buffer[len++]=Constants.Yb;
+		len = Constants.floatToString3(y,buffer,len);
+		
+		buffer[len++]=Constants.newlineb;	
+		return len;
+	}
 	
-
+	
+	@Override
+	public MemoryEfficientString getCodeline() {
+		byte[] buf = new byte[256]; //TODO 256 might be too small
+		int len = getCodeline(buf);
+		return new MemoryEfficientLenString(buf,len);
+	}
 
 
 	@Override
@@ -141,15 +165,15 @@ public class GCodeXYE extends GCodeAbstract {
 
 	@Override
 	public float getE() {
-		return e;
+		return 0;
 	}
 
 
 
 	@Override
 	public float getExtrusion() {
-		if(!isInitialized(Constants.E_MASK)) return 0;
-		return e;
+		return 0;
+		
 	}
 
 
@@ -160,7 +184,7 @@ public class GCodeXYE extends GCodeAbstract {
 	 */
 	@Override
 	public float getExtrusionSpeed(){
-		return (e/getTimeAccel())*60f;
+		return 0;
 	}
 
 
@@ -168,7 +192,7 @@ public class GCodeXYE extends GCodeAbstract {
 	//private float extemp,bedtemp;	
 	@Override
 	public short getFanspeed() {
-		return Short.MAX_VALUE;
+		return fanspeed;
 	}
 
 
@@ -200,7 +224,7 @@ public class GCodeXYE extends GCodeAbstract {
 
 	@Override
 	public float getTimeAccel() {
-		return distance / (((Math.min(40*60,distance *60/time)+distance *60/time)/2) / 60);
+		return this.timeaccel;
 	}
 
 
@@ -227,7 +251,7 @@ public class GCodeXYE extends GCodeAbstract {
 	 */
 	@Override
 	public boolean isExtrudeOrRetract(){
-		return ( isInitialized(Constants.E_MASK) && e != 0 );
+		return false;
 	}
 
 
@@ -238,7 +262,7 @@ public class GCodeXYE extends GCodeAbstract {
 	 */
 	@Override
 	public boolean isExtruding(){
-		return ( isInitialized(Constants.E_MASK) && e > 0 );
+		return false;
 	}
 
 
@@ -252,8 +276,6 @@ public class GCodeXYE extends GCodeAbstract {
 	@Override
 	public boolean isInitialized(int mask){
 		switch (mask) {
-		case Constants.E_MASK:
-			return e != Float.MAX_VALUE;
 		case Constants.X_MASK:
 			return x != Float.MAX_VALUE;
 		case Constants.Y_MASK:
@@ -295,7 +317,7 @@ public class GCodeXYE extends GCodeAbstract {
 	
 		@Override
 		public void setExtrusion(float extrusion) {
-			e = extrusion; //overwrite to save memory 
+			
 		}
 
 
@@ -307,7 +329,7 @@ public class GCodeXYE extends GCodeAbstract {
 	 */
 	@Override
 	public void setFanspeed(float fanspeed) {
-		
+		this.fanspeed = (short)fanspeed;
 	}
 
 
@@ -321,7 +343,7 @@ public class GCodeXYE extends GCodeAbstract {
 
 	@Override
 	public void setTimeAccel(float time) {
-		//No need to store, can be calculated
+		this.timeaccel = time;
 	}
 
 

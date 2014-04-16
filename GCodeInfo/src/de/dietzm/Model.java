@@ -229,7 +229,8 @@ public class Model {
 				 f_old=f_new; //acceleration done. assign new speed
 					
 				 //Calculate print size
-				 if(gc.isInitialized(Constants.E_MASK) && gc.getE() > 0) {
+				 //if(gc.isInitialized(Constants.E_MASK) && gc.getE() > 0) {
+				 if((gc.isExtruding() && gc.getDistance() != 0) || m101) {
 					 if(pos_changed){ //make sure that the start position is used for the boundary calculation
 						 currLayer.addPosition(lastxpos,lastypos,lastzpos);
 					 }

@@ -20,6 +20,11 @@ public class MemoryEfficientLenString extends MemoryEfficientString {
 		super(data);
 		len=data.length;
 	}
+	
+	public MemoryEfficientLenString(byte[] data, int leng) {
+		super(data);
+		len=leng;
+	}
 
 	public MemoryEfficientLenString(byte[] data1, byte[] data2) {
 		super(data1, data2);

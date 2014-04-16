@@ -829,18 +829,19 @@ public class GcodePainter implements Runnable {
 					// Print & Paint all Gcodes
 					
 					//Android guidelines say foreach loops are slower for arraylist
-					GCodeStore gcarr = model.getGcodes(lay);
+					GCodeStore gcarr = model.getGcodes();					
 					int gcnum = gcarr.size();
 					float zpos=lay.getZPosition();
 					GCDEF gcdef;
-					for(int ig = 0 ; ig < gcnum; ig++ ){
+					for(int ig = lay.lowidx ; ig <= lay.highidx; ig++ ){
+					//	System.out.println("IDX:"+ig+"  ->"+lay.highidx);
 						GCode gCode = gcarr.get(ig);
 						gcdef=gCode.getGcode();
 						/*
 						 * Painting starts here
 						 */
 						if(gcdef == Constants.GCDEF.UNKNOWN || gcdef == Constants.GCDEF.COMMENT){
-							if(fftoGcode != 0 && fftoGcode == gCode.getLineindex()){
+							if(fftoGcode != 0 && fftoGcode == ig){
 								fftoGcode=0;
 							}//make sure to reset fftogcode even if it is a comment (loop hang)
 							continue;
@@ -868,7 +869,7 @@ public class GcodePainter implements Runnable {
 						 * Printing
 						 * If printing is enabled synchronize rendering with the print controller
 						 */
-						alignWithPrint(lay, gCode);
+						alignWithPrint(lay, gCode,ig);
 						
 						//Print the lines from last position to current position
 						if(gCode.getCurrentPosition(pos) != null) {
@@ -911,7 +912,7 @@ public class GcodePainter implements Runnable {
 							/**
 							 * Handle a user command
 							 */
-							int skip = handleCommand(gCode, lay);
+							int skip = handleCommand(gCode, lay,ig);
 							if(skip==1) continue A;
 							if(skip==2) return;
 					
@@ -923,11 +924,11 @@ public class GcodePainter implements Runnable {
 								Thread.sleep((int)sleep);
 
 								if(pause != 0){
-									doPause(lay, gCode);
+									doPause(lay, gCode,ig);
 								}
 								
 							}else{
-								if(fftoGcode != 0 && fftoGcode == gCode.getLineindex()){
+								if(fftoGcode != 0 && fftoGcode == ig){
 									fftoGcode=0;
 								}
 								if(fftoLayer != 0 && fftoLayer == lay.getNumber()){
@@ -1007,7 +1008,7 @@ public class GcodePainter implements Runnable {
 	 * @param lay
 	 * @param gCode
 	 */
-	private void alignWithPrint(Layer lay, GCode renderCode) {
+	private void alignWithPrint(Layer lay, GCode renderCode, int lineidx) {
 		if (printer == null || (!printer.isPrinting() && !print) )
 			return;
 		if(pause == 0 && printer.isPause()){ //inconsistency 
@@ -1041,35 +1042,36 @@ public class GcodePainter implements Runnable {
 				}
 				boolean wait = false;
 				GCode printCode = printer.getCurrentGCode(); //get what has been send to the printer last
+				int printlineidx = printer.getCurrentLine();
 				if(printCode == null) continue;
 				//TODO: when end of file is reached
-				inbuffer=Math.min(defbuffersize, printCode.getLineindex()-bufferemptyindex); //Slowly fill buffer buffer
-				if (printCode.isBuffered()	&& renderCode.getLineindex() >= printCode.getLineindex() - inbuffer) {
+				inbuffer=Math.min(defbuffersize, printlineidx-bufferemptyindex); //Slowly fill buffer buffer
+				if (printCode.isBuffered()	&& lineidx >= printlineidx - inbuffer) {
 					wait = true;
 					speedup=1;
-				} else if (!printCode.isBuffered() && renderCode.getLineindex() >= printCode.getLineindex()) {
+				} else if (!printCode.isBuffered() && lineidx >= printlineidx) {
 					wait = true;
-					bufferemptyindex=printCode.getLineindex();
+					bufferemptyindex=printlineidx;
 					speedup=1;
 				}
 
-				if (renderCode.getLineindex() < printCode.getLineindex() - maxbehind) {
+				if (lineidx < printlineidx - maxbehind) {
 					if (printCode.isBuffered()) {
-						fftoGcode = printCode.getLineindex() - inbuffer;
+						fftoGcode = printlineidx - inbuffer;
 					} else {
-						fftoGcode = printCode.getLineindex();
+						fftoGcode =printlineidx;
 					}
 					//System.out.println("AlignGCode: ff:"+fftoGcode);
 					wait = false;
-				} else if (renderCode.getLineindex() < printCode.getLineindex() - behind) {
+				} else if (lineidx < printlineidx - behind) {
 					speedup++;
 					//System.out.println("AlignGCode:Speedup:"+speedup);
 					wait = false;
 				}
 
 				if (pause != 0) {
-					bufferemptyindex=printCode.getLineindex();
-					doPause(lay, renderCode);
+					bufferemptyindex=printlineidx;
+					doPause(lay, renderCode,lineidx);
 					printLabelBox(g2, 82,12,"W", "Wait",lay.getNumber());
 					g2.repaint();
 				} else if (wait) {
@@ -1092,12 +1094,12 @@ public class GcodePainter implements Runnable {
 		}
 	}
 
-	private void doPause(Layer lay, GCode gCode) throws InterruptedException {
+	private void doPause(Layer lay, GCode gCode, int lineidx) throws InterruptedException {
 		inpause=true;
 		printLabelBox(g2, 82,12,"P", "Pause",lay.getNumber());
 		g2.clearrect(bedsizeX*zoom+gap+1,bedsizeY * zoom + (bedsizeX*zoom)/24f, (bedsizeX * zoom/zoommod*2)-2, (bedsizeX*zoom)/24f,print?1:0);
 		g2.drawrect(bedsizeX*zoom+gap+4,bedsizeY * zoom + (bedsizeX*zoom)/24f +2, (bedsizeX * zoom/zoommod*2)-7, (bedsizeX*zoom)/24f -5);
-		g2.drawtext("L"+gCode.getLineindex()+": "+ gCode.getCodeline().toString().trim(), bedsizeX*zoom+gap+10, bedsizeY * zoom +(bedsizeX*zoom)/24f +  (bedsizeX*zoom)/48f +1 );
+		g2.drawtext("L"+lineidx+": "+ gCode.getCodeline().toString().trim(), bedsizeX*zoom+gap+10, bedsizeY * zoom +(bedsizeX*zoom)/24f +  (bedsizeX*zoom)/48f +1 );
 		g2.repaint();
 		Thread.sleep(pause); //allow pause also if printing			
 		inpause=false;
@@ -1116,7 +1118,7 @@ public class GcodePainter implements Runnable {
 	 * @param lay
 	 * @return return true if jump back to layer loop
 	 */
-	private synchronized int handleCommand(GCode gCode, Layer lay){
+	private synchronized int handleCommand(GCode gCode, Layer lay, int lineidx){
 		if(cmd==Commands.NOOP) return 0;
 		
 		Thread.interrupted(); //reset interrupted state to avoid problems with file dialog
@@ -1196,25 +1198,25 @@ public class GcodePainter implements Runnable {
 		case REPAINTLAYERS:
 			cmd = Commands.NOOP;
 			if(fftoGcode==0){
-				fftoGcode=gCode.getLineindex();
+				fftoGcode=lineidx;
 			}
 			return 1;
 		case STEPBACK:
 			cmd = Commands.NOOP;
-			if(fftoGcode==0 && gCode.getLineindex() > 3){
-				fftoGcode=gCode.getLineindex()-3; //why 3 ?
+			if(fftoGcode==0 && lineidx > 3){
+				fftoGcode=lineidx-3; //why 3 ?
 			}
 			return 1;
 		case STEP50X:
 			cmd = Commands.NOOP;
-			if(fftoGcode==0 && gCode.getLineindex() < model.getGcodecount()-50){
-				fftoGcode=gCode.getLineindex()+50; 
+			if(fftoGcode==0 && lineidx < model.getGcodecount()-50){
+				fftoGcode=lineidx+50; 
 			}
 			return 1;
 		case STEP50XBACK:
 			cmd = Commands.NOOP;
-			if(fftoGcode==0 && gCode.getLineindex() > 50){
-				fftoGcode=gCode.getLineindex()-50; 
+			if(fftoGcode==0 && lineidx > 50){
+				fftoGcode=lineidx-50; 
 			}
 			return 1;
 		default:
@@ -1271,7 +1273,9 @@ public class GcodePainter implements Runnable {
 				g2.repaint();
 				return;
 			}
+			long time = System.currentTimeMillis();
 			model.analyze();
+			System.out.println("Load Model Analyse finished in ms:"+(System.currentTimeMillis()-time));
 		} else {
 			model = modelin;
 		}

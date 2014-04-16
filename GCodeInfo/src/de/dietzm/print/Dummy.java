@@ -14,13 +14,14 @@ public class Dummy implements PrinterConnection {
 	byte[] memT1 = new MemoryEfficientString("ok T:181.2 /0.0 B:48.6 /0.0 T0:10.9 /0.0 @:0 B@:0\n").getBytes();
 
 	byte[] memS = new MemoryEfficientString("start grbl\n").getBytes();
+	private final ReceiveBuffer sendbuf = new ReceiveBuffer(4096);
 	SerialPrinter sio;
 	ConsoleIf cons;
 	GCode[] buffer = new GCode[16];
 	int buffercnt=0;
 	int bufferpos=0;
 	int sdcnt = 0;
-	String sendbuf="";
+
 	
 	public Dummy(SerialPrinter sio,ConsoleIf cons) {
 		this.sio=sio;
@@ -88,7 +89,7 @@ public class Dummy implements PrinterConnection {
 		if(wbuf.length() >=4 && wbuf.charAt(0)=='M' && wbuf.charAt(1)=='1' &&wbuf.charAt(2)=='0' &&wbuf.charAt(3)=='5'   ){
 			isM105=true;
 		}
-		sendbuf=wbuf.toString();
+		sendbuf.put(wbuf.array,0,wbuf.length());
 		isSend=true;
 		buffer[bufferpos++] = sio.state.lastgcode;
 		buffercnt++;
@@ -119,11 +120,11 @@ public class Dummy implements PrinterConnection {
 			}
 			odd = !odd;
 			isM105=false;
-		}else if(sendbuf.startsWith("M20")){
+		}else if(sendbuf.startsWithString("M20")){
 			byte[] sd1 = new MemoryEfficientString("begin\nfile1.gco\n/folder/file2.gco\nfile3.gco\n/folder/FILE.gco\nend\nok\n").getBytes();
 			System.arraycopy(sd1, 0, rbuf.array, 0, sd1.length);
 			rbuf.setlength(sd1.length);
-		}else if(sendbuf.startsWith("M27")){
+		}else if(sendbuf.startsWithString("M27")){
 			sdcnt++;
 			if(sdcnt<10){
 				byte[] sd1 = new MemoryEfficientString("SD printing byte "+(sdcnt*100)+"/1000\nok\n").getBytes();

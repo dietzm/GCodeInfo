@@ -14,7 +14,7 @@ public interface GCode {
 	 */
 	public boolean isComment();
 
-	public void setLineindex(int lineindex);
+	
 
 	public void setUnit(String unit);
 
@@ -35,7 +35,7 @@ public interface GCode {
 	 */
 	public int getCodeline(byte[] buffer);
 
-	public int getLineindex();
+
 
 	public Constants.GCDEF getGcode();
 

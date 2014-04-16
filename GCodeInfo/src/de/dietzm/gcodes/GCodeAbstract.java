@@ -23,18 +23,15 @@ public abstract class GCodeAbstract implements GCode {
 
     protected byte[] data; //Store String in a more memory efficient way
     protected short gcode;
-	protected int lineindex;
 	
-	public GCodeAbstract(String line,int linenr,GCDEF code){
+	public GCodeAbstract(String line,GCDEF code){
 		updateDataArray(line);
-		lineindex=linenr;
 		gcode=code.getId();
 	}
 	
 	
-	public GCodeAbstract(byte[] line,int linenr,GCDEF code){
+	public GCodeAbstract(byte[] line,GCDEF code){
 		data=line;
-		lineindex=linenr;
 		gcode=code.getId();
 	}
 
@@ -54,13 +51,7 @@ public abstract class GCodeAbstract implements GCode {
 		 return Constants.GCDEF.COMMENT.equals(gcode); 
 	}
 	
-	/* (non-Javadoc)
-	 * @see de.dietzm.gcodes.GCode#setLineindex(int)
-	 */
-	@Override
-	public void setLineindex(int lineindex) {
-		this.lineindex = lineindex;
-	}
+
 	
 	/**
 	 * Find comments and strip them, init the comment filed
@@ -153,13 +144,7 @@ public abstract class GCodeAbstract implements GCode {
 	}
 	
 
-	/* (non-Javadoc)
-	 * @see de.dietzm.gcodes.GCode#getLineindex()
-	 */
-	@Override
-	public int getLineindex() {
-		return lineindex;
-	}
+
 	/* (non-Javadoc)
 	 * @see de.dietzm.gcodes.GCode#getGcode()
 	 */
