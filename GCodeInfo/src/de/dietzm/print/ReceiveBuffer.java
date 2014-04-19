@@ -310,6 +310,24 @@ public class ReceiveBuffer implements CharSequence,Appendable {
 		return len;
 	}
 	
+	
+	/**
+	 * Remove space,newline, cr, tab from the end of the buffer
+	 * @return length of the buffer after trimRight
+	 */
+	public int trimRight(){
+		while(len != 0){
+			char c = (char)array[len-1];
+			//remove spaces, newlines, cr, tab 
+			if (c == 32 || c == 10 || c == 13 || c == 9){
+				len--;
+			}else{
+				return len;
+			}
+		}
+		return len;
+	}
+	
 	/**
 	 * Call setlength if you manipulate the array directly
 	 * @param newlen
