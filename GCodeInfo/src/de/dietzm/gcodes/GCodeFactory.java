@@ -165,7 +165,7 @@ public class GCodeFactory  {
 				}
 				if(gc == null || gc.getGcode() == GCDEF.UNKNOWN){
 						errorcnt++;
-						errors = errors + ("line:"+idx+"     "+line+"\n");
+						errors = errors + ("Error #"+errorcnt+" at line:"+idx+" Content:'"+line+"'\n");
 						if(errorcnt-success > 10 || gc == null){
 							throw new IOException(errors);
 						}	
