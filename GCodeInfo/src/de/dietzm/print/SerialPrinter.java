@@ -959,7 +959,7 @@ public class SerialPrinter implements Runnable, Printer {
 		if(onconnect){
 			addToPrintQueue(GCodeFactory.getGCode("M42 P6 S255", -42), true);
 			addToPrintQueue(GCodeFactory.getGCode("M42 P7 S255", -42), true);
-			addToPrintQueue(GCodeFactory.getGCode("M115", -115), true);
+		//	addToPrintQueue(GCodeFactory.getGCode("M115", -115), true);
 		}
 	}
 
