@@ -40,7 +40,7 @@ public class SerialPrinter implements Runnable, Printer {
 	private boolean resetoninit=true;
 	private boolean logerrors=true;
 	private boolean recover = false;
-	
+	private boolean onconnect =false;
 	private boolean homexyfinish = false; 
 	private int extrnr = 1;
 	
@@ -58,6 +58,10 @@ public class SerialPrinter implements Runnable, Printer {
 
 	public void setResetoninit(boolean resetoninit) {
 		this.resetoninit = resetoninit;
+	}
+	
+	public void setOnConnect(boolean executeOnConnect) {
+		this.onconnect = executeOnConnect;
 	}
 
 	private int movespeed = 3000;
@@ -264,6 +268,7 @@ public class SerialPrinter implements Runnable, Printer {
 				state.connected=true;
 				state.connecting=false;
 				cons.updateState(States.CONNECTED,States.CONNECTEDMSG,0);
+				onConnect();
 			}
 		} catch (Exception e) {
 			if(state.debug) cons.appendText("Init failed:" + e.getMessage());
@@ -945,6 +950,17 @@ public class SerialPrinter implements Runnable, Printer {
 		if(homexyfinish)addToPrintQueue(GCodeFactory.getGCode("G28 X0 Y0", -128), true);
 		if(state.printspeed!=100)addToPrintQueue(GCodeFactory.getGCode("M220 100", -220), true); //set speed back to 100%
 		if(state.extrfactor!=100)addToPrintQueue(GCodeFactory.getGCode("M221 100", -221), true); //set extr back to 100%
+	}
+	
+	/**
+	 * GCodes will be executed when the connection has been established
+	 */
+	private void onConnect() {
+		if(onconnect){
+			addToPrintQueue(GCodeFactory.getGCode("M42 P6 S255", -42), true);
+			addToPrintQueue(GCodeFactory.getGCode("M42 P7 S255", -42), true);
+			addToPrintQueue(GCodeFactory.getGCode("M115", -115), true);
+		}
 	}
 
 	public void setStepSize(float steps) {
