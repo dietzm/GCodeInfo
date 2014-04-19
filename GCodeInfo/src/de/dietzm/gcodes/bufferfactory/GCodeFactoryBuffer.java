@@ -310,6 +310,9 @@ public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 			throw new IOException("Out of Memory Error");
 		}
 		in.close();
+		if(success == 0){
+			throw new IOException("No valid Gcode line found");
+		}
 		codes.commit();
 		System.out.println("Load Model finished in ms:"+(System.currentTimeMillis()-time));
 		System.out.println("Load: Default:"+defaultgc+ " Opti:"+optigc);

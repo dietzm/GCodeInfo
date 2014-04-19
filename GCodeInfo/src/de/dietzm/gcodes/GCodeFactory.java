@@ -167,6 +167,7 @@ public class GCodeFactory  {
 						errorcnt++;
 						errors = errors + ("Error #"+errorcnt+" at line:"+idx+" Content:'"+line+"'\n");
 						if(errorcnt-success > 10 || gc == null){
+							gcread.close();
 							throw new IOException(errors);
 						}	
 				}else{ 
@@ -179,6 +180,9 @@ public class GCodeFactory  {
 			}
 			}catch(OutOfMemoryError oom){
 				throw new IOException("Out of Memory Error");
+			}
+			if(success == 0){
+				throw new IOException("No valid Gcode line found");
 			}
 			gcread.close();
 			codes.commit();
