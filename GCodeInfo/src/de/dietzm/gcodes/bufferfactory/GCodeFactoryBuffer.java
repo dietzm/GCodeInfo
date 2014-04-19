@@ -252,7 +252,7 @@ public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 		gcodetypes = new int[11];
 
 		GCodeStore codes = createStore(0);
-		ReceiveBuffer buf = new ReceiveBuffer(2048);
+		ReceiveBuffer buf = new ReceiveBuffer(32768);
 		String errors = "Error while parsing gcodes:\n";
 		modeldata = new byte[32768];
 		int idx=1;
@@ -280,12 +280,16 @@ public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 				gc = parseGcodeBuf(buf,idx++);
 				lastnl=i+1;
 			} catch (Exception e) {
-				e.printStackTrace();
+				errors = errors + e.getMessage();
 			//	System.err.println("Error while parsing gcode:"+line+" (line:"+idx+")");
 			}
 			if(gc == null || gc.getGcode() == GCDEF.UNKNOWN){
 					errorcnt++;
-					//errors = errors + ("line:"+idx+"     "+line+"\n");
+					if(gc== null){
+						errors = errors + ("Error #"+errorcnt+" at line:"+(idx-1)+" Content:'"+buf.toString()+"'\n");
+					}else{
+						errors = errors + ("Error #"+errorcnt+" Unknown GCODE at line:"+(idx-1)+" Content:'"+buf.toString()+"'\n");
+					}
 					if(errorcnt-success > 10 || gc == null){
 						throw new IOException(errors);
 					}	
@@ -417,6 +421,7 @@ public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 			//Find comments and strip them, init the comment filed 
 			int oldlen = codelinevar.length();
 			codelinevar = Constants.stripComment(codelinevar);
+			codelinevar.trimRight();
 			if(codelinevar.length()==0) { // plain Comments 
 				codelinevar.setlength(oldlen); //recover comments
 				return createDefaultGCode(arg0,linenr,Constants.GCDEF.COMMENT);
