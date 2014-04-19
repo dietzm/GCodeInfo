@@ -15,11 +15,8 @@ public class GCodeXYFMin extends GCodeAbstractNoData {
 	
 	//Dynamic values updated by analyse	 (7MB for 300000 gcodes)
 	private float time;
-	private float timeaccel; //track acceleration as extra time 
 	private float distance;
-	//private short fanspeed; //remember with less accuracy (just for display)
-	
-	
+
 	public GCodeXYFMin(String line, GCDEF code) {
 		super(  code);
 	}
@@ -228,11 +225,6 @@ public class GCodeXYFMin extends GCodeAbstractNoData {
 
 
 
-	@Override
-	public float getTimeAccel() {
-		return this.timeaccel;
-	}
-
 
 
 
@@ -350,7 +342,7 @@ public class GCodeXYFMin extends GCodeAbstractNoData {
 
 	@Override
 	public void setTimeAccel(float time) {
-		this.timeaccel = time;
+		//No need to store, can be calculated
 	}
 
 

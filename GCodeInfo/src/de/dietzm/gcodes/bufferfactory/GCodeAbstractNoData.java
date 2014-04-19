@@ -192,11 +192,11 @@ public abstract class GCodeAbstractNoData implements GCode {
 	 */
 	@Override
 	public abstract float getExtrusionSpeed();
-	/* (non-Javadoc)
-	 * @see de.dietzm.gcodes.GCode#getTimeAccel()
-	 */
 	@Override
-	public abstract float getTimeAccel();
+	public float getTimeAccel() {
+		if(getTime() == 0) return 0; //prevent NaN
+		return getDistance() / (((Math.min(40*60,getDistance() *60/getTime())+getDistance() *60/getTime())/2) / 60);
+	}
 	/* (non-Javadoc)
 	 * @see de.dietzm.gcodes.GCode#setTimeAccel(float)
 	 */

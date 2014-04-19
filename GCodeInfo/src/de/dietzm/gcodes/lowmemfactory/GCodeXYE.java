@@ -201,6 +201,7 @@ public class GCodeXYE extends GCodeAbstract {
 
 	@Override
 	public float getTimeAccel() {
+		if(time == 0) return 0;
 		return distance / (((Math.min(40*60,distance *60/time)+distance *60/time)/2) / 60);
 	}
 

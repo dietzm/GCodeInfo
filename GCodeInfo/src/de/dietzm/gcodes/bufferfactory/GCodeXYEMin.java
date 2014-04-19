@@ -200,10 +200,7 @@ public class GCodeXYEMin extends GCodeAbstractNoData {
 
 
 
-	@Override
-	public float getTimeAccel() {
-		return distance / (((Math.min(40*60,distance *60/time)+distance *60/time)/2) / 60);
-	}
+
 
 
 
