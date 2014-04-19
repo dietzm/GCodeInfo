@@ -44,6 +44,7 @@ public class Model {
 	private String unit = "mm"; //default is mm
 	public enum Material {PLA,ABS,UNKNOWN};
 	private long filesize=0;
+	boolean relativepos = false;
 	
 
 
@@ -208,9 +209,14 @@ public class Model {
 				}
 				//Update epos and extrusion, not add time because the actual move time is already added
 				 if(gc.isInitialized(Constants.E_MASK)){
-					 	float oldepos=gc.getE();
-					    gc.setExtrusion(gc.getE()-epos);
-					    epos=oldepos;
+					 	if(relativepos){
+					 		gc.setExtrusion(gc.getE());
+					 		epos=0;
+					 	}else{
+					 		float oldepos=gc.getE();
+					 		gc.setExtrusion(gc.getE()-epos);
+					 		epos=oldepos;
+					 	}
 				 }else if(m101){
 					  float extr = m108 / 60 * (move / (f_new / 60)); //only for direct drive extr. with r=5
 					 	gc.setInitialized(Constants.E_MASK, extr);
@@ -242,6 +248,10 @@ public class Model {
 					if(gc.isInitialized(Constants.X_MASK)) xpos=gc.getX();
 					if(gc.isInitialized(Constants.Y_MASK)) ypos=gc.getY();
 					if(gc.isInitialized(Constants.Z_MASK)) zpos=gc.getZ();
+			}else if(gc.getGcode() == Constants.GCDEF.G91){ 
+					relativepos = true;
+			}else if(gc.getGcode() == Constants.GCDEF.G90){ 
+					relativepos = false;
 			}else if(gc.getGcode() == Constants.GCDEF.G20 || gc.getGcode() == Constants.GCDEF.G21){ 			//Assume that unit is only set once
 				currLayer.setUnit(gc.getUnit());
 			}else if(gc.getGcode() == Constants.GCDEF.M101){ //bfb style gcode
