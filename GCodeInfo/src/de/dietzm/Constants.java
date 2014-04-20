@@ -703,6 +703,16 @@ public class Constants {
 		if("E".equals(prefix) && val == 0) return " E0";  //replace E0.0000 with E0 
 		return String.format(Locale.US," "+prefix+"%."+digits+"f", val);		
 	}
+	
+	public static int bytetoInt(byte[] b){
+    int MASK = 0xFF;
+    int result = 0;   
+        result = b[0] & MASK;
+        result = result + ((b[1] & MASK) << 8);
+        result = result + ((b[2] & MASK) << 16);
+        result = result + ((b[3] & MASK) << 24);            
+    return result;
+	}
 	/**
 	 * Float to string with 3 digits
 	 * @param val
