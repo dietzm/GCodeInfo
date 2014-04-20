@@ -55,6 +55,7 @@ import java.util.TimerTask;
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
@@ -712,6 +713,9 @@ public class PrintrPanel extends JPanel {
 //		tf2.setSize(200,20);
 		JButton btn1 = new JButton("Send");
 		JButton btn2 = new JButton("Cancel");
+		final JCheckBox autostart = new JCheckBox("Autostart Print");
+		final JCheckBox autosave = new JCheckBox("Autosave File");
+		
 		btn2.setActionCommand("Cancel");
 		
 		in.addWindowListener(new WindowListener() {			
@@ -748,7 +752,10 @@ public class PrintrPanel extends JPanel {
 					in.repaint();
 					networkip=tf2.getText();
 					storeConfig();
-					netp.sendToReceiver(networkip, gp.model);					
+					int flags=0;
+					if(autostart.isSelected()){ flags = (flags | NetworkPrinter.AUTOSTART_PRINT);}
+					if(autosave.isSelected()){ flags = (flags | NetworkPrinter.AUTOSAVE_MODEL);}
+					netp.sendToReceiver(networkip, gp.model,flags);					
 					status.setText("Sending file ... done");
 					in.repaint();
 					in.setVisible(false);
@@ -761,6 +768,10 @@ public class PrintrPanel extends JPanel {
 					in.repaint();
 					//ce.printStackTrace();
 				}catch (IOException e2) {
+					status.setText("IO Error:"+e2.getMessage());
+					in.repaint();
+					//e2.printStackTrace();
+				}catch (Exception e2) {
 					status.setText("Error:"+e2.getMessage());
 					in.repaint();
 					//e2.printStackTrace();
@@ -773,10 +784,13 @@ public class PrintrPanel extends JPanel {
 		tf2.addActionListener(action);
 		in.add(new Label("Enter IP Address"));
 		in.add(tf2);
+		in.add(autostart);
+		in.add(autosave);
 		in.add(btn1);
 		in.add(btn2);
+
 		in.add(status);
-		in.setSize(330,120);
+		in.setSize(330,160);
 		in.setVisible(true);
 	}
 
