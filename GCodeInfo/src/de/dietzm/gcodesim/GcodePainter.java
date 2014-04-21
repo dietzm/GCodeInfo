@@ -1279,6 +1279,15 @@ public class GcodePainter implements Runnable {
 		} else {
 			model = modelin;
 		}
+		//overwrite manual extruder offset if defined by m218
+		if(model.getExtruderOffset() != null){
+			//extruderOffset = model.getExtruderOffset();
+			//if m218 is used the offset in the gcode file is usually zero
+			extruderOffset[0] = null;
+			extruderOffset[1] = null;
+			extruderOffset[2] = null;
+			extruderOffset[3] = null;
+		}
 		layers = new ArrayList<Layer>(model.getLayer());
 	}
 
