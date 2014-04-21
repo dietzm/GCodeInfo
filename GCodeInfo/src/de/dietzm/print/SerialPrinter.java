@@ -1,8 +1,10 @@
 package de.dietzm.print;
 
 import java.util.Date;
+
 import de.dietzm.Constants;
 import de.dietzm.Model;
+import de.dietzm.Constants.GCDEF;
 import de.dietzm.gcodes.GCode;
 import de.dietzm.gcodes.GCodeFactory;
 import de.dietzm.gcodes.GCodeStore;
@@ -93,6 +95,7 @@ public class SerialPrinter implements Runnable, Printer {
 		public static final String CONNECTING="Connecting";
 		public static final String PRINTING="Printing";
 		public static final String STREAMING="Streaming to SD";
+		public static final String TOOLCHANGE="Tool Change";
 		public static final String PAUSED="Printing Paused";
 		public static final String RESET="Resetting Printer";
 		public static final String CONNECTMSG = "Please connect";
@@ -129,7 +132,6 @@ public class SerialPrinter implements Runnable, Printer {
 		public int percentCompleted=0;
 		public MemoryEfficientString tempstring = new MemoryEfficientString(new byte[64]);
 		public MemoryEfficientLenString timestring = new MemoryEfficientLenString(new byte[32]);
-		public float exttemp=0;
 		public float[] exttemps = new float[MAX_EXTRUDER_NR];
 		// public boolean absolute
 		boolean testrun = false;
@@ -554,7 +556,7 @@ public class SerialPrinter implements Runnable, Printer {
 				break; // timeout
 			}
 
-			if (state.debug || (!recv.isPlainOK() && code != M105) ) {
+			if (state.debug || (!recv.isPlainOK() && code != M105 && code.getGcodeId() != GCDEF.T0.getId() && code.getGcodeId() != GCDEF.T1.getId()) ) {
 				// Suppress plain ok and temp when printing
 				cons.appendTextNoCR(recv);
 			}
@@ -637,6 +639,12 @@ public class SerialPrinter implements Runnable, Printer {
 					
 				}else if(code == M27){
 					state.percentCompleted=recv.parseSDStatus();
+				}else if(code.getGcodeId() == GCDEF.T0.getId() && state.activeExtr != 0){
+					state.activeExtr=0;
+					cons.updateState(States.TOOLCHANGE,null, -1);
+				}else if(code.getGcodeId() == GCDEF.T1.getId() && state.activeExtr != 1){
+					state.activeExtr=1;
+					cons.updateState(States.TOOLCHANGE,null, -1);
 				}
 
 				// if(state.debug){
@@ -846,13 +854,17 @@ public class SerialPrinter implements Runnable, Printer {
 		cons.appendText("Set Extruder Temperature to " + tmp + "°C");
 		boolean ret = addToPrintQueue(GCodeFactory.getGCode("M104 S" + tmp, 0), true);
 		if(ret){
-			state.exttemp=tmp;
+			state.exttemps[state.activeExtr]=tmp;
 		}
 		return ret;
 	}
 	
 	public float getExtruderTemp(){
-		return state.exttemp; //TODO Could be done with gcode
+		return state.exttemps[state.activeExtr]; //TODO Could be done with gcode
+	}
+	
+	public int getActiveExtruder(){
+		return state.activeExtr;
 	}
 	
 	public boolean setPrintSpeed(int percentage) {
@@ -987,10 +999,10 @@ public class SerialPrinter implements Runnable, Printer {
 		}
 		boolean ret = addToPrintQueue(GCodeFactory.getGCode("T"+tool, -1002), true);
 		if(ret){
-			state.exttemps[state.activeExtr]=state.exttemp; //Store and retrieve temp for extruder
+//			state.exttemps[state.activeExtr]=state.exttemp; //Store and retrieve temp for extruder
 			state.activeExtr=tool;			
-			state.exttemp=state.exttemps[state.activeExtr];
-			cons.appendText("Set Active extruder:"+state.activeExtr+ " Temp:"+state.exttemp);
+//			state.exttemp=state.exttemps[state.activeExtr];
+			cons.appendText("Set Active extruder:"+state.activeExtr+ " Temp:"+state.exttemps[state.activeExtr]);
 		}
 		return ret;
 	}
