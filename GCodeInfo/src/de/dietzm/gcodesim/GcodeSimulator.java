@@ -139,6 +139,7 @@ public class GcodeSimulator extends JFrame implements ActionListener {
 	 * 1.23 support bfb gcodes, 
 	 * 1.24 jump to layer added, fixed nozzle offset, fixed help dialog,
 	 * 1.25 fixed bug with nozzle pos when painting long lines
+	 * 1.26 network sender , autostart & autosave 
 	 */
 	
 	
@@ -162,7 +163,7 @@ public class PrintrPanel extends JPanel {
 			if(awt != null)	awt.drawImage(g);
 		}
 	}
-	public static final String VERSION = "v1.25";	
+	public static final String VERSION = "v1.27";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
@@ -1031,21 +1032,6 @@ public class PrintrPanel extends JPanel {
 				} else if (arg0.getKeyChar() == 'l') {
 					showJumpToLayerDialog();
 				//EDIT MODE
-				} else if (arg0.getKeyChar() == 'g') {
-					gp.model.deleteLayer(Collections.singleton(gp.getCurrentLayer()));
-					gp.setCmd(Commands.REANALYSE);
-				} else if (arg0.getKeyChar() == 'w') {
-					gp.model.changeSpeed(Collections.singleton(gp.getCurrentLayer()),10);
-					gp.setCmd(Commands.REANALYSE);
-				} else if (arg0.getKeyChar() == 'e') {
-					gp.model.changeSpeed(Collections.singleton(gp.getCurrentLayer()),-10);
-					gp.setCmd(Commands.REANALYSE);
-				} else if (arg0.getKeyChar() == 'z') {
-					gp.model.changeExtrusion(Collections.singleton(gp.getCurrentLayer()),10);
-					gp.setCmd(Commands.REANALYSE);
-				} else if (arg0.getKeyChar() == 'u') {
-					gp.model.changeExtrusion(Collections.singleton(gp.getCurrentLayer()),-10);
-					gp.setCmd(Commands.REANALYSE);
 				} else if (arg0.getKeyChar() == 'a') {
 					try {
 						gp.model.saveModel(gp.model.getFilename()+"-new");
