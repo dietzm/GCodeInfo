@@ -26,7 +26,7 @@ public class GCodeMemSave extends GCodeAbstract {
 		private float ix=Float.MAX_VALUE;
 		private float jy=Float.MAX_VALUE;
 		private float kz=Float.MAX_VALUE;
-		private float r=Float.MAX_VALUE; //Reuse also for T (tool change)	
+		private float r=Float.MAX_VALUE; //Reuse also for T (tool change, offset)	
 		private float s_ext=Float.MAX_VALUE;
 		private float s_bed=Float.MAX_VALUE;
 		private float s_fan=Float.MAX_VALUE;
