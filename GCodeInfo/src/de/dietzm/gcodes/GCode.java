@@ -38,6 +38,7 @@ public interface GCode {
 
 
 	public Constants.GCDEF getGcode();
+	public short getGcodeId();
 
 	/**
 	 * Is it a gcode which is buffered by the firmware

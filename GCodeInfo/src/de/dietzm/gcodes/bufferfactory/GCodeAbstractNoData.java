@@ -136,6 +136,10 @@ public abstract class GCodeAbstractNoData implements GCode {
 	public Constants.GCDEF getGcode() {
 		return GCDEF.getGCDEF(gcode);
 	}
+	
+	public short getGcodeId(){
+		return gcode;
+	}
 
 	
 

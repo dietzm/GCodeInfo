@@ -152,6 +152,10 @@ public abstract class GCodeAbstract implements GCode {
 	public Constants.GCDEF getGcode() {
 		return GCDEF.getGCDEF(gcode);
 	}
+	
+	public short getGcodeId(){
+		return gcode;
+	}
 	protected MemoryEfficientString subSequence(int start, int end) {
 	  if (start < 0 || end > (data.length)) {
 	    throw new IllegalArgumentException("Illegal range " +
