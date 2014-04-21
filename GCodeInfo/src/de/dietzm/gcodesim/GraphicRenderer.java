@@ -1,7 +1,6 @@
 package de.dietzm.gcodesim;
 
 import de.dietzm.Position;
-import de.dietzm.gcodes.GCode;
 
 public interface GraphicRenderer {
 
