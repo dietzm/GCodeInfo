@@ -1,27 +1,21 @@
 package de.dietzm;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import de.dietzm.Constants.GCDEF;
 import de.dietzm.Layer.Speed;
 import de.dietzm.gcodes.GCode;
 import de.dietzm.gcodes.GCodeFactory;
 import de.dietzm.gcodes.GCodeStore;
-import de.dietzm.gcodesim.GcodeSimulator;
-import de.dietzm.print.ReceiveBuffer;
 
 public class Model {
 
@@ -34,6 +28,7 @@ public class Model {
 	private float boundaries[] = { 0, 9999, 0, 9999, 0 }; // Xmax,Xmin,Ymax,Ymin,Zmax
 	private float dimension[] = { 0, 0, 0 }; // X,y,z
 	private float extrusion=0;
+	private int extruderCount = 1;
 	private String filename;
 	private GCodeStore gcodes;// = GCodeFactory.getGcodeStore(1);
 	//private SortedMap<Float, Layer> layer = new TreeMap<Float, Layer>();
@@ -45,9 +40,15 @@ public class Model {
 	public enum Material {PLA,ABS,UNKNOWN};
 	private long filesize=0;
 	boolean relativepos = false;
-	
+	public Position[] extruderOffset = null; //TODO make it configurable
 
 
+	public Position[] getExtruderOffset() {
+		return extruderOffset;
+	}
+	public int getExtruderCount() {
+		return extruderCount;
+	}
 	public long getFilesize() {
 		return filesize;
 	}
@@ -258,6 +259,22 @@ public class Model {
 				m101=true;
 			}else if(gc.getGcode() == Constants.GCDEF.M103){
 				m101=false;
+			}else if(gc.getGcode() == Constants.GCDEF.T0){
+				//extruders=Math.max(extruders, 1); 
+			}else if(gc.getGcode() == Constants.GCDEF.T1){
+				extruderCount=Math.max(extruderCount, 2);
+			}else if(gc.getGcode() == Constants.GCDEF.T2){
+				extruderCount=Math.max(extruderCount, 3);
+			}else if(gc.getGcode() == Constants.GCDEF.T3){
+				extruderCount=Math.max(extruderCount, 4);
+			}else if(gc.getGcode() == Constants.GCDEF.M218){
+				float xoff = 0;
+				float yoff = 0;
+				if(gc.isInitialized(Constants.X_MASK)) xoff = gc.getX();
+				if(gc.isInitialized(Constants.Y_MASK)) yoff = gc.getY();
+				int toff = (int)gc.getR(); //T is stored in R field
+				if(extruderOffset == null) extruderOffset = new Position[]{null,null,null,null}; //init for 4 extr.
+				extruderOffset[toff] = new Position(xoff,yoff);
 			}else if(gc.getGcode() == Constants.GCDEF.M108){
 				if(gc.isInitialized(Constants.E_MASK)) m108=gc.getE();
 			}else if(gc.isInitialized(Constants.SF_MASK)){//update Fan if specified
@@ -669,6 +686,11 @@ public class Model {
 		varb.append(getExtrusion());
 		varb.append(mm_in);
 		varb.append(Constants.newlinec);
+		
+		varb.append("Number Extruders:");
+		varb.append(getExtruderCount());
+		varb.append(Constants.newlinec);
+		
 		varb.append("Bed Temperatur:  ");
 		varb.append(getAvgbedtemp());
 		varb.append("°\n");
@@ -795,101 +817,6 @@ public class Model {
 	}
 	public float getTimeaccel() {
 		return timeaccel;
-	}
-	public  void deleteLayer(Collection<Layer> lays) {
-		System.out.println("Delete Layer "+lays);
-		for (Layer layer : lays) {
-			GCodeStore gcodes = getGcodes(layer);
-			for (GCode gCode : gcodes) {
-				GCodeMod.changeToComment(gCode);
-				//TODO GCodeMod.parseGcode(gCode,gCode.getCodeline().toString());
-			}
-		}
-	}
-	public  void changeFan(Collection<Layer> lays, int value) {
-		for (Layer layer : lays) {
-			GCodeStore gcodes = getGcodes(layer);
-			for (GCode gCode : gcodes) {
-				GCodeMod.changeFan(gCode,value);
-				//todo... add fan value if not exits
-			}
-		}
-	}
-	public  void changeXOffset(Collection<Layer> lays, float value) {
-		System.out.println("Add X Offset "+value);
-		for (Layer layer : lays) {
-			GCodeStore gcodes = getGcodes(layer);
-			for (GCode gCode : gcodes) {
-				GCodeMod.changeXOffset(gCode,value);
-			}
-		}
-	}
-	public  void changeYOffset(Collection<Layer> lays, float value) {
-		System.out.println("Add Y Offset "+value);
-		for (Layer layer : lays) {
-			GCodeStore gcodes = getGcodes(layer);
-			for (GCode gCode : gcodes) {
-				GCodeMod.changeYOffset(gCode,value);
-			}
-		}
-	}
-	public  void changeZOffset(Collection<Layer> lays, float value) {
-		System.out.println("Add Z Offset "+value);
-		for (Layer layer : lays) {
-			GCodeStore gcodes = getGcodes(layer);
-			for (GCode gCode : gcodes) {
-				GCodeMod.changeZOffset(gCode,value);
-			}
-		}
-	}
-	public  void changeLayerHeight(Collection<Layer> lays, int value) {
-		System.out.println("Change Layerheight by "+value+"%");
-		for (Layer layer : lays) {
-			GCodeStore gcodes = getGcodes(layer);
-			for (GCode gCode : gcodes) {
-				GCodeMod.changeLayerHeight(gCode,value);
-			}
-		}
-	}
-	public  void changeBedTemp(Collection<Layer> lays, float value) {
-		System.out.println("Set Bed temp to "+value);
-		for (Layer layer : lays) {
-			GCodeStore gcodes = getGcodes(layer);
-		for (GCode gCode : gcodes) {
-			GCodeMod.changeBedTemp(gCode,value);
-				//update temps, but always add a temp at the beginning of the layer
-				//TODO: if a temp definitions exists before G1/G2/G3 , do not insert a new one
-		}
-		}
-	}
-	public  void changeExtTemp(Collection<Layer> lays, float value) {
-		System.out.println("Set Extruder temp to "+value);
-		for (Layer layer : lays) {
-			GCodeStore gcodes = getGcodes(layer);
-		for (GCode gCode : gcodes) {
-			GCodeMod.changeExtTemp(gCode,value);
-				//update temps, but always add a temp at the beginning of the layer
-				//TODO: if a temp definitions exists before G1/G2/G3 , do not insert a new one						
-		}
-		}
-	}
-	public void changeExtrusion(Collection<Layer> lays, int value) {
-		System.out.println("Change Extrusion by "+value+"%");
-		for (Layer layer : lays) {
-			GCodeStore gcodes = getGcodes(layer);
-			for (GCode gCode : gcodes) {
-				GCodeMod.changeExtrusion(gCode,value);
-			}
-		}
-	}
-	public  void changeSpeed(Collection<Layer> lays, int value) {
-		System.out.println("Change Speed by "+value+"%" );
-		for (Layer layer : lays) {
-			GCodeStore gcodes = getGcodes(layer);
-			for (GCode gCode : gcodes) {
-				GCodeMod.changeSpeed(gCode,value,true);
-			}
-		}
 	}
 
 }

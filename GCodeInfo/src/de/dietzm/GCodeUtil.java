@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.Iterator;
 
 import de.dietzm.gcodes.GCode;
+import de.dietzm.gcodes.GCodeStore;
 
 public class GCodeUtil {
 
@@ -120,36 +121,101 @@ public class GCodeUtil {
 		
 		if(option.startsWith("speed=")){
 			int value = Integer.parseInt(option.substring(6));
-			model.changeSpeed(lays, value);
+			System.out.println("Change Speed by "+value+"%" );
+			for (Layer layer : lays) {
+				GCodeStore gcodes = model.getGcodes(layer);
+				for (GCode gCode : gcodes) {
+					GCodeMod.changeSpeed(gCode,value,true);
+				}
+			}
 
 		}else if(option.startsWith("extr=")){
 			int value = Integer.parseInt(option.substring(5));
-			model.changeExtrusion(lays, value);
+			System.out.println("Change Extrusion by "+value+"%");
+			for (Layer layer : lays) {
+				GCodeStore gcodes = model.getGcodes(layer);
+				for (GCode gCode : gcodes) {
+					GCodeMod.changeExtrusion(gCode,value);
+				}
+			}
 		}else if(option.startsWith("exttemp=")){
 			float value = Float.parseFloat(option.substring(8));
-			model.changeExtTemp(lays, value);
+			System.out.println("Set Extruder temp to "+value);
+			for (Layer layer : lays) {
+				GCodeStore gcodes = model.getGcodes(layer);
+			for (GCode gCode : gcodes) {
+				GCodeMod.changeExtTemp(gCode,value);
+					//update temps, but always add a temp at the beginning of the layer
+					//TODO: if a temp definitions exists before G1/G2/G3 , do not insert a new one						
+			}
+			}
 		}else if(option.startsWith("bedtemp=")){
 			float value = Float.parseFloat(option.substring(8));
-			model.changeBedTemp(lays, value);
+			System.out.println("Set Bed temp to "+value);
+			for (Layer layer : lays) {
+				GCodeStore gcodes = model.getGcodes(layer);
+			for (GCode gCode : gcodes) {
+				GCodeMod.changeBedTemp(gCode,value);
+					//update temps, but always add a temp at the beginning of the layer
+					//TODO: if a temp definitions exists before G1/G2/G3 , do not insert a new one
+			}
+			}
 		}else if(option.startsWith("layerh=")){
 			int value = Integer.parseInt(option.substring(7));
-			model.changeLayerHeight(lays, value);
+			System.out.println("Change Layerheight by "+value+"%");
+			for (Layer layer : lays) {
+				GCodeStore gcodes = model.getGcodes(layer);
+				for (GCode gCode : gcodes) {
+					GCodeMod.changeLayerHeight(gCode,value);
+				}
+			}
 		}else if(option.startsWith("zoffset=")){
 			float value = Float.parseFloat(option.substring(8));
-			model.changeZOffset(lays, value);
+			System.out.println("Add Z Offset "+value);
+			for (Layer layer : lays) {
+				GCodeStore gcodes = model.getGcodes(layer);
+				for (GCode gCode : gcodes) {
+					GCodeMod.changeZOffset(gCode,value);
+				}
+			}
 		}else if(option.startsWith("yoffset=")){
 			float value = Float.parseFloat(option.substring(8));
-			model.changeYOffset(lays, value);
+			System.out.println("Add Y Offset "+value);
+			for (Layer layer : lays) {
+				GCodeStore gcodes = model.getGcodes(layer);
+				for (GCode gCode : gcodes) {
+					GCodeMod.changeYOffset(gCode,value);
+				}
+			}
 		}else if(option.startsWith("xoffset=")){
 			float value = Float.parseFloat(option.substring(8));
-			model.changeXOffset(lays, value);
+			System.out.println("Add X Offset "+value);
+			for (Layer layer : lays) {
+				GCodeStore gcodes = model.getGcodes(layer);
+				for (GCode gCode : gcodes) {
+					GCodeMod.changeXOffset(gCode,value);
+				}
+			}
 		}else if(option.startsWith("fan=")){
 			int value = Integer.parseInt(option.substring(4));
 			System.out.println("Change Fan to "+value);
-			model.changeFan(lays, value);
+			for (Layer layer : lays) {
+				GCodeStore gcodes = model.getGcodes(layer);
+				for (GCode gCode : gcodes) {
+					GCodeMod.changeFan(gCode,value);
+					//todo... add fan value if not exits
+				}
+			}
 		}else if(option.startsWith("delete")){
 			System.out.println("Delete Layers ");
-			model.deleteLayer(lays);
+			System.out.println("Delete Layer "+lays);
+			for (Layer layer : lays) {
+				GCodeStore gcodes = model.getGcodes(layer);
+				for (GCode gCode : gcodes) {
+					GCodeMod.changeToComment(gCode);
+					//TODO GCodeMod.parseGcode(gCode,gCode.getCodeline().toString());
+				}
+			}
 		}else{
 			printUsageandExit();
 		}
