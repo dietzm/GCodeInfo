@@ -799,7 +799,12 @@ public class GcodePainter implements Runnable {
 				updateDetailLabels();
 				updateSpeedupLabel();
 				g2.clearrect(0, 0, g2.getWidth(),g2.getHeight(),print?1:0);
-				g2.setExtruderOffset(extruderOffset,zoom);
+				if(model.getExtruderCount() > 1){
+					//only paint multiple extruder if model makes use of them
+					g2.setExtruderOffset(extruderOffset,zoom);
+				}else{
+					g2.setExtruderOffset(null,zoom);
+				}
 				calculateOffset();
 				mtime = model.getTimeaccel(); //remaining time
 				printBed(g2);
@@ -853,7 +858,14 @@ public class GcodePainter implements Runnable {
 						}else if(gcdef == Constants.GCDEF.T1){
 							activeExtruder=1;
 							g2.setActiveExtruder(activeExtruder);
-						}//TODO add more
+						}else if(gcdef == Constants.GCDEF.T2){
+							activeExtruder=2;
+							g2.setActiveExtruder(activeExtruder);
+						}else if(gcdef == Constants.GCDEF.T3){
+							activeExtruder=3;
+							g2.setActiveExtruder(activeExtruder);
+						}
+						
 						//System.out.println(gCode);
 						long starttime=System.currentTimeMillis();
 						float sleeptime =0;
