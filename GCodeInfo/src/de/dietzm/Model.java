@@ -518,6 +518,10 @@ public class Model {
 	public String getFilename() {
 		return filename;
 	}
+	
+	public String getFilenameShort() {
+		return new File(filename).getName();		
+	}
 	public int getGcodecount() {
 		return gcodes.size();
 	}

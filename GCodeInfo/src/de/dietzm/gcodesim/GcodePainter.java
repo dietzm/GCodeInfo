@@ -480,8 +480,8 @@ public class GcodePainter implements Runnable {
 		g.setFontSize(40);
 		
 		g.drawtext("Please Wait",100,200);
-		g.drawtext("Loading Model......",100,270);
 		if(model != null){
+			g.drawtext("Loading Model "+model.getFilenameShort(),100,270);
 			g.clearrect(200,285,500,75,print?1:0);
 			if(errormsg!=null){
 				g.setFontSize(20);
@@ -835,11 +835,12 @@ public class GcodePainter implements Runnable {
 					
 					//Android guidelines say foreach loops are slower for arraylist
 					GCodeStore gcarr = model.getGcodes();					
-					int gcnum = gcarr.size();
+					//int gcnum = gcarr.size();
 					float zpos=lay.getZPosition();
 					GCDEF gcdef;
 					for(int ig = lay.lowidx ; ig <= lay.highidx; ig++ ){
 					//	System.out.println("IDX:"+ig+"  ->"+lay.highidx);
+						if(ig == -1) continue A;
 						GCode gCode = gcarr.get(ig);
 						gcdef=gCode.getGcode();
 						/*
@@ -1253,6 +1254,7 @@ public class GcodePainter implements Runnable {
 			if(pause != 0) togglePause();
 			try {
 				gcodepainter.join(10000);
+				gcodepainter.interrupt();
 			} catch (InterruptedException e) {
 			}
 			setCmd(Commands.NOOP);
