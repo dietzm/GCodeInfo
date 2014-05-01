@@ -1262,6 +1262,7 @@ public class GcodePainter implements Runnable {
 			model = null;
 			g2.repaint();
 		}
+		System.gc();
 		gcodepainter = new Thread(this);
 		gcodepainter.start();
 

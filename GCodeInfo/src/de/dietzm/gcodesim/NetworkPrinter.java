@@ -159,7 +159,7 @@ public class NetworkPrinter implements Runnable {
 		
 			int finish = bufin.read();
 			if(finish != 0x13){
-				System.out.println("Error: wrong finish byte received");
+				System.out.println("Error: wrong finish byte received: "+finish);
 			}
 			gp.printreceived(filename, bufin, autostart, savefile, filesize);
 			
