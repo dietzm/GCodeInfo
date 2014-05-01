@@ -146,7 +146,7 @@ public class GCodeFactory  {
 			readbytes=0;
 			readlines=0;
 			InputStreamReader fread =  new InputStreamReader(in);
-			BufferedReader gcread= new BufferedReader(fread,32768);
+			BufferedReader gcread= new BufferedReader(fread,65536);
 		
 			String line;
 			String errors = "Error while parsing gcodes:\n";

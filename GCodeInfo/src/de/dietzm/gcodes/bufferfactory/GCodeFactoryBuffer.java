@@ -193,11 +193,11 @@ public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 				gcd = new GCodeFMin(line,  code);
 				gcodetypes[9]++;
 			}else{
-				String DBG = "";
-				for (int i = 1; i < seg_len; i++) {
-					 DBG = DBG +segments[i].charAt(0);
-				}
-				System.out.println("Load: "+DBG);
+//				String DBG = "";
+//				for (int i = 1; i < seg_len; i++) {
+//					 DBG = DBG +segments[i].charAt(0);
+//				}
+//				System.out.println("Load: "+DBG);
 				gcd = createDefaultGCode(line2, linenr, code);
 				gcodetypes[10]++;
 			}
@@ -252,9 +252,9 @@ public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 		gcodetypes = new int[11];
 
 		GCodeStore codes = createStore(0);
-		ReceiveBuffer buf = new ReceiveBuffer(32768);
+		ReceiveBuffer buf = new ReceiveBuffer(65536);
 		String errors = "Error while parsing gcodes:\n";
-		modeldata = new byte[32768];
+		modeldata = new byte[65536];
 		int idx=1;
 		int offset=0;
 		int targetOffset=0;
@@ -262,7 +262,7 @@ public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 		int errorcnt=0, success=0;
 		long time = System.currentTimeMillis();
 		try{
-		while((len =in.read(modeldata,0,32768)) != -1){
+		while((len =in.read(modeldata,0,65536)) != -1){
 			offset=offset+len;
 			int lastnl=0;
 			//System.out.println("Load Model in ms:"+(System.currentTimeMillis()-time) );
