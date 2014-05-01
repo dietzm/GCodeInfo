@@ -93,6 +93,9 @@ public class Dummy implements PrinterConnection {
 		isSend=true;
 		buffer[bufferpos++] = sio.state.lastgcode;
 		buffercnt++;
+		if(sio.state.debug){
+			cons.appendText("Dummy Received:'"+wbuf.toString()+"'");
+		}
 	}
 
 	@Override
