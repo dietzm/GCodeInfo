@@ -174,7 +174,7 @@ public class SerialPrinter implements Runnable, Printer {
 	 * @return true if the command has been added to the queue successfully
 	 */
 	public boolean addToPrintQueue(GCode code, boolean manualOnly) {
-		if (!code.isPrintable()) {
+		if (code == null || !code.isPrintable()) {
 			// Just skip
 			return true;
 		}
