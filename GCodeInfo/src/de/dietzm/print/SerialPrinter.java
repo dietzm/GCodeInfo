@@ -128,6 +128,8 @@ public class SerialPrinter implements Runnable, Printer {
 		public int unexpected=0;
 		public int swallows=0;
 		public int readcalls=0;
+		public int[] dynamicTimeout = new int[16];
+		public int dynamicTimeoutPos = 0;
 		public String serialtype="";
 		public int percentCompleted=0;
 		public MemoryEfficientString tempstring = new MemoryEfficientString(new byte[64]);
@@ -534,8 +536,8 @@ public class SerialPrinter implements Runnable, Printer {
 		while (state.connected && !state.reset) {
 			if(mConn.getType() == PrinterConnection.BLUETOOTH)  Thread.sleep(5); //Response will take at least 5 ms, safe CPU cylces
 
-			// receive updates wait 10min or 10sec
-			ReceiveBuffer recv = readResponse(code.isLongRunning()?60000:timeout);
+			// receive updates wait until timeout
+			ReceiveBuffer recv = readResponse(gettimeout(code));
 			cons.log(io, null, recv); 						//log buffer to logfile
 			if (state.reset)
 				break;
@@ -787,6 +789,9 @@ public class SerialPrinter implements Runnable, Printer {
 			}
 		}
 		if(isConnected()){
+			if(timeout == 0){
+				cons.log(serial, "Dynamic Timeout hit:"+timeout);
+			}
 			ioBuffer.setTimedout(true);
 		}
 		return ioBuffer;
@@ -962,6 +967,36 @@ public class SerialPrinter implements Runnable, Printer {
 		if(homexyfinish)addToPrintQueue(GCodeFactory.getGCode("G28 X0 Y0", -128), true);
 		if(state.printspeed!=100)addToPrintQueue(GCodeFactory.getGCode("M220 100", -220), true); //set speed back to 100%
 		if(state.extrfactor!=100)addToPrintQueue(GCodeFactory.getGCode("M221 100", -221), true); //set extr back to 100%
+	}
+	
+	/**
+	 * Get the timeout for the gcode execution.
+	 * If dynamic timeouts are configured calculated the timeout based on the gcode duration
+	 * @return int timeout
+	 */
+	private int gettimeout(GCode code){
+		
+		if(code.isLongRunning()) return 60000; //long running gcodes timeout after 60sec
+		
+		if(timeout == 0){
+			state.dynamicTimeout[state.dynamicTimeoutPos%16] = (int)(code.getTimeAccel()*1000);
+			//Dynamic
+			int min_timeout = 3000; //minimal timeout to add
+			int maxtime = 0;
+			for (int i = 0; i < state.dynamicTimeout.length; i++) {
+				maxtime = Math.max(maxtime, state.dynamicTimeout[i]);
+			}
+			if(state.printspeed != 100){ //Adjust timeout by speed
+				maxtime = maxtime / state.printspeed * 100;
+			}
+//			System.out.println("Time["+state.dynamicTimeoutPos%16+"]:"+state.dynamicTimeout[state.dynamicTimeoutPos%16]);
+//			System.out.println("MAX:                             ----> "+maxtime);
+			state.dynamicTimeoutPos++;
+			return maxtime+min_timeout;
+		}else{
+			//Static
+			return timeout;
+		}
 	}
 	
 	/**
