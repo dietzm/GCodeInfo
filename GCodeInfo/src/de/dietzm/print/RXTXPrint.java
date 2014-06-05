@@ -142,7 +142,7 @@ public class RXTXPrint implements PrinterConnection,SerialPortEventListener {
 	}
 
 	@Override
-	public void read(ReceiveBuffer rbuf) {
+	public void read(ReceiveBuffer rbuf,int timeout) {
 		// TODO Auto-generated method stub
 
 	}

@@ -68,11 +68,11 @@ public class SerialPrinter implements Runnable, Printer {
 
 	private int movespeed = 3000;
 	private int extspeed = 100;
-	int timeout = 10000;
+	int gctimeout = 10000;
 	
 	
 	public void setTimeout(int timeout) {
-		this.timeout = timeout;
+		this.gctimeout = timeout;
 	}
 
 	public void setMovespeed(int movespeed, int extspeed) {
@@ -116,6 +116,7 @@ public class SerialPrinter implements Runnable, Printer {
 		public boolean pause = false;
 		public boolean printing = false;
 		public boolean streaming = false;
+		public boolean sdlist = false;
 		public boolean sdprint = false;
 		public boolean reset = false;
 		public boolean reseting = false;
@@ -411,6 +412,7 @@ public class SerialPrinter implements Runnable, Printer {
 	public void listSDCard() {
 		sdfiles.setLength(0);
 		addToPrintQueue(GCodeFactory.getGCode("M21", -21), true);
+		state.sdlist=true;
 		addToPrintQueue(M20, true);
 	}
 
@@ -474,8 +476,9 @@ public class SerialPrinter implements Runnable, Printer {
 	 */
 	private void printAndWaitQueue() throws InterruptedException {
 		GCode code = null;
-		// do temp watch every 10 sec if busy
-		if (System.currentTimeMillis() - lastTempWatch < tempwatchintervall || (!state.printing && !printQueue.isManualEmpty()) || state.streaming) {
+		// do temp watch every 10 sec if busy. 
+		//don't do tempwatch if not printing and manual gcode is in queue, if sd streaming or if listing sdcard files
+		if (System.currentTimeMillis() - lastTempWatch < tempwatchintervall || (!state.printing && !printQueue.isManualEmpty()) || state.streaming || state.sdlist) {
 			if (state.printing && !state.pause && printQueue.isManualEmpty()) {
 				code = printQueue.pollAuto(); // poll for auto ops
 				if (code == null){
@@ -627,6 +630,7 @@ public class SerialPrinter implements Runnable, Printer {
 					cons.log(serial, "Wait for temp");
 					continue;
 				}else if(code == M20){
+					state.sdlist=false;
 					sdfiles.append(recv.toString());
 					String[] fout = sdfiles.toString().toLowerCase().split("\n");
 					if(fout.length > 3){
@@ -774,7 +778,7 @@ public class SerialPrinter implements Runnable, Printer {
 									// receiving new data
 		long time = System.currentTimeMillis();
 		while ((System.currentTimeMillis() - time) < timeout && isConnected() && !state.reset) {
-			mConn.read(ioBuffer);
+			mConn.read(ioBuffer,timeout);
 			if(state.debug){
 				cons.log(serial, "Data Received:" + ioBuffer.toString().trim() );
 			}
@@ -974,11 +978,11 @@ public class SerialPrinter implements Runnable, Printer {
 	 * If dynamic timeouts are configured calculated the timeout based on the gcode duration
 	 * @return int timeout
 	 */
-	private int gettimeout(GCode code){
+	int gettimeout(GCode code){
 		
 		if(code.isLongRunning()) return 60000; //long running gcodes timeout after 60sec
 		
-		if(timeout == 0){
+		if(gctimeout == 0){
 			state.dynamicTimeout[state.dynamicTimeoutPos%16] = (int)(code.getTimeAccel()*1000);
 			//Dynamic
 			int min_timeout = 3000; //minimal timeout to add
@@ -995,7 +999,7 @@ public class SerialPrinter implements Runnable, Printer {
 			return maxtime+min_timeout;
 		}else{
 			//Static
-			return timeout;
+			return gctimeout;
 		}
 	}
 	
@@ -1215,7 +1219,7 @@ public class SerialPrinter implements Runnable, Printer {
 			str.append(Constants.newlinec);
 			
 			str.append("Communication Timeout (occurrences):");
-			str.append(timeout);
+			str.append(gctimeout);
 			str.append("(");
 			str.append(state.timeouts);
 			str.append(")");

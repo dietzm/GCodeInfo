@@ -23,7 +23,7 @@ public interface PrinterConnection {
 	
 	public abstract void  writeBuffer(ReceiveBuffer wbuf);
 	
-	public abstract void read(ReceiveBuffer rbuf);
+	public abstract void read(ReceiveBuffer rbuf, int timeout);
 	
 	public int getType();
 	

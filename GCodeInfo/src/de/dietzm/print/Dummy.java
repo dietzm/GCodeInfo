@@ -99,7 +99,7 @@ public class Dummy implements PrinterConnection {
 	}
 
 	@Override
-	public void read(ReceiveBuffer rbuf) {
+	public void read(ReceiveBuffer rbuf,int timeout) {
 		try {
 			if(buffercnt == buffer.length){
 				bufferpos=0;
