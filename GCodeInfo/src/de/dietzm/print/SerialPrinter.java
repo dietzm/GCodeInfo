@@ -129,7 +129,7 @@ public class SerialPrinter implements Runnable, Printer {
 		public int unexpected=0;
 		public int swallows=0;
 		public int readcalls=0;
-		public int[] dynamicTimeout = new int[16];
+		public int[] dynamicTimeout = new int[23];
 		public int dynamicTimeoutPos = 0;
 		public String serialtype="";
 		public int percentCompleted=0;
@@ -540,7 +540,8 @@ public class SerialPrinter implements Runnable, Printer {
 			if(mConn.getType() == PrinterConnection.BLUETOOTH)  Thread.sleep(5); //Response will take at least 5 ms, safe CPU cylces
 
 			// receive updates wait until timeout
-			ReceiveBuffer recv = readResponse(gettimeout(code));
+			int readtimeout = gettimeout(code);
+			ReceiveBuffer recv = readResponse(readtimeout);
 			cons.log(io, null, recv); 						//log buffer to logfile
 			if (state.reset)
 				break;
@@ -556,7 +557,13 @@ public class SerialPrinter implements Runnable, Printer {
 					//This can even happen in normal cases e.g. when the move is very long (1st in the buffer)
 					String logm = "Timeout waiting for printer response at line #"+state.timeoutline+"("+ String.valueOf((System.currentTimeMillis() - starttime))+ "ms)";
 					cons.appendText(logm);
-					cons.log("ERROR", logm);
+					cons.log("ERROR", logm +" Timeout="+readtimeout+ " pos"+state.dynamicTimeoutPos);
+					if(state.debug){					
+						for (int i = 0; i < state.dynamicTimeout.length; i++) {
+						cons.log("ERROR", state.dynamicTimeout[i]+"["+i+"]");
+						}
+						cons.log("ERROR", code.getCodeline().toString());
+					}
 				}
 				break; // timeout
 			}
@@ -979,11 +986,16 @@ public class SerialPrinter implements Runnable, Printer {
 	 * @return int timeout
 	 */
 	int gettimeout(GCode code){
+		//Default values for init
+		if(code == null){
+			if(gctimeout == 0) return 6000;
+			return gctimeout;
+		}
 		
 		if(code.isLongRunning()) return 60000; //long running gcodes timeout after 60sec
 		
 		if(gctimeout == 0){
-			state.dynamicTimeout[state.dynamicTimeoutPos%16] = (int)(code.getTimeAccel()*1000);
+			state.dynamicTimeout[state.dynamicTimeoutPos%state.dynamicTimeout.length] = (int)(code.getTimeAccel()*1000);
 			//Dynamic
 			int min_timeout = 3000; //minimal timeout to add
 			int maxtime = 0;
