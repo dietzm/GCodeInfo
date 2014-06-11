@@ -27,6 +27,7 @@ public class GcodePainter implements Runnable {
 	public int bedsizeY = 200;
 	public int colNR = 7;
 	public boolean painttravel = true;
+	private int defbuffersize = 15;
 	
 	public Position[] extruderOffset = {null,null,null,null}; //TODO make it configureable
 	private int activeExtruder = 0;
@@ -56,6 +57,10 @@ public class GcodePainter implements Runnable {
 
 	public void setOneLayerAtATime(boolean oneLayerAtATime) {
 		this.oneLayerAtATime = oneLayerAtATime;
+	}
+	
+	public void setBufferSize(int paintahead){
+		defbuffersize=paintahead;
 	}
 	
 	public void setExtruderOffset(int nr, Position pos){
@@ -203,14 +208,14 @@ public class GcodePainter implements Runnable {
 			if(pause != 0 && inpause){
 				//1 step
 				gcodepainter.interrupt();
-			}else{
+			}else if(pause == 0 ){
 				//10 steps
 				setCmd(Commands.STEP50X);
 			}
 		}else{
 			if(pause != 0 && inpause){
 				setCmd(Commands.STEPBACK);
-			}else{
+			}else if(pause == 0 ){
 				//10 steps
 				setCmd(Commands.STEP50XBACK);
 			}
@@ -1033,7 +1038,7 @@ public class GcodePainter implements Runnable {
 		}
 
 		
-		int defbuffersize = 15;
+		//int defbuffersize = 15;
 		int maxbehind = 35;
 		int behind = defbuffersize+10;
 		
