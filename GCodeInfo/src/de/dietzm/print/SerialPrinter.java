@@ -863,12 +863,12 @@ public class SerialPrinter implements Runnable, Printer {
 
 	public boolean setBedTemp(float tmp) {
 		cons.appendText("Set Bed Temperature to " + tmp + "°C");
-		return addToPrintQueue(GCodeFactory.getGCode("M140 S" + tmp, 0), true);
+		return addToPrintQueue(GCodeFactory.getGCode("M140 S" + tmp, 0), false);
 	}
 
 	public boolean setExtruderTemp(float tmp) {
 		cons.appendText("Set Extruder Temperature to " + tmp + "°C");
-		boolean ret = addToPrintQueue(GCodeFactory.getGCode("M104 S" + tmp, 0), true);
+		boolean ret = addToPrintQueue(GCodeFactory.getGCode("M104 S" + tmp, 0), false);
 		if(ret){
 			state.exttemps[state.activeExtr]=tmp;
 		}
