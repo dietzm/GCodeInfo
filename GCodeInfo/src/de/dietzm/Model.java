@@ -220,7 +220,7 @@ public class Model {
 					 	}
 				 }else if(m101){
 					  float extr = m108 / 60 * (move / (f_new / 60)); //only for direct drive extr. with r=5
-					 	gc.setInitialized(Constants.E_MASK, extr);
+					 	//gc.setInitialized(Constants.E_MASK, extr); //commented out to avoid E to be send to the printer
 					 	gc.setExtrusion(extr);
 				 }
 				 
@@ -267,7 +267,7 @@ public class Model {
 				extruderCount=Math.max(extruderCount, 3);
 			}else if(gc.getGcode() == Constants.GCDEF.T3){
 				extruderCount=Math.max(extruderCount, 4);
-			}else if(gc.getGcode() == Constants.GCDEF.M218){
+			}else if(gc.getGcode() == Constants.GCDEF.M218 || gc.getGcode() == Constants.GCDEF.G10){
 				float xoff = 0;
 				float yoff = 0;
 				if(gc.isInitialized(Constants.X_MASK)) xoff = gc.getX();
