@@ -28,6 +28,8 @@ public class GcodePainter implements Runnable {
 	public int colNR = 7;
 	public boolean painttravel = true;
 	private int defbuffersize = 15;
+	private int header = 35; 
+	public static float boxheightfactor = 10f;
 	
 	public Position[] extruderOffset = {null,null,null,null}; //TODO make it configureable
 	private int activeExtruder = 0;
@@ -75,7 +77,8 @@ public class GcodePainter implements Runnable {
 	private float zoom = 3.5f;
 	private Layer currentlayer=null;
 	private float speedup = 5;
-	public static final float zoommod=2.7f;
+	public static float zoommod=2.74f; //0.1f = 0.025ratio 
+	
 	private int pause = 0; 
 	private boolean inpause=false;
 	private int Xoffset=0,Yoffset=0;
@@ -98,7 +101,7 @@ public class GcodePainter implements Runnable {
 	//Public vars, might be accessed from other classes.
 	// Model & Layer Info
 	public Model model = null;
-	public static final int gap=20;
+	public static final int gap=35;
 
 	public void setPaintWhilePrint(boolean paintWhilePrint) {
 		this.paintWhilePrint = paintWhilePrint;
@@ -259,8 +262,8 @@ public class GcodePainter implements Runnable {
 	
 	public int[] getSize(boolean details){
 		return new int[]{ 
-				(int) (bedsizeX * getZoom() + gap + (details ? bedsizeX*zoom/zoommod*2 : 0) +13),
-				(int) (bedsizeY * getZoom() + (bedsizeY * getZoom()/12)+65)		
+				(int) (bedsizeX * getZoom() + gap + (details ? bedsizeX*zoom/zoommod*2 : 0) ),
+				(int) (bedsizeY * getZoom() + (bedsizeY * getZoom()/boxheightfactor))		
 		};
 	}
 
@@ -306,12 +309,12 @@ public class GcodePainter implements Runnable {
 		colNR=g.getColorNr()-2; //-1 size vs index , -2 travel + border colors
 	}
 	
-	public GcodePainter(GraphicRenderer g, boolean modeldetails, float zoomlevel,int bedx, int bedy){
+	public GcodePainter(GraphicRenderer g, boolean modeldetails, float zoomlevel,int bedx, int bedy, float zoomaspect){
 		this(g);
 		this.zoom=zoomlevel;
 		bedsizeX=bedx;
 		bedsizeY=bedy;
-		
+		zoommod=zoomaspect;		
 	}
 
 	private void calculateOffset() {
@@ -337,7 +340,7 @@ public class GcodePainter implements Runnable {
 	}
 
 	private void paintLabel(GraphicRenderer g2, Layer lay,GCode gc) {
-		
+		g2.setStroke(3);
 		//On Layer change, skip for individual gcodes to save cycles
 		if(gc == null){
 			// Paint boxes with infos about current layer
@@ -377,7 +380,7 @@ public class GcodePainter implements Runnable {
 			printLabelBox(g2, 81,14,speeduplabel, Constants.SPEEDUP_LABEL,lay.getNumber());			
 		}
 		
-		
+		g2.setStroke(1);
 //		if(pause == 0){
 
 //		}else{
@@ -404,8 +407,9 @@ public class GcodePainter implements Runnable {
 	}
 
 	private void printDetails(GraphicRenderer g2, Layer lay) {
-		g2.setColor(lay.getNumber() % colNR);
-		float boxheight=(bedsizeX*zoom)/12f;
+		//g2.setColor(lay.getNumber() % colNR);
+		g2.setColor(colNR);
+		float boxheight=(bedsizeX*zoom)/boxheightfactor;
 		//int linegap=(int)((4*zoom)+3.2f);
 		float size=2.5f+(3.10f*zoom)/200*bedsizeX;
 		int linegap=(int)size;
@@ -450,16 +454,16 @@ public class GcodePainter implements Runnable {
 			det=modeldetails;
 			break;
 		}
-		g2.clearrect(bedsizeX*zoom+gap+5,(bedsizeY*zoom/zoommod)+2, (bedsizeX * zoom/zoommod*2)-7, bedsizeY * zoom + boxheight -(bedsizeY*zoom/zoommod)-7 ,print?1:0);
+		g2.clearrect(bedsizeX*zoom+gap+5,(bedsizeY*zoom/zoommod)+2+header, (bedsizeX * zoom/zoommod*2)-7, bedsizeY * zoom + boxheight -(bedsizeY*zoom/zoommod)-7 ,print?1:0);
 		
 		
 		int c=0;
 		for (int i = start; i < det.length; i++) {
-			int y = (int)(bedsizeY*zoom/zoommod)+linegap+c*linegap; //avoid painting across the border
+			int y = (int)(bedsizeY*zoom/zoommod)+header+3+linegap+c*linegap; //avoid painting across the border
 			c++;
 			if(y+30 >= bedsizeY*zoom+boxheight) break;
 			
-			g2.drawtext(det[i], bedsizeX*zoom+gap+5,y );
+			g2.drawtext(det[i], bedsizeX*zoom+gap+8,y );
 			
 		}
 	}
@@ -467,17 +471,19 @@ public class GcodePainter implements Runnable {
 	private void printLabelBox(GraphicRenderer g2, int boxposp,int bsizepercent, CharSequence value, CharSequence labl,int laynr) {
 		float boxsize=((bedsizeX*zoom+gap)/100)*bsizepercent;
 		float boxpos=((bedsizeX*zoom+gap)/100)*boxposp;
-		float boxheight=(bedsizeX*zoom)/12f;
+		float boxheight=(bedsizeY*zoom)/boxheightfactor;
 		float gapz=zoom;
 		float size=10.15f*(zoom)/200*bedsizeX;
-		g2.clearrect(boxpos+2,bedsizeY*zoom+2, boxsize-3,boxheight-1,print?1:0);
-		g2.setColor(colNR);//white
+		g2.clearrect(boxpos,bedsizeY*zoom, boxsize,boxheight+2,2);
+		//g2.clearrect(boxpos+2,bedsizeY*zoom+2, boxsize-3,boxheight-1,print?1:0);
+		g2.setColor(colNR+1);//white
 		g2.drawrect(boxpos,bedsizeY*zoom, boxsize,boxheight+2);
-		g2.setColor(laynr % colNR);
+		//g2.setColor(laynr % colNR);
+		g2.setColor(colNR);//white
 		g2.setFontSize(size);
 		g2.drawtext(value, boxpos, bedsizeY*zoom+size-gapz,boxsize);
 		g2.setFontSize(size/3);
-		g2.drawtext(labl, boxpos, bedsizeY*zoom+boxheight-gapz*2,boxsize);
+		g2.drawtext(labl, boxpos, bedsizeY*zoom+boxheight-2-size/3,boxsize);
 	}
 
 	private void paintLoading(GraphicRenderer g) {
@@ -554,25 +560,38 @@ public class GcodePainter implements Runnable {
 		}
 
 	private void printBed(GraphicRenderer g2) {
-		g2.setColor(colNR);
-		g2.setStroke(1);
+		g2.setColor(colNR+1);
+		g2.setStroke(3);
 		g2.drawrect(0, 0, bedsizeX * zoom, bedsizeY * zoom); // Draw print bed
+		g2.clearrect(bedsizeX * zoom, 0,  gap, bedsizeY * zoom,2); //level bar Color 
 		g2.drawrect(bedsizeX * zoom , 0, gap, bedsizeY * zoom); // Draw level bar border
+		
 		
 		//Draw box for modeldetails , front view and side view
 		//Front & side view boxes
 		float zoomsmall= zoom/zoommod;
+		g2.clearrect(bedsizeX * zoom + gap, 0, (bedsizeX*zoomsmall)*2, header,2); //Label background side&font
+		g2.drawrect(bedsizeX * zoom + gap, 0, bedsizeX*zoomsmall, header);//Label background border
+		g2.drawrect(bedsizeX * zoom + gap +bedsizeX*zoomsmall , 0, bedsizeX*zoomsmall, header);//Label background border
+		
 		g2.drawrect(bedsizeX * zoom + gap, 0, bedsizeX*zoomsmall, bedsizeY * zoomsmall);
 		g2.drawrect(bedsizeX * zoom + gap +bedsizeX*zoomsmall , 0, bedsizeX*zoomsmall, bedsizeY * zoomsmall);
+
 		//full modeldetails box
-		float boxheight=(bedsizeX*zoom)/12f;
+		float boxheight=(bedsizeX*zoom)/boxheightfactor;
+		g2.clearrect(bedsizeX * zoom + gap, bedsizeY * zoomsmall, (bedsizeX*zoomsmall)*2, header,2); //Label background modeldetails
+		g2.drawrect(bedsizeX * zoom + gap, bedsizeY * zoomsmall, bedsizeX*zoomsmall*2, header);//Label background border
 		g2.drawrect(bedsizeX * zoom + gap, 0,  bedsizeX*zoomsmall*2, bedsizeY * zoom+boxheight+2); // Draw print		
+		
+		
 		
 		float fsize=2+5f*(zoom)/200*bedsizeX;
 		g2.setFontSize(fsize);
 		
-		g2.drawtext("Front View", bedsizeX * zoom + gap+bedsizeX*zoomsmall,fsize+2,bedsizeX*zoomsmall);
-		g2.drawtext("Side View", bedsizeX * zoom + gap,fsize+2,bedsizeX*zoomsmall);
+		g2.setColor(colNR);
+		g2.drawtext("Front View", bedsizeX * zoom + gap+bedsizeX*zoomsmall,fsize+3,bedsizeX*zoomsmall);
+		g2.drawtext("Side View", bedsizeX * zoom + gap,fsize+3,bedsizeX*zoomsmall);
+		g2.drawtext("Model Details", bedsizeX * zoom + gap,bedsizeY * zoomsmall+fsize+5,bedsizeX*zoomsmall*2);
 		
 		//Draw grid
 		g2.setStroke(2);
@@ -826,7 +845,7 @@ public class GcodePainter implements Runnable {
 					}else{
 						//Fading the previous layer
 						if(fftoLayer == 0 || fftoLayer <= lay.getNumber()+10){
-							g2.faintRect(2, 2, bedsizeX*zoom+20, bedsizeY*zoom);
+							g2.faintRect(2, 2, bedsizeX*zoom+GcodePainter.gap, bedsizeY*zoom);
 						}
 					}
 						
@@ -835,6 +854,7 @@ public class GcodePainter implements Runnable {
 					printDetails(g2, lay);
 					paintLevelBar(g2, lay);
 					paintLabel(g2, lay,null);
+
 										
 					// Print & Paint all Gcodes
 					
@@ -1001,7 +1021,7 @@ public class GcodePainter implements Runnable {
 		
 		StringBuilder tmpbuf = new StringBuilder();
 		
-		tmpbuf.append("--------------- Model details ------------------\n");
+		//tmpbuf.append("--------------- Model details ------------------\n");
 		tmpbuf.append(model.getModelDetailReport());
 		tmpbuf.append(model.guessPrice(model.guessDiameter()));
 		modeldetails=tmpbuf.toString().split("\n");
