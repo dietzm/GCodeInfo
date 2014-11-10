@@ -192,6 +192,7 @@ public class GCodeMemSave extends GCodeAbstract {
 	
 	@Override
 	public float getR() {
+		if(ext==null) return 0;
 		return ext.r;
 	}
 
@@ -225,7 +226,7 @@ public class GCodeMemSave extends GCodeAbstract {
 	 */
 	@Override
 	public boolean isExtruding(){
-		return ( isInitialized(Constants.E_MASK) && extrusion > 0 );
+		return ( isInitialized(Constants.E_MASK) || extrusion > 0 );
 	}
 	
 

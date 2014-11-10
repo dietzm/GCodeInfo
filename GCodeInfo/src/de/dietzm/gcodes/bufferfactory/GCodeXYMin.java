@@ -17,6 +17,7 @@ public class GCodeXYMin extends GCodeAbstractNoData {
 	private float timeaccel; //track acceleration as extra time 
 	private float distance;
 	private short fanspeed; //remember with less accuracy (just for display)
+	//TODO: see if fanspeed can be removed
 	
 	
 	public GCodeXYMin(String line,  GCDEF code) {

@@ -28,6 +28,7 @@ public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 	ReceiveBuffer tmpbuf = new ReceiveBuffer(1024);
 	int defaultgc=0;
 	int optigc=0;
+	boolean m101=false;
 	int[] gcodetypes = new int[11];
 	CharSeqBufView[] preallocSegment = {new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView()};
 	
@@ -101,6 +102,8 @@ public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 			case 'r':
 			case 'T': //Use r for t as well (double used var)
 			case 't':
+			case 'P':
+			case 'p':
 				gcd.setInitialized(Constants.R_MASK,Constants.parseFloat(segments[i],1));
 				break;
 			default:
@@ -142,17 +145,37 @@ public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 				gcd = new GCodeXYEMin(line,  code);
 				gcodetypes[0]++;
 			}else if(seg_len==3 && ch0=='X' && ch1=='Y'){
-				gcd = new GCodeXYMin(line,  code);
-				gcodetypes[1]++;
+				if(m101){//bfb style
+					gcd = new GCodeXYEFMinBFB(line,  code);
+					gcodetypes[0]++;
+				}else{
+					gcd = new GCodeXYMin(line,  code);
+					gcodetypes[1]++;
+				}		
 			}else if(seg_len==3 && ch0=='Y' && ch1=='X'){
-				gcd = new GCodeXYMin(line,  code);		
-				gcodetypes[1]++;
+				if(m101){//bfb style
+					gcd = new GCodeXYEFMinBFB(line,  code);
+					gcodetypes[0]++;
+				}else{
+					gcd = new GCodeXYMin(line,  code);
+					gcodetypes[1]++;
+				}				
 			}else if(seg_len==4 && ch0=='X' && ch1=='Y' && ch2=='F'){
-				gcd = new GCodeXYFMin(line,  code);
-				gcodetypes[2]++;
+				if(m101){//bfb style
+					gcd = new GCodeXYEFMinBFB(line,  code);
+					gcodetypes[6]++;
+				}else{
+					gcd = new GCodeXYFMin(line,  code);
+					gcodetypes[2]++;
+				}
 			}else if(seg_len==4 && ch0=='F' && ch1=='X' && ch2=='Y'){
-				gcd = new GCodeXYFMin(line,  code);
-				gcodetypes[2]++;
+				if(m101){//bfb style
+					gcd = new GCodeXYEFMinBFB(line,  code);
+					gcodetypes[6]++;
+				}else{
+					gcd = new GCodeXYFMin(line,  code);
+					gcodetypes[2]++;
+				}
 			}else if(seg_len==5 && ch0=='F' && ch1=='X' && ch2=='Y' && ch3=='E'){
 				gcd = new GCodeXYEFMin(line,  code);
 				gcodetypes[6]++;
@@ -175,6 +198,7 @@ public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 				gcd = new GCodeZFMin(line,  code);
 				gcodetypes[8]++;
 			}else if(seg_len==5 && ch0=='X' && ch1=='Y' && ch2=='F' && ch3=='Z'){
+				//TODO fix for bfb
 				gcd = new GCodeXYFZMin(line,  code);
 				gcodetypes[7]++;	
 			}else if(seg_len==5 && ch0=='X' && ch1=='Y' && ch2=='Z' && ch3=='F'){
@@ -334,6 +358,7 @@ public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 		if(errorcnt != 0){
 			System.err.println("Detected "+errorcnt+" error(s) during parsing of Gcode file. Results might be wrong.");
 		}
+		m101=false;
 		return codes;
 	}
 	
@@ -569,7 +594,15 @@ public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 				gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
 				break;
 			case M103: //marlin turn all extr off
+				m101=false;
+				gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
+				break;
 			case M101://marlin turn all extr on
+				//bfb style ... make sure to have E values in XY
+				m101=true;
+				System.out.println("M101 BFB style detected");
+				gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
+				break;
 			case M113: //set extruder speed / turn off
 			//	System.err.println("Unsupported Gcode M101/M103/M113 found. Ignoring it.");
 				gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
@@ -584,7 +617,7 @@ public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 				//System.err.println("Deprecated Gcode M108. Ignoring it.");
 				gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
 				id = preallocSegment[1].charAt(0);
-				if (id=='S' || id=='s'){
+				if (id=='S' || id=='s' || id=='R' || id=='r'){
 					gcd.setInitialized(Constants.E_MASK,Constants.parseFloat(preallocSegment[1],1));
 				}
 				break;
@@ -592,6 +625,7 @@ public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 				//System.err.println("M204 Acceleration control is ignored.");
 				gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
 				break;
+			case G10:
 			case M218:
 				//dual extrusion offset marlin
 				gcd=fillGcodeFields(preallocSegment,seg_len, codelinevar,linenr,tmpgcode);

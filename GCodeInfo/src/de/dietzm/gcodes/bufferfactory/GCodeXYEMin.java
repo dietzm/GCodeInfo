@@ -233,6 +233,7 @@ public class GCodeXYEMin extends GCodeAbstractNoData {
 
 	/**
 	 * Is filament getting extruded (no incl. retract)
+	 * bfb set extrusion but not E
 	 * @return true is extruding
 	 */
 	@Override

@@ -22,6 +22,7 @@ public class GCodeFactory  {
 	public static class DefaultGCodeFactoryImpl implements GCodeFactoryImpl{
 		protected long readbytes=0, readlines=0;
 		byte[] modeldata;
+		protected boolean m101=false;
 
 		/**
 		 * Called when Gcode needs to be created.
@@ -190,6 +191,7 @@ public class GCodeFactory  {
 			if(errorcnt != 0){
 				System.err.println("Detected "+errorcnt+" error(s) during parsing of Gcode file. Results might be wrong.");
 			}
+			m101=false;
 			return codes;
 		}
 
@@ -345,7 +347,13 @@ public class GCodeFactory  {
 					gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
 					break;
 				case M103: //marlin turn all extr off
+					//bfb style
+					m101=false;
+					gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
+					break;
 				case M101://marlin turn all extr on
+					//bfb style
+					m101=true;
 				case M113: //set extruder speed / turn off
 				//	System.err.println("Unsupported Gcode M101/M103/M113 found. Ignoring it.");
 					gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
@@ -360,7 +368,7 @@ public class GCodeFactory  {
 					//System.err.println("Deprecated Gcode M108. Ignoring it.");
 					gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
 					id = segments[1].charAt(0);
-					if (id=='S' || id=='s'){
+					if (id=='S' || id=='s' || id=='R' || id=='r'){
 						gcd.setInitialized(Constants.E_MASK,Constants.parseFloat(segments[1],1));
 					}
 					break;

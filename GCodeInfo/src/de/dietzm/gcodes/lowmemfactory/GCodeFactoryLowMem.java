@@ -26,12 +26,24 @@ public class GCodeFactoryLowMem extends DefaultGCodeFactoryImpl {
 			}else if(segments.length==4 && ch0=='Y' && ch1=='X' && ch2=='E'){
 				gcd = new GCodeXYE(line,  code);
 			}else if(segments.length==3 && ch0=='X' && ch1=='Y'){
-				gcd = new GCodeXY(line,  code);
+				if(m101){
+					gcd = new GCodeXYE(line,  code);
+				}else{
+					gcd = new GCodeXY(line,  code);
+				}			
 			}else if(segments.length==3 && ch0=='Y' && ch1=='X'){
-				gcd = new GCodeXY(line,  code);			
+				if(m101){
+					gcd = new GCodeXYE(line,  code);
+				}else{
+					gcd = new GCodeXY(line,  code);
+				}			
 				//TODO handle all combinations
 			}else if(segments.length==4 && ch0=='X' && ch1=='Y' && ch2=='F'){
-				gcd = new GCodeXYF(line,  code);
+				if(m101){
+					gcd = new GCodeMemSave(line,  code);
+				}else{
+					gcd = new GCodeXYF(line,  code);
+				}	
 			}else if(segments.length==3 && ch0=='F' && ch1=='E'){
 				gcd = new GCodeFE(line,  code);
 			}else if(segments.length==3 && ch0=='E' && ch1=='F'){
@@ -70,12 +82,24 @@ public class GCodeFactoryLowMem extends DefaultGCodeFactoryImpl {
 			}else if(segments.length==4 && ch0=='Y' && ch1=='X' && ch2=='E'){
 				gcd = new GCodeXYE(line,  code);
 			}else if(segments.length==3 && ch0=='X' && ch1=='Y'){
-				gcd = new GCodeXY(line,  code);
+				if(m101){
+					gcd = new GCodeXYE(line,  code);
+				}else{
+					gcd = new GCodeXY(line,  code);
+				}					
 			}else if(segments.length==3 && ch0=='Y' && ch1=='X'){
-				gcd = new GCodeXY(line,  code);			
+				if(m101){
+					gcd = new GCodeXYE(line,  code);
+				}else{
+					gcd = new GCodeXY(line,  code);
+				}		
 				//TODO handle all combinations
 			}else if(segments.length==4 && ch0=='X' && ch1=='Y' && ch2=='F'){
-				gcd = new GCodeXYF(line,  code);
+				if(m101){
+					gcd = new GCodeMemSave(line,  code);
+				}else{
+					gcd = new GCodeXYF(line,  code);
+				}					
 			}else if(segments.length==3 && ch0=='F' && ch1=='E'){
 				gcd = new GCodeFE(line,  code);
 			}else if(segments.length==3 && ch0=='E' && ch1=='F'){
