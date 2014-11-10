@@ -19,7 +19,7 @@ import de.dietzm.SerialIO;
 
 public class AWTGraphicRenderer implements GraphicRenderer {
 
-	Color[] backcol = new Color[]{Color.BLACK,new Color(0,90,120),Color.red};
+	Color[] backcol = new Color[]{Color.BLACK,new Color(0,90,120),Color.red,Color.red,Color.red};
 	Color[] colors = new Color[] { Color.red, Color.cyan, Color.yellow, Color.magenta, Color.green,
 			Color.orange, Color.pink, Color.white, Color.darkGray };
 
@@ -45,7 +45,8 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 	private BasicStroke stroke[] = {
 			new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND, 1, new float[] { 1, 2 }, 0),
 			new BasicStroke(3.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND),
-			new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND, 1, new float[] { 1, 6 }, 0) };
+			new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND, 1, new float[] { 1, 6 }, 0) ,
+			new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND)};
 
 	public AWTGraphicRenderer(int bedsizeX, int bedsizeY, Frame frame,String theme) {
 		Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
@@ -75,12 +76,12 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 		// colors[colors.length-1]=Color.darkGray;
 		//int theme= 5;
 		if(theme.equalsIgnoreCase("default")){
-			backcol= new Color[] { Color.BLACK, new Color(0, 90, 120)};
+			backcol= new Color[] { Color.BLACK, new Color(0, 90, 120),Color.red};
 			colors= new Color[] { Color.RED, Color.BLUE, Color.YELLOW, Color.CYAN, Color.GREEN, Color.MAGENTA,
 					Color.LIGHT_GRAY, Color.WHITE, Color.DARK_GRAY };
 		}else if(theme.equalsIgnoreCase("gray")){
 			//GRAY Theme
-			backcol= new Color[] { new Color(220,220,220), new Color(0, 90, 120)};
+			backcol= new Color[] { new Color(220,220,220), new Color(0, 90, 120),Color.red};
 			colors = new Color[15];
 			int val= 35;
 			for (int i = 0; i < 13; i++) {
@@ -91,7 +92,7 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 			colors[14]=Color.GRAY;
 		}else if(theme.equalsIgnoreCase("autumn")){
 			//Autumn theme
-			backcol= new Color[] { new Color(229,219,170), new Color(171, 200, 165)};
+			backcol= new Color[] { new Color(229,219,170), new Color(171, 200, 165),new Color(160,200,140)};
 			colors= new Color[] { new Color(33,144,148),
 					 			new Color(38,130,33),
 					 			new Color(148,147,33),
