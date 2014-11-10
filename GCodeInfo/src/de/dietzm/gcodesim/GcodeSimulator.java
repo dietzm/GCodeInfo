@@ -1,11 +1,8 @@
 package de.dietzm.gcodesim;
 
 import java.awt.BorderLayout;
-import java.awt.Button;
-import java.awt.CheckboxMenuItem;
 import java.awt.Color;
 import java.awt.Desktop;
-import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.FileDialog;
 import java.awt.FlowLayout;
@@ -14,11 +11,6 @@ import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.Insets;
 import java.awt.Label;
-import java.awt.Menu;
-import java.awt.MenuBar;
-import java.awt.MenuItem;
-import java.awt.MenuShortcut;
-import java.awt.TextField;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -34,7 +26,6 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.awt.image.BufferedImage;
-import java.awt.image.ImageFilter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -46,8 +37,6 @@ import java.net.ConnectException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
-import java.security.acl.LastOwnerException;
-import java.util.Collections;
 import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -68,15 +57,11 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
-import javax.swing.border.Border;
-import javax.swing.text.html.ImageView;
 
 import de.dietzm.Constants;
-import de.dietzm.Model;
 import de.dietzm.Position;
-import de.dietzm.SerialIO;
 import de.dietzm.gcodes.GCodeFactory;
-import de.dietzm.gcodes.lowmemfactory.GCodeFactoryLowMem;
+import de.dietzm.gcodes.bufferfactory.GCodeFactoryBuffer;
 import de.dietzm.gcodesim.GcodePainter.Commands;
 import de.dietzm.print.ConsoleIf;
 import de.dietzm.print.Dummy;
@@ -140,6 +125,7 @@ public class GcodeSimulator extends JFrame implements ActionListener {
 	 * 1.24 jump to layer added, fixed nozzle offset, fixed help dialog,
 	 * 1.25 fixed bug with nozzle pos when painting long lines
 	 * 1.26 network sender , autostart & autosave 
+	 * 1.28 redesign, T0: answers, bfb fix
 	 */
 	
 	
@@ -163,7 +149,7 @@ public class PrintrPanel extends JPanel {
 			if(awt != null)	awt.drawImage(g);
 		}
 	}
-	public static final String VERSION = "v1.27";	
+	public static final String VERSION = "v1.28";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
@@ -288,8 +274,8 @@ public class PrintrPanel extends JPanel {
 	public void init(String filename,InputStream in) throws IOException{
 		awt = new AWTGraphicRenderer(bedsizeX, bedsizeY,this,theme);
 		float fac = (awt.getHeight()-(55+(awt.getHeight()/12)))/bedsizeY;
-		//GCodeFactory.setCustomFactory(new GCodeFactoryLowMem());
-		gp = new GcodePainter(awt,true,fac,bedsizeX,bedsizeY); //todo pass bedsize
+	//	GCodeFactory.setCustomFactory(new GCodeFactoryBuffer());
+		gp = new GcodePainter(awt,true,fac,bedsizeX,bedsizeY,GcodePainter.zoommod); //todo pass bedsize
 		if(!dualoffsetXY.equals("0:0")){
 			Position pos = Constants.parseOffset(dualoffsetXY);
 			gp.setExtruderOffset(1, pos);
