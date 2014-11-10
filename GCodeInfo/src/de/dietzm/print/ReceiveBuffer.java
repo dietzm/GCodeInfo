@@ -297,6 +297,11 @@ public class ReceiveBuffer implements CharSequence,Appendable {
 		for (int i = 0; i < len-1; i++) {
 			if(array[i]==84 && array[i+1]==58) return true;
 		}
+		//look for T0:
+		if(len<3) return false;
+		for (int i = 0; i < len-1; i++) {
+			if(array[i]==84 && array[i+1]==48 && array[i+2]==58) return true;
+		}
 		return false; //ASCII
 	}
 
