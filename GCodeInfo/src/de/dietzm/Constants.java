@@ -224,7 +224,11 @@ public class Constants {
 	public final static String FANS1_LABEL ="I";
 	public final static String FANS2_LABEL ="II";
 	public final static String FANS3_LABEL ="III";
+	public static final int MAX_EXTRUDER_NR = 4;
 	
+	public static final int MAX_PROGESS_SLIDER = 1000;
+	public static final float MIN_HEATBED_DEGREE=25;
+	public static final float MIN_EXTRUDER_DEGREE=45;
 	
 	/**
 	 * pass Stringbuffer to avoid allocation
@@ -306,6 +310,19 @@ public class Constants {
 		int nr = inttoChar(value, result.getBytes());
 		result.setlength(nr); //set length of string		
 		return result;
+	}
+	
+	public static void copyTemp(CharSequence src, char[] dest){
+		for (int i = 0; i < dest.length; i++) {
+			if(i<src.length()){
+				dest[i]=src.charAt(i);
+			}else{
+				dest[i]=0;
+			}
+			
+		}
+		dest[src.length()]=176;
+		dest[src.length()+1]=67;
 	}
 	
 	/**
@@ -428,18 +445,45 @@ public class Constants {
 //		float f = 0.0054454f;
 //		System.out.println(parseFloat("0.0054454545", 0));
 		//System.out.println(Float.MIN_VALUE);
-		ReceiveBuffer rb = new ReceiveBuffer(20);
+		ReceiveBuffer rb = new ReceiveBuffer(80);
 		rb.put("M107\n".getBytes());
 //		rb.put("M107 X\n".getBytes());
 		CharSeqBufView[] preallocSegment = {new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView()};
 		splitbyLetter3(rb,preallocSegment);
 		System.out.println("'"+preallocSegment[0].toString()+"'");
+		
+		Temperature temp = new Temperature();
+		rb.put("T:20.00 B:-1.00 @:0".getBytes());
+		temp.setTempstring(rb);
+		System.out.println(temp.toString());
+		System.out.println("FL:"+temp.getBedTempTargetFloat());
+		
+		rb.put("T:50.1 /0.0 B:16.9 /0.0 T0:205.0 /205.0 T1:50.1 /0.0".getBytes());
+		temp.setTempstring(rb);
+		System.out.println(temp.toString());
+		System.out.println("FL:"+temp.getBedTempTargetFloat());
+		
+		rb.put("T0: 23.4/-273.1 T1: 21.6/-273.1 T2: 21.6/-273.1 B:23.7 /-273.1".getBytes());
+		temp.setTempstring(rb);
+		System.out.println(temp.toString());
+		System.out.println("FL:"+temp.getBedTempTargetFloat());
+
+		rb.put("ok T:181.2 /0.0 B:48.6 /0.0 T0:10.9 /0.0 @:0 B@:0".getBytes());
+		temp.setTempstring(rb);
+		System.out.println(temp.toString());
 	}
+	
+
 	
 
 	public static float round2digits(float num){
 		return Math.round((num)*100f)/100f;
 	}
+	
+	public static float round1digits(float num){
+		return Math.round((num)*10f)/10f;
+	}
+	
 	
 	/**
 	 * returns true if it starts with G or M (should be trimmed and uppercase already)
