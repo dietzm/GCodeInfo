@@ -364,4 +364,15 @@ public class ReceiveBuffer implements CharSequence,Appendable {
 			  str.clear(len); 
 			  return str;
 	}
+	
+	public MemoryEfficientString copyInto(MemoryEfficientString str) {
+		  if (len > str.getBytes().length) {
+			    throw new IllegalArgumentException("Illegal range for sequence of length " + length());
+			  }
+			  byte[] newdata = str.getBytes();
+			  int tgtlen = Math.min(len, str.length());
+			  System.arraycopy(array,0,newdata,0, tgtlen);
+			  str.clear(tgtlen); 
+			  return str;
+	}
 }
