@@ -77,8 +77,8 @@ public class GcodePainter implements Runnable {
 	private float zoom = 3.5f;
 	private Layer currentlayer=null;
 	private float speedup = 5;
-	public static float zoommod=2.74f; //0.1f = 0.025ratio 
-	
+	public final static float defaultzoommod=2.74f;
+	private float zoommod=defaultzoommod; //0.1f = 0.025ratio 
 	private int pause = 0; 
 	private boolean inpause=false;
 	private int Xoffset=0,Yoffset=0;
@@ -101,7 +101,8 @@ public class GcodePainter implements Runnable {
 	//Public vars, might be accessed from other classes.
 	// Model & Layer Info
 	public Model model = null;
-	public static final int gap=35;
+	public final static int defaultgap=10;
+	private int gap=10;
 
 	public void setPaintWhilePrint(boolean paintWhilePrint) {
 		this.paintWhilePrint = paintWhilePrint;
@@ -312,6 +313,7 @@ public class GcodePainter implements Runnable {
 	public GcodePainter(GraphicRenderer g, boolean modeldetails, float zoomlevel,int bedx, int bedy, float zoomaspect){
 		this(g);
 		this.zoom=zoomlevel;
+		gap=(int)(gap*zoom);
 		bedsizeX=bedx;
 		bedsizeY=bedy;
 		zoommod=zoomaspect;		
@@ -814,6 +816,7 @@ public class GcodePainter implements Runnable {
 		Thread.currentThread().setName("GcodePainter");
 		g2.clearrect(0, 0, g2.getWidth(), g2.getHeight(),print?1:0);
 		g2.repaint();
+		try{
 		A: while (true) {
 			if (layers != null) {
 				if ( model.getGcodecount() < 50) pause = 999999; //Activate pause when small file is loaded to prevent fast loops
@@ -837,6 +840,7 @@ public class GcodePainter implements Runnable {
 				}else{
 					g2.setTitle("Simulation");
 				}
+				 if(layers == null) return;
 				 for (Layer lay : layers) {
 					//System.out.println("Layer #"+lay.getNumber()+"  low:"+lay.lowidx+" high:"+lay.highidx);
 					if(oneLayerAtATime){
@@ -845,7 +849,7 @@ public class GcodePainter implements Runnable {
 					}else{
 						//Fading the previous layer
 						if(fftoLayer == 0 || fftoLayer <= lay.getNumber()+10){
-							g2.faintRect(2, 2, bedsizeX*zoom+GcodePainter.gap, bedsizeY*zoom);
+							g2.faintRect(2, 2, bedsizeX*zoom+gap, bedsizeY*zoom);
 						}
 					}
 						
@@ -857,7 +861,7 @@ public class GcodePainter implements Runnable {
 
 										
 					// Print & Paint all Gcodes
-					
+					if(model == null) return;
 					//Android guidelines say foreach loops are slower for arraylist
 					GCodeStore gcarr = model.getGcodes();					
 					//int gcnum = gcarr.size();
@@ -1013,8 +1017,10 @@ public class GcodePainter implements Runnable {
 			}
 		
 		}
-	
-		
+		}catch(NullPointerException npe){
+			System.err.println("NPE in GCodePrintr:"+npe);
+			return;
+		}
 	}
 
 	private void updateDetailLabels() {
