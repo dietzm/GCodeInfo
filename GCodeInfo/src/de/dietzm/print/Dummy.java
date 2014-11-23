@@ -10,8 +10,8 @@ public class Dummy implements PrinterConnection {
 	boolean isReset =false;
 	boolean isSend =false;
 	boolean odd = false;
-	byte[] memT = new MemoryEfficientString("ok T:179.2 /0.0 B:50.6 /0.0 T0:14.9 /0.0 @:0 B@:0\n").getBytes();
-	byte[] memT1 = new MemoryEfficientString("ok T:181.2 /0.0 B:48.6 /0.0 T0:10.9 /0.0 @:0 B@:0\n").getBytes();
+	byte[] memT = new MemoryEfficientString("ok T:179 /0.0 B:50.6 /45.4 T1:14.9 /0.0 @:0 B@:0\n").getBytes();
+	byte[] memT1 = new MemoryEfficientString("ok T:181.2 /190.0 B:48 /60 T1:10.9 /0.0 @:0 B@:0\n").getBytes();
 
 	byte[] memS = new MemoryEfficientString("start grbl\n").getBytes();
 	private final ReceiveBuffer sendbuf = new ReceiveBuffer(4096);
