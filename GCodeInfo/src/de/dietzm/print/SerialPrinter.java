@@ -4,6 +4,7 @@ import java.util.Date;
 
 import de.dietzm.Constants;
 import de.dietzm.Model;
+import de.dietzm.Temperature;
 import de.dietzm.Constants.GCDEF;
 import de.dietzm.gcodes.GCode;
 import de.dietzm.gcodes.GCodeFactory;
@@ -22,7 +23,7 @@ public class SerialPrinter implements Runnable, Printer {
 	public static final GCode T1 = GCodeFactory.getGCode("T1", -1001);
 	public static final String serial = "SERIAL"; //log tag
 	public static final String io = "IO"; //log tag	
-	public static final int MAX_EXTRUDER_NR = 4;
+
 	
 	private ConsoleIf cons = null;
 	private PrinterConnection mConn = null;
@@ -99,9 +100,9 @@ public class SerialPrinter implements Runnable, Printer {
 		public static final String PAUSED="Printing Paused";
 		public static final String RESET="Resetting Printer";
 		public static final String CONNECTMSG = "Please connect";
-		public static final String CONNECTINGMSG ="Establishing printer connection";
-		public static final String CONNECTEDMSG ="Ready to start printing";
-		public static final String RESETMSG ="Resetting ..please wait";
+		public static final String CONNECTINGMSG ="Establish connection";
+		public static final String CONNECTEDMSG ="Ready to print";
+		public static final String RESETMSG ="Resetting,please wait";
 		public int baud = 115200;
 		public float bedtemp = 0;
 		public boolean connected = false;
@@ -133,9 +134,10 @@ public class SerialPrinter implements Runnable, Printer {
 		public int dynamicTimeoutPos = 0;
 		public String serialtype="";
 		public int percentCompleted=0;
-		public MemoryEfficientString tempstring = new MemoryEfficientString(new byte[64]);
+		//public MemoryEfficientString tempstring = new MemoryEfficientString(new byte[64]);
+		public Temperature temperature = new Temperature();
 		public MemoryEfficientLenString timestring = new MemoryEfficientLenString(new byte[32]);
-		public float[] exttemps = new float[MAX_EXTRUDER_NR];
+		public float[] exttemps = new float[Constants.MAX_EXTRUDER_NR];
 		// public boolean absolute
 		boolean testrun = false;
 		int lineidx=0;
@@ -290,7 +292,7 @@ public class SerialPrinter implements Runnable, Printer {
 				if (state.printing) setPrintMode(false);
 				state.lastE = 0;
 				state.lastpos = new float[3];
-				state.exttemps = new float[MAX_EXTRUDER_NR];
+				state.exttemps = new float[Constants.MAX_EXTRUDER_NR];
 				state.swallows=0;
 				state.unexpected=0;
 				state.timeouts=0;
@@ -613,19 +615,9 @@ public class SerialPrinter implements Runnable, Printer {
 			if (recv.containsOK()) {
 				//cons.log(serial, "OK");
 				if (code == M105 && recv.containsTx()) { // Parse temperature
-					try {
-						int idx1 = recv.indexOf('T');
-						int idx = recv.indexOf('@');
-						if(idx == -1 || idx1 ==-1){
-							state.tempstring = recv.subSequence(3, recv.length(),state.tempstring);
-						}else{
-							state.tempstring = recv.subSequence(idx1, idx,state.tempstring);
-						}
-						cons.setTemp(state.tempstring,state.activeExtr);
-					} catch (Exception e) {
-						cons.appendText("Error parsing temperature: "+recv.toString());
-						e.printStackTrace();
-					}
+					state.temperature.setTempstring(recv);
+					state.temperature.setActiveExtruder(state.activeExtr);
+					cons.setTemp(state.temperature);
 				}else if (code == M105 && recv.isPlainOK()){
 						state.swallows++;
 					if(state.debug || logerrors){						
@@ -674,8 +666,9 @@ public class SerialPrinter implements Runnable, Printer {
 			}
 			//Check if temperature field needs to be updated (M109,m116,..)
 			if (recv.containsTx()) { // Parse temperature
-				state.tempstring = recv.subSequence(0, recv.length(), state.tempstring);
-				cons.setTemp(state.tempstring,state.activeExtr);
+				state.temperature.setTempstring(recv);
+				state.temperature.setActiveExtruder(state.activeExtr);
+				cons.setTemp(state.temperature);
 				if(code == M105) break;
 			}
 			if( recv.containsWait()){
@@ -714,6 +707,8 @@ public class SerialPrinter implements Runnable, Printer {
 		
 		
 	}
+
+
 
 	/**
 	 * Print 
@@ -1044,8 +1039,8 @@ public class SerialPrinter implements Runnable, Printer {
 				tool=0;
 			}
 		}
-		if(tool > MAX_EXTRUDER_NR-1){
-			cons.appendText("Max extruder number is "+(MAX_EXTRUDER_NR-1));
+		if(tool > Constants.MAX_EXTRUDER_NR-1){
+			cons.appendText("Max extruder number is "+(Constants.MAX_EXTRUDER_NR-1));
 			return false;
 		}
 		boolean ret = addToPrintQueue(GCodeFactory.getGCode("T"+tool, -1002), true);
@@ -1062,7 +1057,7 @@ public class SerialPrinter implements Runnable, Printer {
 	 * Set Number of extruders
 	 */
 	public boolean setExtruderNumber(int nr){
-		if(nr == 0 || nr > MAX_EXTRUDER_NR-1){
+		if(nr == 0 || nr > Constants.MAX_EXTRUDER_NR){
 			return false;
 		}
 		extrnr=nr;
@@ -1223,7 +1218,7 @@ public class SerialPrinter implements Runnable, Printer {
 				}
 			}
 			str.append("Temperature:");
-			str.append(state.tempstring.toString().trim());
+			str.append(state.temperature.tempstring.toString().trim());
 			str.append(Constants.newlinec);
 			
 			str.append("TempWatch Intervall:");

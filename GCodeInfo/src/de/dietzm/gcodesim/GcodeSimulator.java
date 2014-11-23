@@ -60,6 +60,7 @@ import javax.swing.KeyStroke;
 
 import de.dietzm.Constants;
 import de.dietzm.Position;
+import de.dietzm.Temperature;
 import de.dietzm.gcodes.GCodeFactory;
 import de.dietzm.gcodes.bufferfactory.GCodeFactoryBuffer;
 import de.dietzm.gcodesim.GcodePainter.Commands;
@@ -275,7 +276,7 @@ public class PrintrPanel extends JPanel {
 		awt = new AWTGraphicRenderer(bedsizeX, bedsizeY,this,theme);
 		float fac = (awt.getHeight()-(55+(awt.getHeight()/12)))/bedsizeY;
 	//	GCodeFactory.setCustomFactory(new GCodeFactoryBuffer());
-		gp = new GcodePainter(awt,true,fac,bedsizeX,bedsizeY,GcodePainter.zoommod); //todo pass bedsize
+		gp = new GcodePainter(awt,true,fac,bedsizeX,bedsizeY,GcodePainter.defaultzoommod); //todo pass bedsize
 		if(!dualoffsetXY.equals("0:0")){
 			Position pos = Constants.parseOffset(dualoffsetXY);
 			gp.setExtruderOffset(1, pos);
@@ -540,7 +541,7 @@ public class PrintrPanel extends JPanel {
 					}
 					
 					@Override
-					public void setTemp(CharSequence temp,int extruder) {
+					public void setTemp(Temperature temp) {
 						// TODO Auto-generated method stub
 						
 					}
@@ -859,7 +860,7 @@ public class PrintrPanel extends JPanel {
 					updateSize(showdetails);
 				}else{
 					//Speedup (only if in left box
-					if(arg0.getPoint().x < bedsizeX * gp.getZoom()+gp.gap ){
+					if(arg0.getPoint().x < bedsizeX * gp.getZoom()+gp.defaultgap ){
 						if( mwrot > 0){
 							gp.toggleSpeed(false);
 						}else{
@@ -901,13 +902,13 @@ public class PrintrPanel extends JPanel {
 				}else if(arg0.getButton() == MouseEvent.BUTTON2){
 						gp.showHelp();
 				}else{
-					int speedboxpos = (int)(((bedsizeX*gp.getZoom()+gp.gap)/100)*82)+6;
-					int speedboxsize=(int)((bedsizeX*gp.getZoom()+gp.gap)/100)*12;
+					int speedboxpos = (int)(((bedsizeX*gp.getZoom()+gp.defaultgap)/100)*82)+6;
+					int speedboxsize=(int)((bedsizeX*gp.getZoom()+gp.defaultgap)/100)*12;
 					int mousex=arg0.getPoint().x;
 					//if clicked on speedup label, toggle pause
 					if(mousex >= speedboxpos && mousex <= speedboxpos+speedboxsize && arg0.getPoint().y > bedsizeY*gp.getZoom()+55){
 						gp.togglePause();
-					}else if(arg0.getPoint().x > bedsizeX * gp.getZoom()+gp.gap ){
+					}else if(arg0.getPoint().x > bedsizeX * gp.getZoom()+gp.defaultgap ){
 						gp.toggleType();
 					}else{
 						if(arg0.isAltDown() || arg0.isControlDown()){

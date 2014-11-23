@@ -1,9 +1,11 @@
 package de.dietzm.print;
 
+import de.dietzm.Temperature;
+
 public interface ConsoleIf {
 	public void appendText(CharSequence ... txt);
 	public void appendTextNoCR(CharSequence ... txt);
-	public void setTemp(CharSequence temp, int extruder);
+	public void setTemp(Temperature temp);
 	public void clearConsole();	
 	public int chooseDialog(final String[] items,final String[] values, int type);
 	public void setWakeLock(boolean active);
