@@ -9,9 +9,11 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsEnvironment;
+import java.awt.RenderingHints;
 import java.awt.Toolkit;
 import java.awt.geom.Line2D;
 import java.awt.image.BufferedImage;
+import java.awt.image.renderable.RenderableImage;
 
 import de.dietzm.Position;
 import de.dietzm.SerialIO;
@@ -44,7 +46,7 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 	// Stroke 0=travel 1=print
 	private BasicStroke stroke[] = {
 			new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND, 1, new float[] { 1, 2 }, 0),
-			new BasicStroke(3.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND),
+			new BasicStroke(2.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND),
 			new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND, 1, new float[] { 1, 6 }, 0) ,
 			new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND)};
 
@@ -58,6 +60,11 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 		g = (Graphics2D) offimg.getGraphics();
 		g.setBackground(Color.black);
 		g.setFont(Font.decode(Font.SANS_SERIF));
+		RenderingHints rh = new RenderingHints(
+	             RenderingHints.KEY_ANTIALIASING,
+	             RenderingHints.VALUE_ANTIALIAS_ON);
+		rh.add(new RenderingHints(RenderingHints.KEY_RENDERING,RenderingHints.VALUE_RENDER_QUALITY));
+		g.setRenderingHints(rh);
 		this.frame = frame;
 
 		// Experiment with more colors
