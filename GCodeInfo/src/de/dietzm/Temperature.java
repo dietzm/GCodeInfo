@@ -161,8 +161,8 @@ public class Temperature {
 							i++;
 						}
 						startidx = i;
-						while (res[i] != 32 && res[i] != 47 && i < tempstring.length()) { // next
-							// space or /
+						while ( i < (tempstring.length()-1) && res[i] != 0 && res[i] != 32 && res[i] != 47 && res[i]!= 64) { // next
+							// space or / or @
 							i++;
 						}
 						stopidx = i;
@@ -177,7 +177,7 @@ public class Temperature {
 						if (res[i] == 47) {
 							i++;
 							startidx = i;
-							while (i < tempstring.length() && res[i] != 32 && res[i] != 47 && res[i] != 0) { // next
+							while (i < (tempstring.length()-1) && res[i] != 0 && res[i] != 32 && res[i] != 47 && res[i] != 0  && res[i]!= 64) { // next
 								// space or /
 								i++;
 							}
@@ -252,6 +252,17 @@ public class Temperature {
 				
 		bheat = (((int)progress-5)*((max-min)/max)+min);
 		System.out.println("Rounded Heat:"+bheat+"   "+(int)bheat);
+		ReceiveBuffer rb = new ReceiveBuffer(200);
+		Temperature temp = new Temperature();
+		//rb.put("T:22.0 /0.0 B:0.5 /0.0 @0 B@:0".getBytes());
+		rb.put("T:199.9 /200.0 @19 B:53.0 /50.0 @0 HC:27.0 /0.0 @0 ".getBytes());
+		
+		//rb.put("T:20.00 E:00 B:40.01@".getBytes());
+		
+		temp.setTempstring(rb);
+		System.out.println(temp.toString());
+		System.out.println("FL:"+temp.getBedTempTargetFloat());
+		
 	}
 	
 }
