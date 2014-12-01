@@ -46,6 +46,8 @@ public class SerialPrinter implements Runnable, Printer {
 	private boolean onconnect =false;
 	private boolean homexyfinish = false; 
 	private int extrnr = 1;
+	private boolean strictmode = true;
+	private int mintimout=50;
 	
 	protected boolean isHomeXYfinish() {
 		return homexyfinish;
@@ -552,7 +554,10 @@ public class SerialPrinter implements Runnable, Printer {
 				float resptime = Constants.round3digits(((float) (System.currentTimeMillis() - sendtime)) / 1000);
 				cons.appendText("Wait for printer response: ", String.valueOf(resptime) , "s");
 			}
-			if (recv.isEmpty() || recv.isTimedout()) {
+			if (recv.isEmpty() || recv.isTimedout() ) {
+				if(!strictmode && readtimeout == mintimout){
+					break;
+				}
 				state.timeouts++;
 				state.timeoutline=state.lineidx;
 				if(state.debug || logerrors){
@@ -615,9 +620,14 @@ public class SerialPrinter implements Runnable, Printer {
 			if (recv.containsOK()) {
 				//cons.log(serial, "OK");
 				if (code == M105 && recv.containsTx()) { // Parse temperature
-					state.temperature.setTempstring(recv);
-					state.temperature.setActiveExtruder(state.activeExtr);
-					cons.setTemp(state.temperature);
+					try {
+						state.temperature.setTempstring(recv);
+						state.temperature.setActiveExtruder(state.activeExtr);
+						cons.setTemp(state.temperature);
+					} catch (Exception e) {
+						//Ignore parsing errors
+						break;
+					}
 				}else if (code == M105 && recv.isPlainOK()){
 						state.swallows++;
 					if(state.debug || logerrors){						
@@ -666,16 +676,22 @@ public class SerialPrinter implements Runnable, Printer {
 			}
 			//Check if temperature field needs to be updated (M109,m116,..)
 			if (recv.containsTx()) { // Parse temperature
-				state.temperature.setTempstring(recv);
-				state.temperature.setActiveExtruder(state.activeExtr);
-				cons.setTemp(state.temperature);
+				try {
+					state.temperature.setTempstring(recv);
+					state.temperature.setActiveExtruder(state.activeExtr);
+					cons.setTemp(state.temperature);
+				} catch (Exception e) {
+					// handle parsing errors 
+					break;
+				}
 				if(code == M105) break;
+				continue; //Smoothieware might send T: response even if we are already executing a buffered cmd
 			}
 			if( recv.containsWait()){
 				cons.log(serial, "Wait received");
 				continue;
 			}
-			if(code.isBuffered() && !recv.startsWithEcho() && !recv.startsWithGO()){ //For buffered commands we only expect ok
+			if(code.isBuffered() && !recv.startsWithEcho() && !recv.startsWithGO() && !recv.startsWithComment()){ //For buffered commands we only expect ok
 				state.unexpected++;
 				cons.appendText("Unexpected response from printer: "+recv.toString());
 				cons.log("ERROR", "Unexpected response from printer");
@@ -986,6 +1002,16 @@ public class SerialPrinter implements Runnable, Printer {
 			if(gctimeout == 0) return 6000;
 			return gctimeout;
 		}
+		//Witbox special handlin ... supresses ok when doing G28
+		if( !strictmode 
+				&& !GCDEF.G1.equals(code.getGcodeId()) 
+				&& !GCDEF.G2.equals(code.getGcodeId()) 
+				&& !GCDEF.G0.equals(code.getGcodeId())
+				&& !GCDEF.M105.equals(code.getGcodeId())
+				){
+			cons.log("serial","Witbox low timeout workaround");
+			return mintimout;
+		}
 		
 		if(code.isLongRunning()) return 60000; //long running gcodes timeout after 60sec
 		
@@ -1025,6 +1051,16 @@ public class SerialPrinter implements Runnable, Printer {
 		cons.appendText("Set move distance to " + steps + "mm");
 		state.distance = steps;
 
+	}
+	
+	/**
+	 * Allow to disable strict mode.
+	 * Strict mode means that an "ok" acknowledgement is needed for all gcodes
+	 * Non-Strict mode will only require it for G0/1/2/3+M105
+	 * @param strict
+	 */
+	public void setStrictMode(boolean strict){
+		this.strictmode=strict;
 	}
 	
 	/**

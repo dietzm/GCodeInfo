@@ -132,6 +132,17 @@ public class ReceiveBuffer implements CharSequence,Appendable {
 		return array[0]==103 && array[1]==111; //ASCII
 	}
 	
+	
+	/**
+	 * Smootieware might send "unexpected" responses
+	 * e.g.  // action:pause commands.
+	 * @return 
+	 */
+	public boolean startsWithComment(){
+		if(len<2) return false;
+		return array[0]==47 && array[1]==47; //ASCII
+	}
+	
 	public boolean containsOK(){
 		if(len<2) return false;
 		for (int i = 0; i < len-1; i++) {
@@ -366,8 +377,8 @@ public class ReceiveBuffer implements CharSequence,Appendable {
 	}
 	
 	public MemoryEfficientString copyInto(MemoryEfficientString str) {
-		  if (len > str.getBytes().length) {
-			    throw new IllegalArgumentException("Illegal range for sequence of length " + length());
+		  if (len > str.length()) {
+			    throw new IllegalArgumentException("Illegal range for sequence of length " + length() +"/"+str.length());
 			  }
 			  byte[] newdata = str.getBytes();
 			  int tgtlen = Math.min(len, str.length());
