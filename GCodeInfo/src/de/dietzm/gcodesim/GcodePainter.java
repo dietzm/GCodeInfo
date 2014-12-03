@@ -30,6 +30,7 @@ public class GcodePainter implements Runnable {
 	private int defbuffersize = 15;
 	private int header = 35; 
 	public static float boxheightfactor = 10f;
+	public boolean roundbed=false;
 	
 	public Position[] extruderOffset = {null,null,null,null}; //TODO make it configureable
 	private int activeExtruder = 0;
@@ -302,6 +303,10 @@ public class GcodePainter implements Runnable {
 	public void setPrintercon(Printer printercon) {
 		this.printer = printercon;
 	}
+	
+	public void setBedIsRound(boolean round){
+		roundbed=round;
+	}
 
 	int detailstype=0;
 	
@@ -337,6 +342,11 @@ public class GcodePainter implements Runnable {
 			Yoffset = (int)(bedsizeY/2-midpoint);
 		}else{
 			Yoffset=0;
+		}
+		if(roundbed){
+			//zero is always in the center of the round bed
+			Xoffset=bedsizeX/2;
+			Yoffset=bedsizeY/2;
 		}
 		//System.out.println("X/Y Offset:"+Xoffset+"/"+Yoffset);
 	}
@@ -605,7 +615,12 @@ public class GcodePainter implements Runnable {
 		//draw front & side grid
 		g2.drawline(bedsizeX * zoom + gap, bedsizeY*zoomsmall, bedsizeX * zoom + gap +60, bedsizeY * zoomsmall-60);
 		g2.drawline(bedsizeX * zoom + gap+bedsizeX * zoomsmall, bedsizeY*zoomsmall, bedsizeX * zoom + gap +bedsizeX *zoomsmall -60, bedsizeY * zoomsmall-60);
-																
+		
+		//Draw circle for round bed
+		if(roundbed){
+			g2.setStroke(1);
+			g2.drawArc(0, 0, (int)(bedsizeX*zoom), (int)(bedsizeY*zoom), 0,360);
+		}
 	
 		//Draw zero position on bed
 		if(Xoffset != 0 || Yoffset != 0){
@@ -629,9 +644,9 @@ public class GcodePainter implements Runnable {
 	}
 
 	private float printLine(GraphicRenderer g2, Position lastpos, Position pos, float zpos, float time,long starttime,boolean travel) {
-		float x1 = (lastpos.x + Xoffset) * zoom;
+		float x1 = Math.min((lastpos.x + Xoffset) * zoom,bedsizeX*zoom);
 		float y1 = (bedsizeY * zoom) - ((lastpos.y + Yoffset) * zoom);
-		float x2 = (pos.x + Xoffset) * zoom;
+		float x2 = Math.min((pos.x + Xoffset) * zoom, bedsizeX*zoom);
 		float y2 = (bedsizeY * zoom) - ((pos.y + Yoffset) * zoom);
 
 		if (!ffLayer && fftoGcode == 0 && fftoLayer == 0 && speedup < 10 ) {
