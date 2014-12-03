@@ -175,6 +175,15 @@ public class ReceiveBuffer implements CharSequence,Appendable {
 		return false; //ASCII
 	}
 	
+	//Witbix does not send ok with "End file list" when doing sd card print
+	public boolean containsEnd(){
+		if(len<4) return false;
+		for (int i = 0; i < len-3; i++) {
+			if(array[i]==69 && array[i+1]==110 && array[i+2]==100 && array[i+3]==32) return true;
+		}
+		return false; //ASCII
+	}
+	
 	//Repetier firmware sends Resend:x when command was invalid
 	public boolean containsResend(){
 		if(len<6) return false;

@@ -617,7 +617,7 @@ public class SerialPrinter implements Runnable, Printer {
 			 * update temperature in case of M105 command print out debug info
 			 * in case of testruns
 			 */
-			if (recv.containsOK()) {
+			if (recv.containsOK() || (!strictmode && code == M20 && recv.containsEnd())) {
 				//cons.log(serial, "OK");
 				if (code == M105 && recv.containsTx()) { // Parse temperature
 					try {
@@ -1008,6 +1008,7 @@ public class SerialPrinter implements Runnable, Printer {
 				&& !GCDEF.G2.equals(code.getGcodeId()) 
 				&& !GCDEF.G0.equals(code.getGcodeId())
 				&& !GCDEF.M105.equals(code.getGcodeId())
+				&& !GCDEF.M20.equals(code.getGcodeId())
 				){
 			cons.log("serial","Witbox low timeout workaround");
 			return mintimout;
