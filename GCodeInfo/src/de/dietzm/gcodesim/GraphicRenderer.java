@@ -13,6 +13,7 @@ public interface GraphicRenderer {
 	
 	public void setPos(int x, int y);
 	public void drawArc(int x,int y,int width, int height,int theta, int delta);
+	public void fillArc(int x, int y, int width, int height, int theta, int delta, int colitem) ;
 	public void fillrect(float x,float y, float w,float h);
 	public void drawtext(CharSequence text,float x, float y);
 	public void clearrect(float x,float y, float w,float h,int colitem);

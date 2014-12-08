@@ -303,6 +303,14 @@ public class GcodePainter implements Runnable {
 	public void setPrintercon(Printer printercon) {
 		this.printer = printercon;
 	}
+	/**
+	 * Adjust ratio
+	 * @param mod
+	 */
+	public void setZoomMod(float mod){
+		zoommod=mod;
+		setCmd(Commands.REPAINTLAYERS);
+	}
 	
 	public void setBedIsRound(boolean round){
 		roundbed=round;
@@ -572,6 +580,16 @@ public class GcodePainter implements Runnable {
 		}
 
 	private void printBed(GraphicRenderer g2) {
+		int rectback =  print?1:0;
+		int roundback = rectback;
+		if(roundbed){
+			rectback = print?0:1; //invert the background color
+		}
+		//bed and side view
+		g2.clearrect(0, 0, g2.getWidth(),g2.getHeight(),roundback);
+		//Bed only
+		g2.clearrect(0, 0, bedsizeX * zoom ,bedsizeY * zoom ,rectback);
+		
 		g2.setColor(colNR+1);
 		g2.setStroke(3);
 		g2.drawrect(0, 0, bedsizeX * zoom, bedsizeY * zoom); // Draw print bed
@@ -605,9 +623,17 @@ public class GcodePainter implements Runnable {
 		g2.drawtext("Side View", bedsizeX * zoom + gap,fsize+3,bedsizeX*zoomsmall);
 		g2.drawtext("Model Details", bedsizeX * zoom + gap,bedsizeY * zoomsmall+fsize+5,bedsizeX*zoomsmall*2);
 		
+		//Draw circle for round bed
+		if(roundbed){
+			g2.setStroke(0);
+			g2.fillArc(0, 0, (int)(bedsizeX*zoom), (int)(bedsizeY*zoom), 0,360,roundback);
+			g2.setColor(colNR);
+			g2.drawArc(0, 0, (int)(bedsizeX*zoom), (int)(bedsizeY*zoom), 0,360);
+		}
+		
 		//Draw grid
 		g2.setStroke(2);
-		g2.setColor(colNR+1);
+		g2.setColor(colNR);
 		for (int i = 10; i < bedsizeX; i=i+10) {
 			g2.drawline(i*zoom,0,i*zoom,bedsizeY*zoom);
 			g2.drawline(0,i*zoom,bedsizeX*zoom,i*zoom);	
@@ -616,11 +642,7 @@ public class GcodePainter implements Runnable {
 		g2.drawline(bedsizeX * zoom + gap, bedsizeY*zoomsmall, bedsizeX * zoom + gap +60, bedsizeY * zoomsmall-60);
 		g2.drawline(bedsizeX * zoom + gap+bedsizeX * zoomsmall, bedsizeY*zoomsmall, bedsizeX * zoom + gap +bedsizeX *zoomsmall -60, bedsizeY * zoomsmall-60);
 		
-		//Draw circle for round bed
-		if(roundbed){
-			g2.setStroke(1);
-			g2.drawArc(0, 0, (int)(bedsizeX*zoom), (int)(bedsizeY*zoom), 0,360);
-		}
+
 	
 		//Draw zero position on bed
 		if(Xoffset != 0 || Yoffset != 0){
@@ -840,7 +862,7 @@ public class GcodePainter implements Runnable {
 				fanspeed=0;
 				updateDetailLabels();
 				updateSpeedupLabel();
-				g2.clearrect(0, 0, g2.getWidth(),g2.getHeight(),print?1:0);
+				
 				if(model.getExtruderCount() > 1){
 					//only paint multiple extruder if model makes use of them
 					g2.setExtruderOffset(extruderOffset,zoom);

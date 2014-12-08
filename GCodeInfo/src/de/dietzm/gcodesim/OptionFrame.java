@@ -65,6 +65,14 @@ public class OptionFrame extends JFrame implements ActionListener{
 			}
 			return;
 		}
+		if(arg0.getActionCommand().equals("roundbed")){		
+			JCheckBox sel=	(JCheckBox) arg0.getSource();
+			GcodeSimulator.roundbed=sel.isSelected();
+			GcodeSimulator.storeConfig();
+			JOptionPane.showMessageDialog(null, "Please restart GCodeSimulator now");
+			setVisible(false);
+			return;
+		}
 		
 	}
 
@@ -113,6 +121,14 @@ public class OptionFrame extends JFrame implements ActionListener{
 		combo.addActionListener(this);
 		pan.add(bz);
 		pan.add(combo );
+		
+		JLabel rl = new JLabel("Round Bed");
+		JCheckBox round = new JCheckBox();
+		round.setActionCommand("roundbed");
+		round.setSelected(GcodeSimulator.roundbed);
+		round.addActionListener(this);
+		pan.add(rl );
+		pan.add(round );
 		
 		JLabel th = new JLabel("Theme:");
 		String[] themes = {"Default","Gray","Autumn"};

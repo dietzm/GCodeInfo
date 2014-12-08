@@ -83,12 +83,13 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 		// colors[colors.length-1]=Color.darkGray;
 		//int theme= 5;
 		if(theme.equalsIgnoreCase("default")){
-			backcol= new Color[] { Color.BLACK, new Color(0, 90, 120),Color.red};
+			backcol= new Color[] { Color.BLACK, new Color(0, 21, 40),new Color(0,39,52)};
 			colors= new Color[] { Color.RED, Color.BLUE, Color.YELLOW, Color.CYAN, Color.GREEN, Color.MAGENTA,
 					Color.LIGHT_GRAY, Color.WHITE, Color.DARK_GRAY };
+
 		}else if(theme.equalsIgnoreCase("gray")){
 			//GRAY Theme
-			backcol= new Color[] { new Color(220,220,220), new Color(0, 90, 120),Color.red};
+			backcol= new Color[] { new Color(220,220,220), new Color(160, 191, 210),new Color(180,180,180)};
 			colors = new Color[15];
 			int val= 35;
 			for (int i = 0; i < 13; i++) {
@@ -173,6 +174,11 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 
 	public void drawArc(int x, int y, int width, int height, int theta, int delta) {
 		g.drawArc(x, y, width, height, theta, delta);
+	}
+	
+	public void fillArc(int x, int y, int width, int height, int theta, int delta, int colitem) {
+		g.setColor(backcol[colitem]);
+		g.fillArc(x, y, width, height, theta, delta);
 	}
 	public int getColorNr(){
 		return colors.length;

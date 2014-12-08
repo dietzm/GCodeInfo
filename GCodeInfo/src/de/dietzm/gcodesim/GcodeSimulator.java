@@ -58,6 +58,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 
+
 import de.dietzm.Constants;
 import de.dietzm.Position;
 import de.dietzm.Temperature;
@@ -163,6 +164,7 @@ public class PrintrPanel extends JPanel {
 	KeyListener keyl = null;
 	boolean showprintpanel = false;
 	boolean showbanner = true;
+	static boolean roundbed=false;
 	JPanel printpanel = null;
 	JButton banner = null;
 	static String theme = "default";
@@ -282,6 +284,7 @@ public class PrintrPanel extends JPanel {
 			gp.setExtruderOffset(1, pos);
 			gp.setExtruderOffset(0, new Position(0,0));
 		}
+		gp.setBedIsRound(roundbed);
 	//	System.out.println("Zoom:"+fac);
 		//gp.setZoom((fac));
 		updateSize(showdetails);
@@ -429,6 +432,7 @@ public class PrintrPanel extends JPanel {
 				networkip  = prop.getProperty("networkip","192.168.0.50");
 				String bedsize = prop.getProperty("bedsize","200");
 				theme = prop.getProperty("theme","default");
+				roundbed = Boolean.parseBoolean(prop.getProperty("roundbed","false"));
 				dualoffsetXY=prop.getProperty("dualoffsetXY","0:0");
 				bedsizeX=Integer.parseInt(bedsize);
 				bedsizeY=bedsizeX;
@@ -460,6 +464,7 @@ public class PrintrPanel extends JPanel {
 				prop.setProperty("networkip", networkip);
 				prop.setProperty("bedsize", String.valueOf(bedsizeX));
 				prop.setProperty("theme", theme);
+				prop.setProperty("roundbed", String.valueOf(roundbed));
 				prop.setProperty("dualoffsetXY", dualoffsetXY);	
 				prop.store(new FileOutputStream(config),"Gcode Simulator Config");
 			} catch (FileNotFoundException e) {
@@ -833,7 +838,7 @@ public class PrintrPanel extends JPanel {
 	private void updateSize(boolean details) {
 		if((getExtendedState() & Frame.MAXIMIZED_BOTH) == 0){
 			int[] sz = gp.getSize(details);
-			int width = sz[0]+70; //70 for button bar
+			int width = sz[0]+65; //70 for button bar
 			int height = sz[1];
 			if(showprintpanel){
 				width=width+210;
@@ -841,6 +846,7 @@ public class PrintrPanel extends JPanel {
 			if(showbanner){
 				height=height+80;
 			}
+			height=height+60;//window decorations
 			setSize(width,height);
 		}
 	}
@@ -953,6 +959,13 @@ public class PrintrPanel extends JPanel {
 					//gp.setZoom(z*(fac));
 					gp.setZoom((fac));
 				}
+				
+				//Ratio
+				System.out.println("Update ratio");
+				gp.setZoomMod(getRatioMod());
+				repaint();
+				
+				
 			}
 		
 		});
@@ -1074,6 +1087,29 @@ public class PrintrPanel extends JPanel {
 	 */
 	public void update1(Graphics g) {
 		paint(g);
+	}
+
+	private float getRatioMod() {
+		//Calculate default ratio w/h for gp (based on default zoommod)
+		float defaultratio = (GcodePainter.defaultgap +bedsizeX + (bedsizeX / GcodePainter.defaultzoommod *2)) / (bedsizeY + (bedsizeY/GcodePainter.boxheightfactor)); 
+		//Get available screen space
+		int maxwid = getWidth();
+		float maxhigh2 = getHeight()-(showbanner?80:0);
+		//Calculate effective screen ratio 
+		float screenratio = ((float)maxwid/(float)maxhigh2);
+		
+		if(screenratio < 1.465f){
+			//4:3 screen, prevent details column from getting too small
+			screenratio = 1.465f;
+		}
+		if(screenratio > 2){
+			//loooong screen , prevent column from getting to wide
+			screenratio = 2f;
+		}
+		
+		//calculate new zoommod based on screen ratio to align ratios
+		return bedsizeX *2 / ((screenratio * (bedsizeY + (bedsizeY/GcodePainter.boxheightfactor))) - GcodePainter.defaultgap - bedsizeX );
+		
 	}
 
 }
