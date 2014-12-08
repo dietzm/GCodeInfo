@@ -172,6 +172,10 @@ public class SerialPrinter implements Runnable, Printer {
 	public void setConsole(ConsoleIf conso){
 		this.cons=conso;
 	}
+	
+	public ConsoleIf getConsole(){
+		return this.cons;
+	}
 
 	/**
 	 * Add a gcode to the print queue for async execution
@@ -305,7 +309,7 @@ public class SerialPrinter implements Runnable, Printer {
 				printQueue.clear();
 				cons.updateState(States.RESET,States.RESETMSG,0);
 				mConn.reset();
-				ReceiveBuffer recv = readResponse(10000);
+				ReceiveBuffer recv = readResponse(10000,1000);
 				if (recv.isEmpty()) {
 					cons.appendText("No printer response after reset ! Your hardware might not support reset over serial.");
 				} else {
@@ -788,21 +792,32 @@ public class SerialPrinter implements Runnable, Printer {
 
 	/**
 	 * Read from serial port for a printer response
-	 * 
+	 * @param timeout in milliseconds
 	 * @return ReceiveBuffer
 	 */
-	public ReceiveBuffer readResponse(int timeout) {
+	public ReceiveBuffer readResponse(int timeout) {		
+		return readResponse(timeout,0);
+	}
+	
+	
+	/**
+	 * Read from serial port for a printer response
+	 * @param timeout , read until timeout is reached or \n is received
+	 * @param minwait time , even if \n is received , should always be less then timeout 
+	 * @return ReceiveBuffer
+	 */
+	public ReceiveBuffer readResponse(int timeout, int minwait) {
 		ioBuffer.clear();// Make sure the buffer is cleared before
 									// receiving new data
 		long time = System.currentTimeMillis();
 		while ((System.currentTimeMillis() - time) < timeout && isConnected() && !state.reset) {
-			mConn.read(ioBuffer,timeout);
+			mConn.read(ioBuffer,minwait!=0?minwait:timeout);
 			if(state.debug){
 				cons.log(serial, "Data Received:" + ioBuffer.toString().trim() );
 			}
 			
 			// wait for full lines before notifying
-			if (ioBuffer.endsWithNewLine()) {
+			if ((System.currentTimeMillis() - time) > minwait && ioBuffer.endsWithNewLine()) {
 				return ioBuffer;
 			} else {
 				if(state.debug){
@@ -999,7 +1014,7 @@ public class SerialPrinter implements Runnable, Printer {
 	int gettimeout(GCode code){
 		//Default values for init
 		if(code == null){
-			if(gctimeout == 0) return 6000;
+			if(gctimeout == 0) return 7000;
 			return gctimeout;
 		}
 		//Witbox special handlin ... supresses ok when doing G28
