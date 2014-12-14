@@ -143,6 +143,7 @@ public class SerialPrinter implements Runnable, Printer {
 		// public boolean absolute
 		boolean testrun = false;
 		int lineidx=0;
+		String initresponse="";
 
 		public float getX() {
 			return lastpos[0];
@@ -816,12 +817,14 @@ public class SerialPrinter implements Runnable, Printer {
 				cons.log(serial, "Data Received:" + ioBuffer.toString().trim() );
 			}
 			
+			//Check if minimum wait time is reached (used for init/reset)
+			boolean ismin = (System.currentTimeMillis() - time) >= minwait ;
 			// wait for full lines before notifying
-			if ((System.currentTimeMillis() - time) > minwait && ioBuffer.endsWithNewLine()) {
+			if ( ismin && ioBuffer.endsWithNewLine()) {
 				return ioBuffer;
 			} else {
 				if(state.debug){
-					cons.log(serial, "Incomplete response, wait for more inBuffer="+ioBuffer.length());
+					cons.log(serial, "Incomplete response, wait for more inBuffer="+ioBuffer.length()+(ismin?" mintime":""));
 				}
 			}
 		}
@@ -1014,7 +1017,7 @@ public class SerialPrinter implements Runnable, Printer {
 	int gettimeout(GCode code){
 		//Default values for init
 		if(code == null){
-			if(gctimeout == 0) return 7000;
+			if(gctimeout == 0) return 6000;
 			return gctimeout;
 		}
 		//Witbox special handlin ... supresses ok when doing G28
@@ -1336,8 +1339,14 @@ public class SerialPrinter implements Runnable, Printer {
 					str.append(Constants.newlinec);
 				}
 			}
+			
+			str.append("Init response:" );
+			str.append(state.initresponse);
+			str.append(Constants.newlinec);
+
 			str.append("--------------------------------------------");
 			str.append(Constants.newlinec);
+			
 			return str.toString();
 	}
 
