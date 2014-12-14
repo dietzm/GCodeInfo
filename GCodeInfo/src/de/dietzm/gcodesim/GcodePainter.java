@@ -25,6 +25,7 @@ public class GcodePainter implements Runnable {
 	public static enum Commands {STEPBACK,STEP50X,STEP50XBACK,RESTART,NEXTLAYER,NEXTLAYER10,REPAINTLABEL,DEBUG,EXIT,OPENFILE,NOOP,PRINT,REPAINTLAYERS,PREVIOUSLAYER,HELP,REANALYSE}; 
 	public int bedsizeX = 200;
 	public int bedsizeY = 200;
+	public int bedsizeDiff=0;
 	public int colNR = 7;
 	public boolean painttravel = true;
 	private int defbuffersize = 15;
@@ -329,6 +330,8 @@ public class GcodePainter implements Runnable {
 		gap=(int)(gap*zoom);
 		bedsizeX=bedx;
 		bedsizeY=bedy;
+		//bedsizeDiff= -50;
+		
 		zoommod=zoomaspect;		
 	}
 
@@ -355,6 +358,15 @@ public class GcodePainter implements Runnable {
 			//zero is always in the center of the round bed
 			Xoffset=bedsizeX/2;
 			Yoffset=bedsizeY/2;
+		}
+		if(bedsizeDiff != 0){
+			if(bedsizeDiff < 0){
+				Xoffset=(bedsizeX-(bedsizeX+bedsizeDiff))/2;
+				Yoffset=0;
+			}else{
+				Yoffset=(bedsizeY-(bedsizeY-bedsizeDiff))/2;
+				Xoffset=0;
+			}
 		}
 		//System.out.println("X/Y Offset:"+Xoffset+"/"+Yoffset);
 	}
@@ -582,7 +594,7 @@ public class GcodePainter implements Runnable {
 	private void printBed(GraphicRenderer g2) {
 		int rectback =  print?1:0;
 		int roundback = rectback;
-		if(roundbed){
+		if(roundbed || bedsizeDiff != 0){
 			rectback = print?0:1; //invert the background color
 		}
 		//bed and side view
@@ -629,6 +641,19 @@ public class GcodePainter implements Runnable {
 			g2.fillArc(0, 0, (int)(bedsizeX*zoom), (int)(bedsizeY*zoom), 0,360,roundback);
 			g2.setColor(colNR);
 			g2.drawArc(0, 0, (int)(bedsizeX*zoom), (int)(bedsizeY*zoom), 0,360);
+		}
+		
+		//non square bed sizes
+		if(bedsizeDiff != 0){
+			//Bed only
+			g2.setStroke(1);
+			if(bedsizeDiff < 0){
+				g2.clearrect((bedsizeX-(bedsizeX+bedsizeDiff))/2* zoom, 0 ,(bedsizeX+bedsizeDiff) * zoom,bedsizeY *zoom ,roundback);
+				g2.drawrect((bedsizeX-(bedsizeX+bedsizeDiff))/2* zoom, 0 ,(bedsizeX+bedsizeDiff) * zoom,bedsizeY *zoom );
+			}else{
+				g2.clearrect(0, (bedsizeY-(bedsizeY-bedsizeDiff))/2 * zoom, bedsizeX * zoom ,(bedsizeY-bedsizeDiff) * zoom ,roundback);
+				g2.drawrect(0, (bedsizeY-(bedsizeY-bedsizeDiff))/2 * zoom, bedsizeX * zoom ,(bedsizeY-bedsizeDiff) * zoom );
+			}
 		}
 		
 		//Draw grid
