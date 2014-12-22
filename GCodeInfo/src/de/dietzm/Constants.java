@@ -211,13 +211,18 @@ public class Constants {
 	
 	public final static String RETRACT_LABEL ="R";
 	public final static String XYSPEED_LABEL ="XY Speed";
+	public final static String AVGXYSPEED_LABEL ="Average Speed";
+	public final static String LAYERH_LABEL ="Layer Height";
 	public final static String ESPEED_LABEL ="E Speed";
+	public final static String ZH_LABEL ="Z Height";
 	public final static String ZPOS_LABEL ="Z Position";
 	public final static String FAN_LABEL ="Fan";
 	public final static String PRINT_LABEL ="Print";
 	public final static String PRINTSTART_LABEL ="#";
+	public final static String PRICE_LABEL ="Price";
 	public final static String SPEEDUP_LABEL ="Speedup";
 	public final static String REMTIME_LABEL ="Remaining Time";
+	public final static String PRINTTIME_LABEL ="Print Time";
 	public final static String LAYER_LABEL ="Layer #";
 	public final static String ZERO_LABEL ="0";
 	public final static String FANS0_LABEL ="";
