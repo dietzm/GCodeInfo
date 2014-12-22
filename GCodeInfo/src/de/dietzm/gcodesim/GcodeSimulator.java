@@ -341,7 +341,8 @@ public class PrintrPanel extends JPanel {
 			} catch (InterruptedException e) {
 		}
 		}
-		BufferedImage dest = awt.offimg.getSubimage(0, 0, 600, 650);
+		int[] sz = gp.getSize(false);
+		BufferedImage dest = awt.offimg.getSubimage(0, 0, sz[0]-gp.getGap(), sz[1]);
 		ImageIO.write(dest, "jpg", outputfile);
 		System.out.println("\nDone (Time: "+ (System.currentTimeMillis()-time)+")");
 		System.exit(0);

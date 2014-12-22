@@ -272,6 +272,9 @@ public class GcodePainter implements Runnable {
 		};
 	}
 
+	public int getGap(){
+		return gap;
+	}
 
 	/**
 	 * Restart with new model from thread
