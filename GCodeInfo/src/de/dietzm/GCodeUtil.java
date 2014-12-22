@@ -301,7 +301,7 @@ public class GCodeUtil {
 		System.out.println("****************************** Model Details ******************************");
 		System.out.println("***************************************************************************");
 		
-		System.out.println(model.getModelDetailReport()+model.guessPrice(model.guessDiameter()));
+		System.out.println(model.getModelDetailReport()+model.getFilamentReport());
 		
 
 	}

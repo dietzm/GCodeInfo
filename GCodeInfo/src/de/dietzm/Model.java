@@ -19,7 +19,7 @@ import de.dietzm.gcodes.GCodeStore;
 
 public class Model {
 
-	private static double PRICE_PER_G=30/1000d; //Euro per gram 
+	private static float PRICE_PER_G=30/1000f; //Euro per gram 
 	private boolean isguessed=false; 
 	private static boolean ACCELERATION = true;
 	private float avgbedtemp=0,avgextemp=0;
@@ -41,7 +41,11 @@ public class Model {
 	private long filesize=0;
 	boolean relativepos = false;
 	public Position[] extruderOffset = null; //TODO make it configurable
-
+	private float price = 0;
+	private float weight=0;
+	private float mass=0;
+	private float diameter=0;
+	private Material material=null;
 
 	public Position[] getExtruderOffset() {
 		return extruderOffset;
@@ -49,6 +53,72 @@ public class Model {
 	public int getExtruderCount() {
 		return extruderCount;
 	}
+	
+	public float getDiameter(){
+		if(diameter == 0){
+			guessFilamentDetails();
+		}
+		return diameter;
+	}
+	
+	public Material getMaterial(){
+		if(material == null){
+			guessFilamentDetails();
+		}
+		return material;
+	}
+	public float getWeight(){
+		if(weight == 0){
+			guessFilamentDetails();
+		}
+		return weight;
+	}
+	/**
+	 * Mass in mm3
+	 * @return
+	 */
+	public float getMass(){
+		if(mass == 0){
+			guessFilamentDetails();
+		}
+		return mass;
+	}
+	
+	public float getPrice() {
+		if(price == 0){
+			guessFilamentDetails();
+		}
+		return price;
+	}
+	private void guessFilamentDetails() {
+		diameter = guessDiameter();
+		
+		mass = (float)((diameter/2)*(diameter/2)*Math.PI*getExtrusion());
+		
+		material = guessMaterial();
+		switch (material) {
+		case PLA:
+			weight= mass*0.00125f;
+		case ABS:
+			weight= mass*0.00105f;
+		default:
+			break;
+		}
+		
+		//Read user defined environment variable if exists
+		float price_per_g= PRICE_PER_G;
+				try {
+					String prc = System.getenv("FILAMENT_PRICE");
+					if(prc != null){
+						//System.out.println("Use env value FILAMENT_DIAMETER="+dia);
+						price_per_g = Float.parseFloat(prc);
+					}
+				} catch (NumberFormatException e1) {
+				}
+		
+		price = weight*price_per_g;
+	}
+	
 	public long getFilesize() {
 		return filesize;
 	}
@@ -379,7 +449,7 @@ public class Model {
 		return Constants.round2digits(avgextemp/getLayercount(true));
 	}
 	
-	public Material guessMaterial(){
+	private Material guessMaterial(){
 		String mat = System.getenv("FILAMENT_MATERIAL");
 		if(mat != null){
 			if("PLA".equals(mat)){
@@ -396,38 +466,16 @@ public class Model {
 		if(getAvgextemp() < 290 && getAvgextemp() > 205){
 			return Material.ABS;
 		}
-		return Material.UNKNOWN;
+		return Material.PLA;
 	}
 	
-	public String guessPrice(float diameter){
+	public String getFilamentReport(){
 		String var 	= "";
-		if(diameter==0) {
-		//TODO	System.err.println("Unable to guess diameter, show results for 3mm. Set Environment var FILAMENT_DIAMETER to overwite.\n");
-			diameter=3;
-		}
-		
-		double mm3 = (diameter/2)*(diameter/2)*Math.PI*getExtrusion();
-		double weigth=0; 
-		
-		switch (guessMaterial()) {
-		case PLA:
-			weigth= mm3*0.00125;
-		case ABS:
-			weigth= mm3*0.00105;
-		default:
-			break;
-		}
-		
-		double priceg = weigth*PRICE_PER_G;
-		
-		var 	   +="Material"+(isguessed?"(guessed):":":")+guessMaterial()+" "+diameter+"mm\n";
-		var		   +="Mass:   "+Constants.round2digits((float)mm3/1000)+"cm3\n";
-		var		   +="Weight: "+Constants.round2digits((float)weigth)+"g\n";
-		var		   +="Price:  "+Constants.round2digits((float)priceg)+"€\n";
-		
-		
+		var 	   +="Material:"+getMaterial()+" "+getDiameter()+"mm\n";
+		var		   +="Mass:   "+Constants.round2digits(getMass()/1000)+"cm3\n";
+		var		   +="Weight: "+Constants.round2digits(getWeight())+"g\n";
+		var		   +="Price:  "+Constants.round2digits(getPrice())+"€\n";
 		return var;
-		
 	}
 	
 	/**
@@ -437,7 +485,7 @@ public class Model {
 	 * 3) Fallback to some very rough calculation
 	 * @return diameter
 	 */
-	public float guessDiameter(){
+	private float guessDiameter(){
 		//Read user defined environment variable if exists
 		try {
 			String dia = System.getenv("FILAMENT_DIAMETER");
@@ -488,8 +536,9 @@ public class Model {
 		}else if(guessedDia < 2.05f){
 			return 1.75f;
 		}
-		//show both
-		return 0;
+		//use 3
+		System.out.println("Unable to detect diameter - Fallback to 3mm.\nPlease set environment variable FILAMENT_DIAMETER");
+		return 3;
 	}
 	
 	
