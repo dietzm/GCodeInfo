@@ -32,8 +32,10 @@ public class GcodePainter implements Runnable {
 	private int header = 35; 
 	public static float boxheightfactor = 10f;
 	public boolean roundbed=false;
+	boolean snapshot=false; 
 	
 	public Position[] extruderOffset = {null,null,null,null}; //TODO make it configureable
+	public boolean applyOffset = true; //if offset between T0 & T1 is visable in gcode and must be calculated out
 	private int activeExtruder = 0;
 	public boolean isPainttravel() {
 		return painttravel;
@@ -304,6 +306,14 @@ public class GcodePainter implements Runnable {
 	public void setPrintercon(Printer printercon) {
 		this.printer = printercon;
 	}
+	
+	/**
+	 * Snapshot mode is for creating an image of the gcode file 
+	 */
+	public void setSnapshotMode(){
+		snapshot=true;
+	}
+	
 	/**
 	 * Adjust ratio
 	 * @param mod
@@ -383,23 +393,39 @@ public class GcodePainter implements Runnable {
 			printLabelBox(g2, 95,5,getFanSpeed(lay.getFanspeed()), Constants.FAN_LABEL,lay.getNumber());	
 			
 		}else{
-			printLabelBox(g2, 32,12,Constants.inttoChar(Math.round(gc.getSpeed()),tempbuf), Constants.XYSPEED_LABEL,lay.getNumber());
-			printLabelBox(g2, 44,14,getExtrSpeed(gc), Constants.ESPEED_LABEL,lay.getNumber());
-			//Z-Lift
-			if(gc.isInitialized(Constants.Z_MASK)){
-				CharSequence cs = Constants.floattoChar(gc.getZ(),tempbuf,2);
-				printLabelBox(g2, 12,20,cs, Constants.ZPOS_LABEL,lay.getNumber());
+			if(snapshot){
+				printLabelBox(g2, 32,12,Constants.floattoChar(model.getAvgLayerHeight(),tempbuf,2), Constants.LAYERH_LABEL,lay.getNumber());
+				printLabelBox(g2, 44,14,Constants.inttoChar(Math.round(model.getSpeed(Layer.Speed.SPEED_ALL_AVG)),tempbuf), Constants.AVGXYSPEED_LABEL,lay.getNumber());
+				CharSequence cs = Constants.floattoChar(model.getDimension()[2],tempbuf,2);
+				printLabelBox(g2, 12,20,cs, Constants.ZH_LABEL,lay.getNumber());
+			}else{
+				printLabelBox(g2, 32,12,Constants.inttoChar(Math.round(gc.getSpeed()),tempbuf), Constants.XYSPEED_LABEL,lay.getNumber());
+				printLabelBox(g2, 44,14,getExtrSpeed(gc), Constants.ESPEED_LABEL,lay.getNumber());
+		
+				//Z-Lift
+				if(gc.isInitialized(Constants.Z_MASK)){
+					CharSequence cs = Constants.floattoChar(gc.getZ(),tempbuf,2);
+					printLabelBox(g2, 12,20,cs, Constants.ZPOS_LABEL,lay.getNumber());
+				}
 			}
 			printLabelBox(g2, 95,5,getFanSpeed(gc.getFanspeed()), Constants.FAN_LABEL,lay.getNumber());
 		}
 		
-		float rmtime = mtime;
-		if(printer != null && printer.isPrinting() && printer.getPrintSpeed() != 100){
-			rmtime = rmtime/printer.getPrintSpeed() *100;
+		if(snapshot){
+			//paint always the full print time
+			int nr = Constants.formatTimetoHHMMSS(model.getTimeaccel(),tempbuf.getBytes());
+			tempbuf.setlength(nr);
+			printLabelBox(g2, 58,24, tempbuf, Constants.PRINTTIME_LABEL,lay.getNumber());
+		}else{
+			//paint the remaining time
+			float rmtime = mtime;
+			if(printer != null && printer.isPrinting() && printer.getPrintSpeed() != 100){
+				rmtime = rmtime/printer.getPrintSpeed() *100;
+			}
+			int nr = Constants.formatTimetoHHMMSS(rmtime,tempbuf.getBytes());
+			tempbuf.setlength(nr);
+			printLabelBox(g2, 58,24, tempbuf, Constants.REMTIME_LABEL,lay.getNumber());
 		}
-		int nr = Constants.formatTimetoHHMMSS(rmtime,tempbuf.getBytes());
-		tempbuf.setlength(nr);
-		printLabelBox(g2, 58,24, tempbuf, Constants.REMTIME_LABEL,lay.getNumber());
 
 		if(print){
 			if(gc!=null){
@@ -409,7 +435,13 @@ public class GcodePainter implements Runnable {
 				printLabelBox(g2, 81,14,Constants.PRINTSTART_LABEL, Constants.PRINT_LABEL,lay.getNumber());
 			}
 		}else{
-			printLabelBox(g2, 81,14,speeduplabel, Constants.SPEEDUP_LABEL,lay.getNumber());			
+			if(snapshot){
+				//Paint price				
+				printLabelBox(g2, 81,14,Constants.floattoChar(model.getPrice(),tempbuf,1)+"€", Constants.PRICE_LABEL,lay.getNumber());
+			}else{
+				//Paint speedup
+				printLabelBox(g2, 81,14,speeduplabel, Constants.SPEEDUP_LABEL,lay.getNumber());	
+			}						
 		}
 		
 		g2.setStroke(1);
@@ -977,7 +1009,7 @@ public class GcodePainter implements Runnable {
 						
 						//Print the lines from last position to current position
 						if(gCode.getCurrentPosition(pos) != null) {
-							if(extruderOffset[activeExtruder] != null){
+							if(applyOffset && extruderOffset[activeExtruder] != null){
 								pos.applyOffset(extruderOffset[activeExtruder]);
 							}
 							//System.out.println("XXXXX"+gCode);
@@ -1046,7 +1078,11 @@ public class GcodePainter implements Runnable {
 						}
 							
 					}//ForGCodes
-	
+
+					if(fftoLayer != 0){
+						//Repaint once a layer is done
+						g2.repaint();
+					}
 				}//ForLayers
 			}else{ //If layer==null
 				g2.setTitle(null);
@@ -1091,7 +1127,7 @@ public class GcodePainter implements Runnable {
 		
 		//tmpbuf.append("--------------- Model details ------------------\n");
 		tmpbuf.append(model.getModelDetailReport());
-		tmpbuf.append(model.guessPrice(model.guessDiameter()));
+		tmpbuf.append(model.getFilamentReport());
 		modeldetails=tmpbuf.toString().split("\n");
 		modelspeed= model.getModelSpeedReport().split("\n");
 		modelcomments = model.getModelComments().split("\n");
@@ -1202,10 +1238,12 @@ public class GcodePainter implements Runnable {
 
 	private void doPause(Layer lay, GCode gCode, int lineidx) throws InterruptedException {
 		inpause=true;
-		printLabelBox(g2, 82,12,"P", "Pause",lay.getNumber());
-		g2.clearrect(bedsizeX*zoom+gap+1,bedsizeY * zoom + (bedsizeX*zoom)/24f, (bedsizeX * zoom/zoommod*2)-2, (bedsizeX*zoom)/24f,print?1:0);
-		g2.drawrect(bedsizeX*zoom+gap+4,bedsizeY * zoom + (bedsizeX*zoom)/24f +2, (bedsizeX * zoom/zoommod*2)-7, (bedsizeX*zoom)/24f -5);
-		g2.drawtext("L"+lineidx+": "+ gCode.getCodeline().toString().trim(), bedsizeX*zoom+gap+10, bedsizeY * zoom +(bedsizeX*zoom)/24f +  (bedsizeX*zoom)/48f +1 );
+		if(!snapshot){
+			printLabelBox(g2, 82,12,"P", "Pause",lay.getNumber());
+			g2.clearrect(bedsizeX*zoom+gap+1,bedsizeY * zoom + (bedsizeX*zoom)/24f, (bedsizeX * zoom/zoommod*2)-2, (bedsizeX*zoom)/24f,print?1:0);
+			g2.drawrect(bedsizeX*zoom+gap+4,bedsizeY * zoom + (bedsizeX*zoom)/24f +2, (bedsizeX * zoom/zoommod*2)-7, (bedsizeX*zoom)/24f -5);
+			g2.drawtext("L"+lineidx+": "+ gCode.getCodeline().toString().trim(), bedsizeX*zoom+gap+10, bedsizeY * zoom +(bedsizeX*zoom)/24f +  (bedsizeX*zoom)/48f +1 );
+		}
 		g2.repaint();
 		Thread.sleep(pause); //allow pause also if printing			
 		inpause=false;
@@ -1278,6 +1316,8 @@ public class GcodePainter implements Runnable {
 		case RESTART:
 			cmd = Commands.NOOP;
 			g2.clearrect(0, 0, g2.getWidth(), g2.getHeight(),print?1:0);
+			fftoLayer=0;
+			fftoGcode=0;
 			g2.repaint();
 			return 1;
 		case REANALYSE:
@@ -1391,10 +1431,7 @@ public class GcodePainter implements Runnable {
 		if(model.getExtruderOffset() != null){
 			//extruderOffset = model.getExtruderOffset();
 			//if m218 is used the offset in the gcode file is usually zero
-			extruderOffset[0] = null;
-			extruderOffset[1] = null;
-			extruderOffset[2] = null;
-			extruderOffset[3] = null;
+			applyOffset=false;
 		}
 		layers = new ArrayList<Layer>(model.getLayer());
 	}
