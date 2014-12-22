@@ -512,9 +512,13 @@ public class SerialPrinter implements Runnable, Printer {
 				}
 			}else{
 				code = printQueue.pollManual(1); // poll for manual ops
+				if(code != null){
+					state.lastgcode = code;
+				}
 			}
 		} else {
 			code = M105; // retrieve temp
+			state.lastgcode = code;
 			lastTempWatch = System.currentTimeMillis();
 		}
 		if (state.reset || code == null)
@@ -1241,9 +1245,11 @@ public class SerialPrinter implements Runnable, Printer {
 			str.append(state.baud);
 			str.append(Constants.newlinec);
 			
+			if(state.lastgcode != null){
 			str.append("Last GCode:");
 			str.append(state.lastgcode.getCodeline().toString().trim());
 			str.append(Constants.newlinec);
+			}
 			
 			str.append("Printing:");
 			str.append(state.printing);
