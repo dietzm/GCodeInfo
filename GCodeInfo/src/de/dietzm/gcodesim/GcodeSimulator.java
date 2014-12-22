@@ -37,6 +37,8 @@ import java.net.ConnectException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -57,7 +59,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
-
 
 import de.dietzm.Constants;
 import de.dietzm.Position;
@@ -128,6 +129,7 @@ public class GcodeSimulator extends JFrame implements ActionListener {
 	 * 1.25 fixed bug with nozzle pos when painting long lines
 	 * 1.26 network sender , autostart & autosave 
 	 * 1.28 redesign, T0: answers, bfb fix
+	 * 1.29 snapshot function, paint dual nozzle even when m128, aspect ratio + resize
 	 */
 	
 	
@@ -151,10 +153,11 @@ public class PrintrPanel extends JPanel {
 			if(awt != null)	awt.drawImage(g);
 		}
 	}
-	public static final String VERSION = "v1.28";	
+	public static final String VERSION = "v1.29";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
+	static String snapshotimage=null; //Take snapshot only
 	static int bedsizeX=200;
 	static int bedsizeY=200;
 	static String dualoffsetXY = "0:0";
@@ -275,10 +278,10 @@ public class PrintrPanel extends JPanel {
 	}
 	
 	public void init(String filename,InputStream in) throws IOException{
-		awt = new AWTGraphicRenderer(bedsizeX, bedsizeY,this,theme);
-		float fac = (awt.getHeight()-(55+(awt.getHeight()/12)))/bedsizeY;
+		awt = new AWTGraphicRenderer(bedsizeX, bedsizeX,this,theme);
+		float fac = (awt.getHeight()-(55+(awt.getHeight()/12)))/bedsizeX;
 	//	GCodeFactory.setCustomFactory(new GCodeFactoryBuffer());
-		gp = new GcodePainter(awt,true,fac,bedsizeX,bedsizeY,GcodePainter.defaultzoommod); //todo pass bedsize
+		gp = new GcodePainter(awt,true,fac,bedsizeX,bedsizeX,GcodePainter.defaultzoommod); //todo pass bedsize
 		if(!dualoffsetXY.equals("0:0")){
 			Position pos = Constants.parseOffset(dualoffsetXY);
 			gp.setExtruderOffset(1, pos);
@@ -291,7 +294,7 @@ public class PrintrPanel extends JPanel {
 		setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource( "/icon.png" )));
 		
 		setJMenuBar(getMyMenubar());
-		setVisible(true);
+		setVisible(snapshotimage==null);
 		setBackground(Color.black);
 		
 		addListeners();
@@ -301,6 +304,47 @@ public class PrintrPanel extends JPanel {
 		
 		gp.start(filename,in,null);	
 		this.requestFocus();
+		if(snapshotimage!=null){
+			createSnapshotImage();
+
+		}
+	}
+
+	private void createSnapshotImage() throws IOException {
+		File outputfile = new File(snapshotimage);
+		System.out.println("Save snapshot of gcode to "+snapshotimage);
+		long time = System.currentTimeMillis();
+		gp.setSnapshotMode();
+		gp.jumptoLayer(10000);
+		gp.togglePause();
+		gp.setPainttravel(false);
+		int lc = gp.model.getLayercount(true);
+		System.out.println("Layers:"+lc);
+		if(lc==0) System.exit(2);
+		int retry=0;
+		while(gp.getCurrentLayer() == null){
+			try {
+				Thread.sleep(500);
+			} catch (InterruptedException e) {}
+			retry++;
+			if(retry > 20){
+				System.err.println("Timeout waiting for painter");
+				System.exit(3);
+			}
+			
+		}
+		int ln=0;
+		while( (ln=gp.getCurrentLayer().getNumber()) < (lc-1) ){
+			try {
+				Thread.sleep(500);
+				System.out.print(".");
+			} catch (InterruptedException e) {
+		}
+		}
+		BufferedImage dest = awt.offimg.getSubimage(0, 0, 600, 650);
+		ImageIO.write(dest, "jpg", outputfile);
+		System.out.println("\nDone (Time: "+ (System.currentTimeMillis()-time)+")");
+		System.exit(0);
 	}
 	
 	
@@ -320,6 +364,7 @@ public class PrintrPanel extends JPanel {
 		    JMenu datei = new JMenu ("File");
 		    addMenuItem(datei, "Load File", "f",KeyEvent.VK_F);
 		    addMenuItem(datei, "Network Send", "x",KeyEvent.VK_X);
+		    addMenuItem(datei, "Save Image", "c",KeyEvent.VK_C);
 		    addMenuItem(datei, "Exit", "q",KeyEvent.VK_Q);
 
 		    ml.add(datei);		    
@@ -411,6 +456,13 @@ public class PrintrPanel extends JPanel {
 			in= gs.getClass().getResourceAsStream(filename);			
 		} else {
 			filename = args[0];
+			if(args.length == 2){
+				snapshotimage = args[1];
+				if(!snapshotimage.endsWith(".jpg")){
+					System.err.println("Error: "+snapshotimage+ " Filename must end with .jpg .");
+					System.exit(1);
+				}
+			}
 		}
 		gs.init(filename,in);
 		gs.requestFocus();
@@ -838,7 +890,7 @@ public class PrintrPanel extends JPanel {
 	private void updateSize(boolean details) {
 		if((getExtendedState() & Frame.MAXIMIZED_BOTH) == 0){
 			int[] sz = gp.getSize(details);
-			int width = sz[0]+65; //70 for button bar
+			int width = sz[0]+80; //70 for button bar
 			int height = sz[1];
 			if(showprintpanel){
 				width=width+210;
@@ -961,7 +1013,7 @@ public class PrintrPanel extends JPanel {
 				}
 				
 				//Ratio
-				System.out.println("Update ratio");
+				//System.out.println("Update ratio");
 				gp.setZoomMod(getRatioMod());
 				repaint();
 				
@@ -1029,6 +1081,16 @@ public class PrintrPanel extends JPanel {
 					showNetworkIPDialog();
 				} else if (arg0.getKeyChar() == 'h') {
 					gp.showHelp();
+				} else if (arg0.getKeyChar() == 'c') {
+					try {
+						int[] sz = gp.getSize(showdetails);
+						BufferedImage dest = awt.offimg.getSubimage(0, 0, sz[0], sz[1]);
+						String fn = new SimpleDateFormat("MMddyyyy-ss").format(new Date());
+						ImageIO.write(dest, "jpg", new File("gcodeimg_"+fn+".jpg"));
+						System.out.println("Saved file "+"gcodesim_"+fn+".jpg");
+					} catch (IOException e) {
+						System.err.println("Failed to save file");
+					}
 				} else if (arg0.getKeyChar() == 'l') {
 					showJumpToLayerDialog();
 				//EDIT MODE
