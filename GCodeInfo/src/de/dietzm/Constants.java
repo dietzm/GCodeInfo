@@ -798,6 +798,18 @@ public class Constants {
 					
 	}
 	/**
+	 * Return true is search string is contained in Array . case sensitive
+	 * @param array
+	 * @param search
+	 * @return
+	 */
+	public static boolean containsString(String[] array,String search){
+		for (int i = 0; i < array.length; i++) {
+			if(array[i] != null && array[i].equals(search)) return true;
+		}
+		return false;
+	}
+	/**
 	 * Float to string with 0 digits
 	 * @param prefix
 	 * @param val
