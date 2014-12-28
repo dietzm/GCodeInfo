@@ -1380,9 +1380,11 @@ public class GcodePainter implements Runnable {
 	 * 
 	 * @param filename
 	 * @param in
+	 * @return time to analyse the model in ms
 	 * @throws IOException
 	 */
-	public void start(String filename, InputStream in, Model modelin) {
+	public long start(String filename, InputStream in, Model modelin) {
+		long time=-1;
 		// Cleanup if thread already exists
 		if (gcodepainter != null) {
 			errormsg = null;
@@ -1416,17 +1418,18 @@ public class GcodePainter implements Runnable {
 				e.printStackTrace();
 				errormsg = "Failed to load model. Is this a valid gcode file ?\n" + e.getMessage();
 				g2.repaint();
-				return;
+				return time;
 			}
 
 			if (!ret) {
 				errormsg = "Failed to load model.Check errors on command line.";
 				g2.repaint();
-				return;
+				return time;
 			}
-			long time = System.currentTimeMillis();
+			time = System.currentTimeMillis();
 			model.analyze();
-			System.out.println("Load Model Analyse finished in ms:"+(System.currentTimeMillis()-time));
+			time=(System.currentTimeMillis()-time);
+			System.out.println("Load Model Analyse finished in ms:"+time);
 		} else {
 			model = modelin;
 		}
@@ -1437,6 +1440,7 @@ public class GcodePainter implements Runnable {
 			applyOffset=false;
 		}
 		layers = new ArrayList<Layer>(model.getLayer());
+		return time;
 	}
 
 }
