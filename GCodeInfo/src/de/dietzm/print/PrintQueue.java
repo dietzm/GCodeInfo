@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit;
 
 import de.dietzm.Model;
 import de.dietzm.gcodes.GCode;
+import de.dietzm.gcodes.GCodeStore;
 
 /**
  * Print Queue
@@ -47,6 +48,8 @@ public class PrintQueue implements Runnable {
 		addmodelth.start();
 	}
 	
+
+	
 	public void addModel(Model code,GCode ... postcodes  ) throws InterruptedException{
 		printModel=code;
 		postgc=postcodes;
@@ -56,12 +59,16 @@ public class PrintQueue implements Runnable {
 	
 	
 	
-	private synchronized void addModeltoQueue() {		
-		for (GCode gc : printModel.getGcodes()) {
+	private synchronized void addModeltoQueue() {	
+		GCodeStore gcstore = printModel.getGcodes();
+		int size = gcstore.size();
+		for (int ig = 0; ig < size; ig++) {
+			GCode gc = gcstore.get(ig);
 			if(Thread.currentThread().isInterrupted()) return;
-			if(gc.isPrintable()){
+			//if(gc.isPrintable()){
+			//Add all gcodes (even if not printable) to keep line numbers correct
 				aprintQ.add(gc);
-			}
+			//}
 		}
 		if(postgc!= null){
 			for (int i = 0; i < postgc.length; i++) {
