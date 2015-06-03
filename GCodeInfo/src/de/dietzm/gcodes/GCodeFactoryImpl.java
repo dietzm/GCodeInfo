@@ -12,6 +12,7 @@ public interface GCodeFactoryImpl {
 	
 	public abstract long getReadBytes();
 	public abstract long getReadLines();	
+	public abstract long getFilesize();
 	
 	public GCode parseGcode(String arg0,int linenr) throws Exception;
 

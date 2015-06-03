@@ -20,7 +20,7 @@ public class GCodeFactory  {
 	public GCodeFactory() {}
 	
 	public static class DefaultGCodeFactoryImpl implements GCodeFactoryImpl{
-		protected long readbytes=0, readlines=0;
+		protected long readbytes=0, readlines=0 , filesize=0;
 		byte[] modeldata;
 		protected boolean m101=false;
 
@@ -129,6 +129,10 @@ public class GCodeFactory  {
 			return readbytes;
 		}
 		
+		public long getFilesize(){
+			return filesize;
+		}
+		
 		public long getReadLines(){
 			return readlines;
 		}
@@ -146,6 +150,7 @@ public class GCodeFactory  {
 			GCodeStore codes = createStore(100000);
 			readbytes=0;
 			readlines=0;
+			filesize=fsize;
 			InputStreamReader fread =  new InputStreamReader(in);
 			BufferedReader gcread= new BufferedReader(fread,65536);
 		
@@ -175,7 +180,7 @@ public class GCodeFactory  {
 					success++;
 				}
 				codes.add(gc);
-				readbytes+=line.length(); //might be incorrect for multibyte chars, but getbytes is expensive
+				readbytes+=line.length()+1; //might be incorrect for multibyte chars, but getbytes is expensive
 				readlines++;
 				
 			}
@@ -286,6 +291,12 @@ public class GCodeFactory  {
 					id = segments[1].charAt(0);
 					if (id=='S'|| id == 's'){
 						gcd.setInitialized(Constants.SE_MASK,Constants.parseFloat(segments[1],1));
+					}else if (segments.length == 3) { 
+						//M109 T0 S200
+						id = segments[2].charAt(0);
+						if (id=='S'|| id == 's'){
+							gcd.setInitialized(Constants.SE_MASK,Constants.parseFloat(segments[2],1));
+						}
 					}
 					break;
 				case G161:
@@ -426,6 +437,10 @@ public class GCodeFactory  {
 	
 	public static long getReadBytes(){
 		return factory.getReadBytes();
+	}
+	
+	public static long getFilesize(){
+		return factory.getFilesize();
 	}
 	public static long getReadLines(){
 		return factory.getReadLines();
