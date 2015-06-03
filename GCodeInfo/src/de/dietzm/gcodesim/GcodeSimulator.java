@@ -153,11 +153,12 @@ public class PrintrPanel extends JPanel {
 			if(awt != null)	awt.drawImage(g);
 		}
 	}
-	public static final String VERSION = "v1.29";	
+	public static final String VERSION = "v1.30";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
 	static String snapshotimage=null; //Take snapshot only
+	static int snapmode = 0;
 	static int bedsizeX=200;
 	static int bedsizeY=200;
 	static String dualoffsetXY = "0:0";
@@ -321,6 +322,12 @@ public class PrintrPanel extends JPanel {
 		int lc = gp.model.getLayercount(true);
 		System.out.println("Layers:"+lc);
 		if(lc==0) System.exit(2);
+		
+		if(snapmode==1){
+			//Paint 5 layers only to speed up time
+			lc = Math.min(lc, 5);
+		}
+		
 		int retry=0;
 		while(gp.getCurrentLayer() == null){
 			try {
@@ -460,7 +467,14 @@ public class PrintrPanel extends JPanel {
 			if(args.length == 2){
 				snapshotimage = args[1];
 				if(!snapshotimage.endsWith(".jpg")){
-					System.err.println("Error: "+snapshotimage+ " Filename must end with .jpg .");
+					System.err.println("Error: "+snapshotimage+ " Filename must end with .jpg or specify --thumb option .");
+					System.exit(1);
+				}
+			}else if(args.length == 3){
+				snapshotimage = args[1];
+				snapmode=1;
+				if(!args[2].equalsIgnoreCase("--thumb")){
+					System.err.println("Error: "+snapshotimage+ " Filename must end with .jpg or specify --thumb option.");
 					System.exit(1);
 				}
 			}
