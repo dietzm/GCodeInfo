@@ -331,7 +331,7 @@ public class GCodeUtil {
 		
 		for (Iterator<Layer> iterator = layers.iterator(); iterator.hasNext();) {
 			Layer lay = iterator.next();
-			float layperc =  Constants.round2digits(lay.getTime()/(model.getTime()/100));
+			float layperc =  Constants.round2digits(lay.getTimeAccel()/(model.getTimeaccel()/100));
 			if(lay.isPrinted() && mode.contains("p")){
 				System.out.println("--------------------------------------------------");
 					System.out.println(lay.getLayerDetailReport()+"\n Percent of time:"+layperc+"%");					
@@ -361,7 +361,7 @@ public class GCodeUtil {
 		//Collections.sort(layers);		
 		for (Iterator<Layer> iterator = layers.iterator(); iterator.hasNext();) {
 			Layer lay = iterator.next();
-			float layperc =  Constants.round2digits(lay.getTime()/(model.getTime()/100));
+			float layperc =  Constants.round2digits(lay.getTimeAccel()/(model.getTimeaccel()/100));
 			if(lay.isPrinted()){
 				System.out.println("--------------------------------------------------");
 					System.out.println(lay.getLayerDetailReport()+"\n Percent of time:"+layperc+"%");

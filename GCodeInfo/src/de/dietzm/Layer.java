@@ -33,7 +33,7 @@ public class Layer implements Comparable<Layer>{
 
 	private int number;
 	private SortedMap<Float,SpeedEntry> SpeedAnalysisT = new TreeMap<Float,SpeedEntry>();
-	private float time = 0;
+//	private float time = 0;
 	private float timeaccel=0;
 	float traveldistance=0;
 	private String unit = "mm"; //default is mm
@@ -58,7 +58,7 @@ public class Layer implements Comparable<Layer>{
 		if(lowidx==-1) lowidx=idx;
 		highidx=idx;
 		
-		time=time+gcode.getTime();
+	//	time=time+gcode.getTimeAccel();
 		timeaccel=timeaccel+gcode.getTimeAccel();
 		distance=distance+gcode.getDistance();
 		if(!gcode.isExtruding()){
@@ -68,7 +68,7 @@ public class Layer implements Comparable<Layer>{
 		
 			gcode.setFanspeed(fanspeed); //Update follow on gcodes
 		if(fanspeed!=0) {
-			fantime+=gcode.getTime();
+			fantime+=gcode.getTimeAccel();
 		}
 		
 		float sp = gcode.getSpeed();
@@ -139,7 +139,7 @@ public class Layer implements Comparable<Layer>{
 		//Categorize movements by speed, to recognize which movement type takes longest.
 		SpeedEntry timeforspeed = SpeedAnalysisT.get(sp);
 		if (timeforspeed != null){
-			timeforspeed.addTime(gcode.getTime());
+			timeforspeed.addTime(gcode.getTimeAccel());
 			timeforspeed.addDistance(gcode.getDistance());
 			if(gcode.isExtruding()){
 				timeforspeed.setPrint(Speedtype.PRINT);
@@ -147,7 +147,7 @@ public class Layer implements Comparable<Layer>{
 				timeforspeed.setPrint(Speedtype.TRAVEL);
 			}
 		}else{
-			SpeedEntry sped = new SpeedEntry(sp,gcode.getTime(),number);
+			SpeedEntry sped = new SpeedEntry(sp,gcode.getTimeAccel(),number);
 			sped.addDistance(gcode.getDistance());
 			if(gcode.isExtruding()){
 				sped.setPrint(Speedtype.PRINT);
@@ -240,9 +240,6 @@ public class Layer implements Comparable<Layer>{
 		return SpeedAnalysisT;
 	}
 
-	public float getTime() {
-		return time;
-	}
 	
 	/**
 	 * Get time incl linear acceleration
@@ -322,7 +319,7 @@ public class Layer implements Comparable<Layer>{
 			var2.append("      Time:");
 			var2.append(Constants.round2digits(tim.getTime()));
 			var2.append("sec/");
-			var2.append(Constants.round2digits(tim.getTime()/(time/100)));
+			var2.append(Constants.round2digits(tim.getTime()/(timeaccel/100)));
 			var2.append('%');			
 		}
 		return var2.toString();
@@ -340,8 +337,8 @@ public class Layer implements Comparable<Layer>{
 				var.append(unit);
 				var.append("\n Is Printed: ");
 				var.append(isPrinted());
-				var.append("\n Print Time: ");
-				Constants.formatTimetoHHMMSS(time,var);
+//				var.append("\n Print Time: ");
+//				Constants.formatTimetoHHMMSS(time,var);
 				var.append("\n Print Time (Accel): ");
 				Constants.formatTimetoHHMMSS(timeaccel,var);
 				var.append("\n Distance (All/travel): ");
@@ -359,7 +356,7 @@ public class Layer implements Comparable<Layer>{
 				var.append(exttemp);
 				var.append('°');
 				var.append("\n Cooling Time (Fan): ");
-				var.append(Constants.round2digits(fantime/(time/100f)));
+				var.append(Constants.round2digits(fantime/(timeaccel/100f)));
 				var.append('%');
 				var.append("\n GCodes: ");
 				var.append(lowidx-highidx); 
@@ -412,7 +409,7 @@ public class Layer implements Comparable<Layer>{
 		var.append(unit);
 		var.append("/s");
 		var.append("   Time: ");
-		Constants.formatTimetoHHMMSS(time,var);
+		Constants.formatTimetoHHMMSS(timeaccel,var);
 		return var.toString();
 	}
 	

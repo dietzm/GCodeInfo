@@ -19,8 +19,12 @@ import de.dietzm.gcodes.GCodeStore;
 
 public class Model {
 
-	private static float PRICE_PER_G=30/1000f; //Euro per gram 
+	private float PRICE_PER_G=30/1000f; //Euro per gram 
+	private float PRICE_PER_H=0; //Price per hour operation
+
+
 	private boolean isguessed=false; 
+	private boolean useAcceleration=true;
 	private static boolean ACCELERATION = true;
 	private float avgbedtemp=0,avgextemp=0;
 	private float avgLayerHeight = 0;
@@ -30,14 +34,16 @@ public class Model {
 	private float extrusion=0;
 	private int extruderCount = 1;
 	private String filename;
+	private String uri = null;
+	private InputStream in=null;
 	private GCodeStore gcodes;// = GCodeFactory.getGcodeStore(1);
 	//private SortedMap<Float, Layer> layer = new TreeMap<Float, Layer>();
 	private ArrayList<Layer> layer = new ArrayList<Layer>();
 	private int layercount = 0, notprintedLayers = 0;
 	private SortedMap<Float, SpeedEntry> SpeedAnalysisT = new TreeMap<Float, SpeedEntry>();
-	private float time, distance,traveldistance,timeaccel;
+	private float distance,traveldistance,timeaccel;
 	private String unit = "mm"; //default is mm
-	public enum Material {PLA,ABS,UNKNOWN};
+	public enum Material {PLA,ABS,NYLON,PVA,UNKNOWN};
 	private long filesize=0;
 	boolean relativepos = false;
 	public Position[] extruderOffset = null; //TODO make it configurable
@@ -45,8 +51,47 @@ public class Model {
 	private float weight=0;
 	private float mass=0;
 	private float diameter=0;
+	
 	private Material material=null;
 
+	byte[] imgdata = null;
+
+	/**
+	 * Thumbnail
+	 * @return
+	 */
+	public byte[] getImgdata() {
+		return imgdata;
+	}
+	public void overwriteMaterial(Material material) {
+		this.material = material;
+		weight=0;
+		mass=0;
+		price=0;
+	}
+	public void overwritePricePerG(float pRICE_PER_G) {
+		PRICE_PER_G = pRICE_PER_G;
+		price=0;
+	}
+	
+	public void overwritePricePerH(float pRICE_PER_H) {
+		PRICE_PER_H = pRICE_PER_H;
+		price=0;
+	}
+	
+	public void overwriteDiameter(float diameter) {
+		this.diameter = diameter;
+		weight=0;
+		mass=0;
+		price=0;
+	}
+	
+	public InputStream getInputStream(){
+		return in;
+	}
+	public void setImgdata(byte[] imgdata) {
+		this.imgdata = imgdata;
+	}
 	public Position[] getExtruderOffset() {
 		return extruderOffset;
 	}
@@ -56,20 +101,20 @@ public class Model {
 	
 	public float getDiameter(){
 		if(diameter == 0){
-			guessFilamentDetails();
+			diameter = guessDiameter();
 		}
 		return diameter;
 	}
 	
 	public Material getMaterial(){
 		if(material == null){
-			guessFilamentDetails();
+			material = guessMaterial();
 		}
 		return material;
 	}
 	public float getWeight(){
 		if(weight == 0){
-			guessFilamentDetails();
+			calculateFilamentUsage();
 		}
 		return weight;
 	}
@@ -79,28 +124,36 @@ public class Model {
 	 */
 	public float getMass(){
 		if(mass == 0){
-			guessFilamentDetails();
+			calculateFilamentUsage();
 		}
 		return mass;
 	}
 	
 	public float getPrice() {
 		if(price == 0){
-			guessFilamentDetails();
+			calculateFilamentUsage();
 		}
 		return price;
 	}
-	private void guessFilamentDetails() {
-		diameter = guessDiameter();
+	private void calculateFilamentUsage() {
+		getDiameter(); //initialize diameter
+		getMaterial(); //initialize material
 		
 		mass = (float)((diameter/2)*(diameter/2)*Math.PI*getExtrusion());
 		
-		material = guessMaterial();
 		switch (material) {
 		case PLA:
 			weight= mass*0.00125f;
+			break;
 		case ABS:
 			weight= mass*0.00105f;
+			break;
+		case NYLON:
+			weight= mass*0.001134f;
+			break;
+		case PVA:
+			weight= mass*0.00123f;
+			break;
 		default:
 			break;
 		}
@@ -116,7 +169,10 @@ public class Model {
 				} catch (NumberFormatException e1) {
 				}
 		
-		price = weight*price_per_g;
+		
+		price = weight*price_per_g + (PRICE_PER_H*(getTimeaccel()/3600f));
+		//System.out.println("PRICE PER H:"+ (PRICE_PER_H*(getTimeaccel()/3600f)) +" - "+ PRICE_PER_H +" - "+ getTimeaccel());
+		
 	}
 	
 	public long getFilesize() {
@@ -139,6 +195,17 @@ public class Model {
 		} catch (NumberFormatException e) {
 			//Use default price (30€)
 		}
+	}
+	
+	public Model(String name, String uri){
+		this(name);
+		this.uri=uri;
+	}
+	
+	public Model(InputStream in, String name, String uri){
+		this(name);
+		this.uri=uri;
+		this.in=in;
 	}
 	
 	public Model(String file, GCodeStore gcall){
@@ -294,14 +361,20 @@ public class Model {
 					 	gc.setExtrusion(extr);
 				 }
 				 
-				 gc.setTime(move / (f_new / 60)); //Set time w/o acceleration
-				 if(f_new >= f_old){
-					 //Assume sprinter _MAX_START_SPEED_UNITS_PER_SECOND {40.0,40.0,....}
-					 gc.setTimeAccel(move / (((Math.min(40*60,f_old)+f_new)/2) / 60)); //set time with linear acceleration
-					 //System.out.println("F"+f_old+"FA"+f_new+"time"+gc.getTime()+"ACCEL: "+(Math.abs(40-f_new)/gc.getTimeAccel()));
+				 
+				 if(useAcceleration){
+					 //Calculate time with a linear acceleration 
+					 if(f_new >= f_old){
+						 //Assume sprinter _MAX_START_SPEED_UNITS_PER_SECOND {40.0,40.0,....}
+						 gc.setTimeAccel(move / (((Math.min(40*60,f_old)+f_new)/2) / 60)); //set time with linear acceleration
+						 //System.out.println("F"+f_old+"FA"+f_new+"time"+gc.getTime()+"ACCEL: "+(Math.abs(40-f_new)/gc.getTimeAccel()));
+				 	}else{
+				 		gc.setTimeAccel(move / ((f_old+f_new)/2 / 60)); //set time with linear acceleration
+				 		//System.out.println("F"+f_old+"FA"+f_new+"  DEACCEL: "+(Math.abs(f_old-f_new)/gc.getTimeAccel()));
+				 	}
 				 }else{
-					 gc.setTimeAccel(move / ((f_old+f_new)/2 / 60)); //set time with linear acceleration
-					 //System.out.println("F"+f_old+"FA"+f_new+"  DEACCEL: "+(Math.abs(f_old-f_new)/gc.getTimeAccel()));
+					 //Calculate time without acceleration
+					 gc.setTimeAccel(move / (f_new / 60)); //Set time w/o acceleration
 				 }
 				 f_old=f_new; //acceleration done. assign new speed
 					
@@ -370,7 +443,7 @@ public class Model {
 	}
 
 	void endLayer(Layer lay) {
-		time += lay.getTime();
+	//	time += lay.getTime();
 		timeaccel += lay.getTimeAccel();
 		distance += lay.getDistance();
 		traveldistance += lay.getTraveldistance();
@@ -460,10 +533,10 @@ public class Model {
 			
 		}
 		
-		if(getAvgextemp() <= 205 && getAvgextemp() > 140){
+		if(getAvgextemp() <= 210 && getAvgextemp() > 140){
 			return Material.PLA;
 		}
-		if(getAvgextemp() < 290 && getAvgextemp() > 205){
+		if(getAvgextemp() < 290 && getAvgextemp() > 210){
 			return Material.ABS;
 		}
 		return Material.PLA;
@@ -547,8 +620,26 @@ public class Model {
 		return Constants.round2digits(avgLayerHeight/(float)getLayercount(true));
 	}
 	
+	/**
+	 * Offset 
+	 * 	
+	 * Xmin-Xmax       Constants.floatToString2(sz[1])+"-"+Constants.floatToString2(sz[0])+ 
+	 * Ymin-Ymax  Constants.floatToString2(sz[3])+"-"+Constants.floatToString2(sz[2])+" mm");
+	 * @return
+	 */
 	public float[] getBoundaries() {
 		return boundaries;
+	}
+	
+	/**
+	 * get midsize x + y
+	 * @return float[0] = X , float[1] = Y
+	 */
+	public float[] getmidpoint(){
+		float[] midsz = new float[2];
+		midsz[0] =  ((boundaries[0]-boundaries[1])/2)+boundaries[1];
+		midsz[1] =  ((boundaries[2]-boundaries[3])/2)+boundaries[3];
+		return midsz;
 	}
 
 	
@@ -565,6 +656,19 @@ public class Model {
 	}
 
 	public String getFilename() {
+		return filename;
+	}
+	
+	public void setFilename(String fn) {
+		filename=fn;
+	}
+	
+	public void setInputstream(InputStream fn) {
+		this.in=fn;
+	}
+	
+	public String getUri(){
+		if(uri != null) return uri;
 		return filename;
 	}
 	
@@ -636,9 +740,6 @@ public class Model {
 		return SpeedAnalysisT;
 	}
 
-	public float getTime() {
-		return Constants.round2digits(time);
-	}
 
 	public String getUnit() {
 		return unit;
@@ -657,7 +758,15 @@ public class Model {
 		return  gcodes != null;
 	}
 	
+	public boolean loadModel(InputStream in, long size)throws IOException{
+		filesize=size;
+		gcodes =  GCodeFactory.loadModel(in,filesize);
+		return  gcodes != null;
+	}
 	
+	public boolean isloaded(){
+		return gcodes != null && getGcodecount() != 0;
+	}
 	
 	
 
@@ -676,18 +785,21 @@ public class Model {
 	public String getModelComments(){
 		StringBuilder buf = new StringBuilder(500);
 		buf.append("--------- Slicer Comments------------\n");
+		int max = 500; //max to avoid OOM
 		for (GCode gCode : gcodes) {
 			//Ignore comments behind gcodes
-			if (gCode.isComment()){
+			if (max > 0 && gCode.isComment()){
 				//System.out.println(gCode.getComment());
 				buf.append(gCode.getComment());
 				buf.append(Constants.newlinec);
+				max--;
 			}
+			
 		}
 		return buf.toString();
 	}
 	public String getModelDetailReport(){
-		float time = getTime();
+		float time = getTimeaccel();
 		float[] sizes = getDimension();
 		float[] bound = getBoundaries();
 		String mm_in = getUnit();
@@ -773,11 +885,6 @@ public class Model {
 		varb.append("Gcode Lines:     ");
 		varb.append(getGcodecount());
 		varb.append(Constants.newlinec);
-		varb.append("Overall Time (w/o Acceleration):   ");
-		Constants.formatTimetoHHMMSS(time,varb);
-		varb.append(" (");
-		varb.append(time);
-		varb.append("sec)\n");
 		varb.append("Overall Time (w/ Acceleration):    ");
 		Constants.formatTimetoHHMMSS(timeaccel,varb);
 		varb.append(" (");
@@ -799,7 +906,7 @@ public class Model {
 			var.append("    Time:");
 			var.append(Constants.round2digits(tim.getTime()));
 			var.append("sec       ");
-			var.append(Constants.round2digits(tim.getTime()/(time/100)));
+			var.append(Constants.round2digits(tim.getTime()/(timeaccel/100)));
 			var.append('%');
 			var.append("     Layers:[");	
 			int max=4;
@@ -825,7 +932,7 @@ public class Model {
 		for (Iterator<Layer> iterator = layers.iterator(); iterator.hasNext();) {
 			Layer lay = iterator.next();
 			if(!lay.isPrinted()) continue;
-			float layperc =  Constants.round2digits(lay.getTime()/(getTime()/100));
+			float layperc =  Constants.round2digits(lay.getTimeAccel()/(getTimeaccel()/100));
 			var.append("  ");
 			var.append(lay.getLayerSummaryReport());
 			var.append("  ");
