@@ -23,7 +23,7 @@ import de.dietzm.print.ReceiveBuffer;
 public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 
 	//static GCodeFactoryBuffer factory = new GCodeFactoryBuffer();
-	protected long readbytes=0, readlines=0;
+	protected long readbytes=0, readlines=0, filesize=0;
 	byte[] modeldata;
 	ReceiveBuffer tmpbuf = new ReceiveBuffer(1024);
 	int defaultgc=0;
@@ -268,10 +268,11 @@ public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 		return gcd;
 	}
 
-	public GCodeStore loadGcodeModel(InputStream in,long filesize)throws IOException{
+	public GCodeStore loadGcodeModel(InputStream in,long fsize)throws IOException{
 		readbytes=0;
 		readlines=0;
 		defaultgc=0;
+		filesize=fsize;
 		optigc=0;
 		gcodetypes = new int[11];
 
@@ -461,16 +462,18 @@ public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 				return min;
 			}
 			
-			Character id;	
+			Character id;
+			int seg_len=0;
+			try {
 			//String[] segments = codelinevar.split(" ");
-			int seg_len= Constants.splitbyLetter3(codelinevar,preallocSegment);
+			seg_len= Constants.splitbyLetter3(codelinevar,preallocSegment);
 //			if(codelinevar.length() > segments[0].length() && codelinevar.charAt(segments[0].length())== ' '){
 //				codelinevar=codelinevar.substring(Math.min(segments[0].length()+1,codelinevar.length())); //Cut GX to save string memory
 //			}else{
 //				codelinevar=codelinevar.substring(Math.min(segments[0].length(),codelinevar.length())); //Cut GX to save string memory
 //			}
 			
-			try {
+			
 				tmpgcode = Constants.GCDEF.getGCDEF(preallocSegment[0]);
 			} catch (Exception e1) {
 				System.err.println("Parse GCODE GCDEF Exception:"+e1+" STR:'"+preallocSegment[0]+"'");
@@ -533,6 +536,12 @@ public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 				id = preallocSegment[1].charAt(0);
 				if (id=='S'|| id == 's'){
 					gcd.setInitialized(Constants.SE_MASK,Constants.parseFloat(preallocSegment[1],1));
+				}else if (seg_len == 3) { 
+					//M109 T0 S200
+					id = preallocSegment[2].charAt(0);
+					if (id=='S'|| id == 's'){
+						gcd.setInitialized(Constants.SE_MASK,Constants.parseFloat(preallocSegment[2],1));
+					}
 				}
 				break;
 			case G161:
@@ -659,6 +668,10 @@ public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 		@Override
 		public long getReadLines() {
 			return readlines;
+		}
+		
+		public long getFilesize(){
+			return filesize;
 		}
 
 

@@ -15,7 +15,7 @@ public class GCodeXYEFMin extends GCodeAbstractNoData {
 	private float e=Float.MAX_VALUE; //will be initalitzed with absolut extrusion 
 	private float f=Float.MAX_VALUE; //Speed
 	//Dynamic values updated by analyse	 (7MB for 300000 gcodes)
-	private float time;
+	private float timeaccel;
 	private float distance;
 	private float extrusion;
 
@@ -51,7 +51,7 @@ public class GCodeXYEFMin extends GCodeAbstractNoData {
 		String var = String.valueOf(getSpeed());
 		var+=";"+e;
 		var+=";"+distance;
-		var+=";"+time;
+		var+=";"+timeaccel;
 		return var;
 	}
 	
@@ -64,7 +64,7 @@ public class GCodeXYEFMin extends GCodeAbstractNoData {
 		var+="\tExtrusion:"+e;
 		var+="\tDistance:"+distance;
 		var+="\tPosition:"+x+"x"+y;
-		var+="\tTime:"+time;
+		var+="\tTime:"+timeaccel;
 		return var;
 	}
 	
@@ -156,8 +156,12 @@ public class GCodeXYEFMin extends GCodeAbstractNoData {
 		return extrusion;
 	}
 
+	@Override
+	public float getTimeAccel() {
+		return timeaccel;
+	}
 
-
+	
 	/**
 	 * Get Extrusion speed (mm/min)
 	 * @return
@@ -190,14 +194,7 @@ public class GCodeXYEFMin extends GCodeAbstractNoData {
 	 */
 	@Override
 	public float getSpeed(){
-		return Constants.round2digits((distance/time));
-	}
-
-
-
-	@Override
-	public float getTime() {
-		return time;
+		return Constants.round2digits((distance/timeaccel));
 	}
 
 
@@ -316,15 +313,8 @@ public class GCodeXYEFMin extends GCodeAbstractNoData {
 
 
 	@Override
-	public void setTime(float time) {
-		this.time = time;
-	}
-
-
-
-	@Override
 	public void setTimeAccel(float time) {
-		//No need to store, can be calculated
+		timeaccel=time;
 	}
 
 

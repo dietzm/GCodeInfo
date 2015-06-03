@@ -34,7 +34,6 @@ public class GCodeMemSave extends GCodeAbstract {
 	}
 	
 	//Dynamic values updated by analyse	 (7MB for 300000 gcodes)
-	private float time;
 	private float timeaccel; //track acceleration as extra time 
 	private float distance;
 	private float extrusion;
@@ -136,7 +135,7 @@ public class GCodeMemSave extends GCodeAbstract {
 	 */
 	@Override
 	public float getSpeed(){
-		return Constants.round2digits((distance/time));
+		return Constants.round2digits((distance/timeaccel));
 	}
 	
 	/**
@@ -156,10 +155,7 @@ public class GCodeMemSave extends GCodeAbstract {
 		return String.format(" "+prefix+"%."+digits+"f", val);		
 	}
 
-	@Override
-	public float getTime() {
-		return time;
-	}
+
 
 	@Override
 	public String getUnit() {
@@ -272,15 +268,6 @@ public class GCodeMemSave extends GCodeAbstract {
 		this.extrusion = extrusion;
 	}
 	
-
-	
-
-
-	@Override
-	public void setTime(float time) {
-		this.time = time;
-	}
-	
 	@Override
 	public void setTimeAccel(float time) {
 		this.timeaccel = time;
@@ -309,7 +296,7 @@ public class GCodeMemSave extends GCodeAbstract {
 		var+="\tExtrusion:"+extrusion;
 		var+="\tDistance:"+distance;
 		var+="\tPosition:"+curX+"x"+curY;
-		var+="\tTime:"+time;
+		var+="\tTime:"+timeaccel;
 		return var;
 	}
 	
@@ -319,7 +306,7 @@ public class GCodeMemSave extends GCodeAbstract {
 		String var = String.valueOf(getSpeed());
 		var+=";"+extrusion;
 		var+=";"+distance;
-		var+=";"+time;
+		var+=";"+timeaccel;
 		var+=";"+fanspeed;
 		return var;
 	}

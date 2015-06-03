@@ -14,7 +14,6 @@ public class GCodeZFMin extends GCodeAbstractNoData {
 	private float f=Float.MAX_VALUE; 	
 			
 	//Dynamic values updated by analyse	 (7MB for 300000 gcodes)
-	private float time;
 	private float timeaccel; //track acceleration as extra time 
 	private float distance;
 	
@@ -87,7 +86,7 @@ public class GCodeZFMin extends GCodeAbstractNoData {
 	 */
 	@Override
 	public float getSpeed(){
-		return Constants.round2digits((distance/time));
+		return Constants.round2digits((distance/timeaccel));
 	}
 	
 	/**
@@ -107,10 +106,7 @@ public class GCodeZFMin extends GCodeAbstractNoData {
 		return String.format(" "+prefix+"%."+digits+"f", val);		
 	}
 
-	@Override
-	public float getTime() {
-		return time;
-	}
+	
 
 	@Override
 	public String getUnit() {
@@ -190,10 +186,7 @@ public class GCodeZFMin extends GCodeAbstractNoData {
 	
 
 
-	@Override
-	public void setTime(float time) {
-		this.time = time;
-	}
+	
 	
 	@Override
 	public void setTimeAccel(float time) {
@@ -255,7 +248,7 @@ public class GCodeZFMin extends GCodeAbstractNoData {
 		var+="\tExtrusion:"+0;
 		var+="\tDistance:"+distance;
 		var+="\tPosition:"+0+"x"+0;
-		var+="\tTime:"+time;
+		var+="\tTime:"+timeaccel;
 		return var;
 	}
 	
@@ -265,7 +258,7 @@ public class GCodeZFMin extends GCodeAbstractNoData {
 		String var = String.valueOf(getSpeed());
 		var+=";"+0;
 		var+=";"+distance;
-		var+=";"+time;
+		var+=";"+timeaccel;
 		return var;
 	}
 	

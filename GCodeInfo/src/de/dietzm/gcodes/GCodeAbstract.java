@@ -236,11 +236,7 @@ public abstract class GCodeAbstract implements GCode {
 	 */
 	@Override
 	public abstract void setTimeAccel(float time);
-	/* (non-Javadoc)
-	 * @see de.dietzm.gcodes.GCode#setTime(float)
-	 */
-	@Override
-	public abstract void setTime(float time);
+
 	/* (non-Javadoc)
 	 * @see de.dietzm.gcodes.GCode#setExtrusion(float)
 	 */
@@ -306,11 +302,7 @@ public abstract class GCodeAbstract implements GCode {
 	 */
 	@Override
 	public abstract String getUnit();
-	/* (non-Javadoc)
-	 * @see de.dietzm.gcodes.GCode#getTime()
-	 */
-	@Override
-	public abstract float getTime();
+
 	//protected abstract String getIfInit(String prefix, float val, int digits, int mask);
 	/* (non-Javadoc)
 	 * @see de.dietzm.gcodes.GCode#getSpeed()

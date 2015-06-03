@@ -197,20 +197,18 @@ public abstract class GCodeAbstractNoData implements GCode {
 	@Override
 	public abstract float getExtrusionSpeed();
 	@Override
-	public float getTimeAccel() {
-		if(getTime() == 0) return 0; //prevent NaN
-		return getDistance() / (((Math.min(40*60,getDistance() *60/getTime())+getDistance() *60/getTime())/2) / 60);
-	}
+	public abstract float getTimeAccel();
+//	{
+//		if(getTime() == 0) return 0; //prevent NaN
+//		return getDistance() / (((Math.min(40*60,getDistance() *60/getTime())+getDistance() *60/getTime())/2) / 60);
+//	}
+	
 	/* (non-Javadoc)
 	 * @see de.dietzm.gcodes.GCode#setTimeAccel(float)
 	 */
 	@Override
 	public abstract void setTimeAccel(float time);
-	/* (non-Javadoc)
-	 * @see de.dietzm.gcodes.GCode#setTime(float)
-	 */
-	@Override
-	public abstract void setTime(float time);
+
 	/* (non-Javadoc)
 	 * @see de.dietzm.gcodes.GCode#setExtrusion(float)
 	 */
@@ -276,11 +274,7 @@ public abstract class GCodeAbstractNoData implements GCode {
 	 */
 	@Override
 	public abstract String getUnit();
-	/* (non-Javadoc)
-	 * @see de.dietzm.gcodes.GCode#getTime()
-	 */
-	@Override
-	public abstract float getTime();
+
 	//protected abstract String getIfInit(String prefix, float val, int digits, int mask);
 	/* (non-Javadoc)
 	 * @see de.dietzm.gcodes.GCode#getSpeed()

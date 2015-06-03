@@ -15,7 +15,6 @@ public class GCodeXYFZMin extends GCodeAbstractNoData {
 	private float z=Float.MAX_VALUE;
 	
 	//Dynamic values updated by analyse	 (7MB for 300000 gcodes)
-	private float time;
 	private float timeaccel; //track acceleration as extra time 
 	private float distance;
 	//private short fanspeed; //remember with less accuracy (just for display)
@@ -51,7 +50,7 @@ public class GCodeXYFZMin extends GCodeAbstractNoData {
 		String var = String.valueOf(getSpeed());
 		var+=";"+0;
 		var+=";"+distance;
-		var+=";"+time;
+		var+=";"+timeaccel;
 		return var;
 	}
 	
@@ -63,7 +62,7 @@ public class GCodeXYFZMin extends GCodeAbstractNoData {
 		var+="\tExtrusion:"+0;
 		var+="\tDistance:"+distance;
 		var+="\tPosition:"+x+"x"+y;
-		var+="\tTime:"+time;
+		var+="\tTime:"+timeaccel;
 		return var;
 	}
 	
@@ -224,14 +223,7 @@ public class GCodeXYFZMin extends GCodeAbstractNoData {
 	 */
 	@Override
 	public float getSpeed(){
-		return Constants.round2digits((distance/time));
-	}
-
-
-
-	@Override
-	public float getTime() {
-		return time;
+		return Constants.round2digits((distance/timeaccel));
 	}
 
 
@@ -349,12 +341,6 @@ public class GCodeXYFZMin extends GCodeAbstractNoData {
 	public void setFanspeed(float fanspeed) {
 	}
 
-
-
-	@Override
-	public void setTime(float time) {
-		this.time = time;
-	}
 
 
 

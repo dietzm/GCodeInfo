@@ -191,12 +191,6 @@ public class GCodeEMin extends GCodeAbstractNoData {
 
 
 
-	@Override
-	public float getTime() {
-		return time;
-	}
-
-
 
 	@Override
 	public float getTimeAccel() {
@@ -303,12 +297,6 @@ public class GCodeEMin extends GCodeAbstractNoData {
 	public void setFanspeed(float fanspeed) {
 	}
 
-
-
-	@Override
-	public void setTime(float time) {
-		this.time=time;
-	}
 
 
 

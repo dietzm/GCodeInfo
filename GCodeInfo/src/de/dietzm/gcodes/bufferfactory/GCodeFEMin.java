@@ -201,11 +201,6 @@ public class GCodeFEMin extends GCodeAbstractNoData {
 
 
 
-	@Override
-	public float getTime() {
-		return time;
-	}
-
 
 
 	@Override
@@ -315,15 +310,6 @@ public class GCodeFEMin extends GCodeAbstractNoData {
 	public void setFanspeed(float fanspeed) {
 		//this.fanspeed = (short)0;
 	}
-
-
-
-	@Override
-	public void setTime(float time) {
-		this.time = time;
-	}
-
-
 
 	@Override
 	public void setTimeAccel(float time) {

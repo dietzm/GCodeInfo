@@ -68,7 +68,7 @@ public interface GCode {
 
 	public void setTimeAccel(float time);
 
-	public void setTime(float time);
+	//public void setTime(float time);
 
 	public void setExtrusion(float extrusion);
 
@@ -96,7 +96,7 @@ public interface GCode {
 
 	public String getUnit();
 
-	public float getTime();
+	//public float getTime();
 
 	// protected String getIfInit(String prefix, float val, int digits, int
 	// mask);

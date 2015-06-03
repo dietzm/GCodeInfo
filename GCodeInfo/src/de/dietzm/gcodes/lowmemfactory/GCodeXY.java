@@ -12,7 +12,6 @@ public class GCodeXY extends GCodeAbstract {
 	private float y=Float.MAX_VALUE;//will be initalitzed with current pos y
 		
 	//Dynamic values updated by analyse	 (7MB for 300000 gcodes)
-	private float time;
 	private float timeaccel; //track acceleration as extra time 
 	private float distance;
 	private short fanspeed; //remember with less accuracy (just for display)
@@ -41,7 +40,7 @@ public class GCodeXY extends GCodeAbstract {
 	public String toCSV() {		
 		String var = String.valueOf(getSpeed());
 		var+=";"+distance;
-		var+=";"+time;
+		var+=";"+timeaccel;
 		var+=";"+fanspeed;
 		return var;
 	}
@@ -54,7 +53,7 @@ public class GCodeXY extends GCodeAbstract {
 		var+="\tExtrusion:"+0;
 		var+="\tDistance:"+distance;
 		var+="\tPosition:"+x+"x"+y;
-		var+="\tTime:"+time;
+		var+="\tTime:"+timeaccel;
 		return var;
 	}
 	
@@ -183,17 +182,12 @@ public class GCodeXY extends GCodeAbstract {
 	 */
 	@Override
 	public float getSpeed(){
-		return Constants.round2digits((distance/time));
+		return Constants.round2digits((distance/timeaccel));
 	}
 
 
 
-	@Override
-	public float getTime() {
-		return time;
-	}
-
-
+	
 
 	@Override
 	public float getTimeAccel() {
@@ -304,14 +298,6 @@ public class GCodeXY extends GCodeAbstract {
 	public void setFanspeed(float fanspeed) {
 		this.fanspeed = (short)fanspeed;
 	}
-
-
-
-	@Override
-	public void setTime(float time) {
-		this.time = time;
-	}
-
 
 
 	@Override

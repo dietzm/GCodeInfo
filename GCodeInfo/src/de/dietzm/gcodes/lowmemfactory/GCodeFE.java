@@ -11,7 +11,6 @@ public class GCodeFE extends GCodeAbstract {
 	private float e=Float.MAX_VALUE; //will be initalitzed with absolut extrusion 
 	private float f=Float.MAX_VALUE; //will be initalitzed with absolut extrusion 
 	//Dynamic values updated by analyse	 (7MB for 300000 gcodes)
-	private float time;
 	private float timeaccel; //track acceleration as extra time 
 //	private float distance;
 	private short fanspeed; //remember with less accuracy (just for display)
@@ -172,11 +171,6 @@ public class GCodeFE extends GCodeAbstract {
 
 
 
-	@Override
-	public float getTime() {
-		return time;
-	}
-
 
 
 	@Override
@@ -289,10 +283,7 @@ public class GCodeFE extends GCodeAbstract {
 
 
 
-	@Override
-	public void setTime(float time) {
-		this.time = time;
-	}
+
 
 
 
