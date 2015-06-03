@@ -33,6 +33,7 @@ public class GcodePainter implements Runnable {
 	public static float boxheightfactor = 10f;
 	public boolean roundbed=false;
 	boolean snapshot=false; 
+	boolean norepaint=false;
 	
 	public Position[] extruderOffset = {null,null,null,null}; //TODO make it configureable
 	public boolean applyOffset = true; //if offset between T0 & T1 is visable in gcode and must be calculated out
@@ -75,7 +76,6 @@ public class GcodePainter implements Runnable {
 
 	private float fanspeed = 0;
 	//Private vars
-	private boolean useAccelTime=true;
 	private boolean ffLayer=false; //Fast Forward Layer
 	private int fftoGcode=0 , fftoLayer=0; //Fast forward to gcode linenumber # / to layer
 	private float zoom = 3.5f;
@@ -1001,7 +1001,7 @@ public class GcodePainter implements Runnable {
 						synchronized(g2){ 
 							if(!ffLayer && fftoGcode==0 && fftoLayer==0){
 								paintLabel(g2, lay, gCode);
-								sleeptime = ((useAccelTime?gCode.getTimeAccel():gCode.getTime())* 1000) / speedup;
+								sleeptime = (gCode.getTimeAccel()* 1000) / speedup;
 							}
 						}
 						/*
@@ -1072,6 +1072,7 @@ public class GcodePainter implements Runnable {
 								}
 								if(fftoLayer != 0 && fftoLayer == lay.getNumber()){
 									fftoLayer=0;
+									norepaint=false;
 								}
 							}
 							
@@ -1082,7 +1083,7 @@ public class GcodePainter implements Runnable {
 							
 					}//ForGCodes
 
-					if(fftoLayer != 0){
+					if(fftoLayer != 0 && !norepaint){
 						//Repaint once a layer is done
 						g2.repaint();
 					}
@@ -1304,6 +1305,10 @@ public class GcodePainter implements Runnable {
 			if(fftoLayer==0){
 				fftoLayer=lay.getNumber()-1;
 				if(fftoLayer<=0) fftoLayer=model.getLayercount(true); //jump to last layer
+				norepaint=true;
+			}else if(fftoLayer > (lay.getNumber()+1)){
+				fftoLayer--;
+				norepaint=true;
 			}
 			try {
 			Thread.sleep(100); //wait to ensure that repaints are finished
@@ -1412,7 +1417,7 @@ public class GcodePainter implements Runnable {
 				if (in == null) {
 					ret = model.loadModel();
 				} else {
-					ret = model.loadModel(in);
+					ret = model.loadModel(in,in.available());
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
