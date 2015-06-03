@@ -56,9 +56,7 @@ public class Dummy implements PrinterConnection {
 		return true;
 	}
 	
-	public int tryrecover(){
-		return 0;
-	}
+
 	
 	@Override
 	public boolean enumerate() {

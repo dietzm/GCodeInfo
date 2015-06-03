@@ -30,6 +30,7 @@ public class SerialPrinter implements Runnable, Printer {
 	private PrintQueue printQueue = null;
 	private final ReceiveBuffer ioBuffer = new ReceiveBuffer(4096);
 	private StringBuffer sdfiles = new StringBuffer();
+	private int startline = 0;
 	
 	private Thread runner = null;
 	private long printstart; //time when print started
@@ -503,6 +504,9 @@ public class SerialPrinter implements Runnable, Printer {
 				}else{
 					state.lastgcode = code;// remember last code to sync with UI
 					state.lineidx++;
+					if(state.lineidx < startline || !code.isPrintable()){
+						return; //not printable or Resume (startline)
+					}
 				}
 					
 				if(logerrors && Constants.lastGarbage-garbagetime > 0){
@@ -742,9 +746,10 @@ public class SerialPrinter implements Runnable, Printer {
 	 * if sdfilename is not null but model is not, start sd print		
 	 * @param pm Model 
 	 * @param sdfilename  filename on sd card
+	 * @param line line number in gcode file to start with (resume)
 	 * @throws InterruptedException
 	 */
-	public void printModel(Model pm,String sdfilename, boolean autostart) throws InterruptedException {
+	public void printModel(Model pm,String sdfilename, boolean autostart, int line) throws InterruptedException {
 		if (state.connecting) {
 			cons.appendText("Still connecting. Please wait until connecting is established.");
 			return;
@@ -753,14 +758,17 @@ public class SerialPrinter implements Runnable, Printer {
 			cons.appendText("Not connected");
 			return;
 		}
-		
+		startline=0; //reset startline (resume)
 		
 		if(sdfilename == null){
+			//Direct printing
 			cons.appendText("Add model to print queue");
 			printQueue.addModel(pm);	
+			startline=line;
 			if (state.debug)
 				cons.appendText("Filling print queue, Printing:" + state.printing);
 		}else if (pm != null ){
+			//Stream to SD Card
 			printQueue.putAuto(GCodeFactory.getGCode("M21", -21));
 			printQueue.putAuto(GCodeFactory.getGCode("M28 "+sdfilename, -28));
 			state.streaming=true;
@@ -776,6 +784,7 @@ public class SerialPrinter implements Runnable, Printer {
 			if (state.debug)
 				cons.appendText("Filling queue to stream, streaming:" + state.printing);
 		}else{
+			//Print from SD Card
 			printQueue.putAuto(GCodeFactory.getGCode("M23 "+sdfilename, -23));
 			printQueue.putAuto(GCodeFactory.getGCode("M24", -24));
 			state.sdprint=true;
@@ -1145,20 +1154,7 @@ public class SerialPrinter implements Runnable, Printer {
 		state.testrun = true;
 	}
 	
-	public void tryRecovery(){
-		if(mConn == null || !isPrinting() || (System.currentTimeMillis() - starttime) < 15000){
-			return ; //to early to recover
-		}
-		recover=true;
-		startRunnerThread();
-		try {
-			Thread.sleep(5000);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-		mConn.tryrecover();
-		
-	}
+
 
 	public void toggleBaud() {
 		if (state.connected || state.connecting) {

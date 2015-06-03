@@ -153,10 +153,6 @@ public class RXTXPrint implements PrinterConnection,SerialPortEventListener {
 		return 0;
 	}
 
-	@Override
-	public int tryrecover() {
-		// TODO Auto-generated method stub
-		return 0;
-	}
+
 
 }

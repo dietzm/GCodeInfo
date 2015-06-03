@@ -6,6 +6,7 @@ public interface PrinterConnection {
 	public final static int BLUETOOTH=1;
 	public final static int USBOTG=0;
 	public final static int DUMMY=2;
+	public final static int OCTO=3;
 
 	public abstract void reset() throws Exception;
 	
@@ -27,6 +28,6 @@ public interface PrinterConnection {
 	
 	public int getType();
 	
-	public int tryrecover();
+
 
 }
