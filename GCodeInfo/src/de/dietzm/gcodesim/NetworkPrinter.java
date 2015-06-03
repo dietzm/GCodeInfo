@@ -114,9 +114,9 @@ public class NetworkPrinter implements Runnable {
 
 	private void parseCommandHeader(String filename, BufferedInputStream bufin) throws IOException {
 		// Magic detected
-		System.out.println("NetworkReceiver MAGIC detected");
+		
 		int flags = bufin.read();
-
+		System.out.println("NetworkReceiver MAGIC detected :"+flags);
 		if ((flags & DISCONNECT) != 0) {
 			gp.printrecv_setconnected(false);
 		}
