@@ -702,7 +702,10 @@ public class SerialPrinter implements Runnable, Printer {
 			}
 			if( recv.containsWait()){
 				cons.log(serial, "Wait received");
-				continue;
+				/** From Repetier FW: #define WAITING_IDENTIFIER "wait" : Communication errors can swollow part of the ok, which tells the host software to send
+				the next command. Not receiving it will cause your printer to stop. Sending this string every
+				second, if our queue is empty should prevent this. Comment it, if you don't wan't this feature. */
+				break; //we likely missed the "ok" 
 			}
 			if(code.isBuffered() && !recv.startsWithEcho() && !recv.startsWithGO() && !recv.startsWithComment()){ //For buffered commands we only expect ok
 				state.unexpected++;
