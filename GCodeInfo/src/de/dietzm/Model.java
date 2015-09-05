@@ -7,7 +7,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -410,14 +409,18 @@ public class Model {
 				extruderCount=Math.max(extruderCount, 3);
 			}else if(gc.getGcode() == Constants.GCDEF.T3){
 				extruderCount=Math.max(extruderCount, 4);
+			}else if(gc.getGcode() == Constants.GCDEF.T4){
+				extruderCount=Math.max(extruderCount, 5);
 			}else if(gc.getGcode() == Constants.GCDEF.M218 || gc.getGcode() == Constants.GCDEF.G10){
 				float xoff = 0;
 				float yoff = 0;
 				if(gc.isInitialized(Constants.X_MASK)) xoff = gc.getX();
 				if(gc.isInitialized(Constants.Y_MASK)) yoff = gc.getY();
 				int toff = (int)gc.getR(); //T is stored in R field
-				if(extruderOffset == null) extruderOffset = new Position[]{null,null,null,null}; //init for 4 extr.
-				extruderOffset[toff] = new Position(xoff,yoff);
+				if(extruderOffset == null) extruderOffset = new Position[]{null,null,null,null,null}; //init for 5 extr.
+				if(toff <= 4){
+					extruderOffset[toff] = new Position(xoff,yoff);
+				}
 			}else if(gc.getGcode() == Constants.GCDEF.M108){
 				if(gc.isInitialized(Constants.E_MASK)) m108=gc.getE();
 			}else if(gc.isInitialized(Constants.SF_MASK)){//update Fan if specified
