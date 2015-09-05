@@ -161,6 +161,7 @@ public class PrintrPanel extends JPanel {
 	static int snapmode = 0;
 	static int bedsizeX=200;
 	static int bedsizeY=200;
+	static int bedrectsize=200;
 	static String dualoffsetXY = "0:0";
 	BufferedImage img = null;
 	PainterPanel painter = null;
@@ -279,10 +280,11 @@ public class PrintrPanel extends JPanel {
 	}
 	
 	public void init(String filename,InputStream in) throws IOException{
-		awt = new AWTGraphicRenderer(bedsizeX, bedsizeX,this,theme);
-		float fac = (awt.getHeight()-(55+(awt.getHeight()/12)))/bedsizeX;
+		bedrectsize=Math.max(bedsizeX, bedsizeY);
+		awt = new AWTGraphicRenderer(bedsizeX, bedsizeY,this,theme);
+		float fac = (awt.getHeight()-(55+(awt.getHeight()/12)))/(float)bedrectsize;
 	//	GCodeFactory.setCustomFactory(new GCodeFactoryBuffer());
-		gp = new GcodePainter(awt,true,fac,bedsizeX,bedsizeX,GcodePainter.defaultzoommod); //todo pass bedsize
+		gp = new GcodePainter(awt,true,fac,bedsizeX,bedsizeY,GcodePainter.defaultzoommod); //todo pass bedsize
 		if(!dualoffsetXY.equals("0:0")){
 			Position pos = Constants.parseOffset(dualoffsetXY);
 			gp.setExtruderOffset(1, pos);
@@ -459,9 +461,14 @@ public class PrintrPanel extends JPanel {
 		String filename;
 		InputStream in = null;
 		readConfig();
-		if (args.length < 1 || !new File(args[0]).exists()) {
+		if (args.length < 1 ){
 			filename = "/gcodesim.gcode";
 			in= gs.getClass().getResourceAsStream(filename);			
+		} else if (!new File(args[0]).exists()) {
+			System.err.println("File not found: "+args[0]);
+			System.out.println("Usage: GCodeSimulator <gcode file> [snaphot.jpg] [--thumb snaphot]");
+			filename=null;
+			System.exit(1);
 		} else {
 			filename = args[0];
 			if(args.length == 2){
@@ -498,11 +505,13 @@ public class PrintrPanel extends JPanel {
 				lastfilepath = prop.getProperty("lastfilepath",System.getProperty("user.dir"));
 				networkip  = prop.getProperty("networkip","192.168.0.50");
 				String bedsize = prop.getProperty("bedsize","200");
+				String bedsizey = prop.getProperty("bedsizeY",bedsize);
 				theme = prop.getProperty("theme","default");
 				roundbed = Boolean.parseBoolean(prop.getProperty("roundbed","false"));
 				dualoffsetXY=prop.getProperty("dualoffsetXY","0:0");
 				bedsizeX=Integer.parseInt(bedsize);
-				bedsizeY=bedsizeX;
+				bedsizeY=Integer.parseInt(bedsizey);
+				//bedsizeX=500;
 			} catch (FileNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -530,6 +539,7 @@ public class PrintrPanel extends JPanel {
 				prop.setProperty("lastfilepath", lastfilepath);
 				prop.setProperty("networkip", networkip);
 				prop.setProperty("bedsize", String.valueOf(bedsizeX));
+				prop.setProperty("bedsizeY", String.valueOf(bedsizeY));
 				prop.setProperty("theme", theme);
 				prop.setProperty("roundbed", String.valueOf(roundbed));
 				prop.setProperty("dualoffsetXY", dualoffsetXY);	
@@ -933,7 +943,7 @@ public class PrintrPanel extends JPanel {
 					updateSize(showdetails);
 				}else{
 					//Speedup (only if in left box
-					if(arg0.getPoint().x < bedsizeX * gp.getZoom()+gp.defaultgap ){
+					if(arg0.getPoint().x < bedrectsize * gp.getZoom()+gp.defaultgap ){
 						if( mwrot > 0){
 							gp.toggleSpeed(false);
 						}else{
@@ -975,13 +985,13 @@ public class PrintrPanel extends JPanel {
 				}else if(arg0.getButton() == MouseEvent.BUTTON2){
 						gp.showHelp();
 				}else{
-					int speedboxpos = (int)(((bedsizeX*gp.getZoom()+gp.defaultgap)/100)*82)+6;
-					int speedboxsize=(int)((bedsizeX*gp.getZoom()+gp.defaultgap)/100)*12;
+					int speedboxpos = (int)(((bedrectsize*gp.getZoom()+gp.defaultgap)/100)*82)+6;
+					int speedboxsize=(int)((bedrectsize*gp.getZoom()+gp.defaultgap)/100)*12;
 					int mousex=arg0.getPoint().x;
 					//if clicked on speedup label, toggle pause
-					if(mousex >= speedboxpos && mousex <= speedboxpos+speedboxsize && arg0.getPoint().y > bedsizeY*gp.getZoom()+55){
+					if(mousex >= speedboxpos && mousex <= speedboxpos+speedboxsize && arg0.getPoint().y > bedrectsize*gp.getZoom()+55){
 						gp.togglePause();
-					}else if(arg0.getPoint().x > bedsizeX * gp.getZoom()+gp.defaultgap ){
+					}else if(arg0.getPoint().x > bedrectsize * gp.getZoom()+gp.defaultgap ){
 						gp.toggleType();
 					}else{
 						if(arg0.isAltDown() || arg0.isControlDown()){
@@ -1019,7 +1029,7 @@ public class PrintrPanel extends JPanel {
 				if(currsize!=size){
 					//System.out.println("Size:"+size+" Curr:"+currsize);
 					//float fac = size/currsize;
-					float fac = (size-(55+(size/12)))/bedsizeY;
+					float fac = (size-(55+(size/12)))/bedrectsize;
 					//float fac = (size-(55+(size/2)))/bedsizeX;
 					//float z = gp.getZoom();
 					//System.out.println("Zoom:"+z);
@@ -1168,7 +1178,7 @@ public class PrintrPanel extends JPanel {
 
 	private float getRatioMod() {
 		//Calculate default ratio w/h for gp (based on default zoommod)
-		float defaultratio = (GcodePainter.defaultgap +bedsizeX + (bedsizeX / GcodePainter.defaultzoommod *2)) / (bedsizeY + (bedsizeY/GcodePainter.boxheightfactor)); 
+		float defaultratio = (GcodePainter.defaultgap +bedrectsize + (bedrectsize / GcodePainter.defaultzoommod *2)) / (bedrectsize + (bedrectsize/GcodePainter.boxheightfactor)); 
 		//Get available screen space
 		int maxwid = getWidth();
 		float maxhigh2 = getHeight()-(showbanner?80:0);
@@ -1185,7 +1195,7 @@ public class PrintrPanel extends JPanel {
 		}
 		
 		//calculate new zoommod based on screen ratio to align ratios
-		return bedsizeX *2 / ((screenratio * (bedsizeY + (bedsizeY/GcodePainter.boxheightfactor))) - GcodePainter.defaultgap - bedsizeX );
+		return bedrectsize *2 / ((screenratio * (bedrectsize + (bedrectsize/GcodePainter.boxheightfactor))) - GcodePainter.defaultgap - bedrectsize );
 		
 	}
 

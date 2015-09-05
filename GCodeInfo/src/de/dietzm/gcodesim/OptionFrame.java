@@ -37,6 +37,12 @@ public class OptionFrame extends JFrame implements ActionListener{
 			}else if(item.equals("500x500")){
 				GcodeSimulator.bedsizeX=500;
 				GcodeSimulator.bedsizeY=GcodeSimulator.bedsizeX;
+			}else if(item.equals("400x200")){
+				GcodeSimulator.bedsizeX=400;
+				GcodeSimulator.bedsizeY=200;
+			}else if(item.equals("200x300")){
+				GcodeSimulator.bedsizeX=200;
+				GcodeSimulator.bedsizeY=300;
 			}
 			GcodeSimulator.storeConfig();
 			JOptionPane.showMessageDialog(null, "Please restart GCodeSimulator now");
@@ -97,7 +103,7 @@ public class OptionFrame extends JFrame implements ActionListener{
 		pan.setLayout(new GridLayout(0,2));
 		
 		JLabel bz = new JLabel("Bedsize:");
-		String[] bedsizes = {"150x150","200x200","300x300","500x500"};
+		String[] bedsizes = {"150x150","200x200","300x300","500x500", "400x200","200x300"};
 		JComboBox<String> combo = new JComboBox<String>(bedsizes);
 		combo.setActionCommand("bedsize");
 	
