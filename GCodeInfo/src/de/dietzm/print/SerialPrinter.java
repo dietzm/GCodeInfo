@@ -17,6 +17,7 @@ public class SerialPrinter implements Runnable, Printer {
 
 	public static final GCode G0 = GCodeFactory.getGCode("G0", 0);
 	public static final GCode M105 = GCodeFactory.getGCode("M105", -105);
+	public static final GCode M114 = GCodeFactory.getGCode("M114", -114);
 	public static final GCode M20 = GCodeFactory.getGCode("M20", -20);
 	public static final GCode M27 = GCodeFactory.getGCode("M27", -20);
 	public static final GCode T0 = GCodeFactory.getGCode("T0", -1000);
@@ -24,7 +25,9 @@ public class SerialPrinter implements Runnable, Printer {
 	public static final String serial = "SERIAL"; //log tag
 	public static final String io = "IO"; //log tag	
 
-	
+	private GCode recoverPoint = null; //Used to return to the old coords after pause (e.g. filament change)
+
+
 	private ConsoleIf cons = null;
 	private PrinterConnection mConn = null;
 	private PrintQueue printQueue = null;
@@ -37,18 +40,26 @@ public class SerialPrinter implements Runnable, Printer {
 	private long sendtime = 0;
 	private long starttime = 0;
 	private long garbagetime = 0;
-	
+	private boolean setRecoverPoint = false;
 	private long lastTempWatch = 0; //time when last tempwatch happened
 	private float testrunavg = 0;
 	private int tempwatchintervall = 10000;
 	private boolean resetoninit=true;
 	private boolean logerrors=true;
-	private boolean recover = false;
 	private boolean onconnect =false;
 	private boolean homexyfinish = false; 
 	private int extrnr = 1;
 	private boolean strictmode = true;
 	private int mintimout=50;
+	
+	/**
+	 * Query firmware for current position and remember it so that we can return to this after pause
+	 */
+	public void setRecoverPoint() {
+		cons.appendText("Set recovery point");
+		setRecoverPoint=true;
+		addToPrintQueue(M114, true);
+	}
 	
 	protected boolean isHomeXYfinish() {
 		return homexyfinish;
@@ -243,7 +254,7 @@ public class SerialPrinter implements Runnable, Printer {
 	}
 	
 	public void startRunnerThread(){
-		if (runner == null || !runner.isAlive() || recover) {
+		if (runner == null || !runner.isAlive()) {
 			runner = new Thread(this);
 			runner.start();
 		}
@@ -490,7 +501,13 @@ public class SerialPrinter implements Runnable, Printer {
 		//don't do tempwatch if not printing and manual gcode is in queue, if sd streaming or if listing sdcard files
 		if (System.currentTimeMillis() - lastTempWatch < tempwatchintervall || (!state.printing && !printQueue.isManualEmpty()) || state.streaming || state.sdlist) {
 			if (state.printing && !state.pause && printQueue.isManualEmpty()) {
-				code = printQueue.pollAuto(); // poll for auto ops
+				if(recoverPoint != null){
+					cons.appendText("Starting from recovery point");
+					code= recoverPoint;
+					recoverPoint=null;
+				}else{
+					code = printQueue.pollAuto(); // poll for auto ops
+				}
 				if (code == null){
 					state.lastgcode = G0;
 					if(state.percentCompleted >= 100){
@@ -673,6 +690,15 @@ public class SerialPrinter implements Runnable, Printer {
 				}else if(code.getGcodeId() == GCDEF.T1.getId() && state.activeExtr != 1){
 					state.activeExtr=1;
 					cons.updateState(States.TOOLCHANGE,null, -1);
+				}else if(setRecoverPoint && code == M114){
+					try{
+					CharSequence coord = recv.parseCoord();
+					cons.appendText("Recovery Coords:"+coord);
+					setRecoverPoint=false;
+					recoverPoint = GCodeFactory.getGCode("G1 "+coord, -1);
+					}catch(Exception e){
+						cons.appendText("Could not set recovery point");
+					}
 				}
 
 				// if(state.debug){
@@ -870,7 +896,7 @@ public class SerialPrinter implements Runnable, Printer {
 	public void run() {
 		Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
 		Thread.currentThread().setName("SerialRunner");
-		if(!recover) doInit(); //initialize the connection
+		doInit(); //initialize the connection
 		while (state.connected) {
 			if (state.reset) {
 				doReset();

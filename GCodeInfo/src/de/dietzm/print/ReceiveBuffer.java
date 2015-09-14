@@ -250,6 +250,30 @@ public class ReceiveBuffer implements CharSequence,Appendable {
 		return 0; //ASCII
 	}
 	
+	public CharSequence parseCoord(){
+		String coords = "X"+getField('X') + " Y"+getField('Y') + " Z"+ getField('Z');
+		return coords;
+	}
+
+	
+	/**
+	 * Look for an identifier (e.g. X) and take the number till the next space
+	 * Used to parse M114 output X:0.00 Y:0.00 RZ:0.00 LZ:0.00
+	 * @param ident
+	 * @return
+	 */
+	private CharSequence getField(Character ident) {
+		int idx = indexOf(ident);
+		if(idx != -1 ){
+			for (int i = idx+2; i < len-1; i++) {
+				if(array[i]>58 ||array[i]<46 ){ //digits + : . 
+					return subSequence(idx+2, i);
+				}
+			}
+		}
+		return "";
+	}
+	
 	/**
 	 * parse output:
 	 * Resend:2
