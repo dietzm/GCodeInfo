@@ -624,11 +624,16 @@ public class Model {
 	}
 	
 	/**
-	 * Offset 
+	 * Max and min positions on bed Offset 
 	 * 	
-	 * Xmin-Xmax       Constants.floatToString2(sz[1])+"-"+Constants.floatToString2(sz[0])+ 
-	 * Ymin-Ymax  Constants.floatToString2(sz[3])+"-"+Constants.floatToString2(sz[2])+" mm");
-	 * @return
+	 * @return Array with 5 values
+	 * xMax
+	 * xMin
+	 * yMax
+	 * yMin
+	 * zMax
+	 * 
+	 * 
 	 */
 	public float[] getBoundaries() {
 		return boundaries;
