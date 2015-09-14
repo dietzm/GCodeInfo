@@ -12,7 +12,6 @@ import de.dietzm.Constants.GCDEF;
 import de.dietzm.gcodes.GCode;
 import de.dietzm.gcodes.GCodeStore;
 import de.dietzm.gcodes.MemoryEfficientLenString;
-import de.dietzm.gcodes.MemoryEfficientString;
 import de.dietzm.print.Printer;
 
 /**
@@ -22,23 +21,28 @@ import de.dietzm.print.Printer;
  *
  */
 public class GcodePainter implements Runnable {
-	public static enum Commands {STEPBACK,STEP50X,STEP50XBACK,RESTART,NEXTLAYER,NEXTLAYER10,REPAINTLABEL,DEBUG,EXIT,OPENFILE,NOOP,PRINT,REPAINTLAYERS,PREVIOUSLAYER,HELP,REANALYSE}; 
+	public static enum Commands {STEPBACK,STEP50X,STEP50XBACK,RESTART,NEXTLAYER,NEXTLAYER10,REPAINTLABEL,DEBUG,EXIT,OPENFILE,NOOP,PRINT,REPAINTLAYERS,PREVIOUSLAYER,HELP,REANALYSE};
+	public static enum Travel {NOT_PAINTED,DOTTED,FULL}
 	public int bedSquare = 200;
 	//public int bedsizeSquare = 200;
 	public int bedsizeDiff=0;
 	public int colNR = 7;
-	public boolean painttravel = true;
+	private Travel painttravel = Travel.DOTTED;
 	private int defbuffersize = 15;
 	private int header = 35; 
 	public static float boxheightfactor = 10f;
 	public boolean roundbed=false;
 	boolean snapshot=false; 
 	boolean norepaint=false;
+	public float extrazoom = 1f;
+	long ffstarttime = 0;
+	float[] sideList = new float[6];
+	
 	
 	public Position[] extruderOffset = {null,null,null,null}; //TODO make it configureable
 	public boolean applyOffset = true; //if offset between T0 & T1 is visable in gcode and must be calculated out
 	private int activeExtruder = 0;
-	public boolean isPainttravel() {
+	public Travel isPainttravel() {
 		return painttravel;
 	}
 
@@ -50,7 +54,7 @@ public class GcodePainter implements Runnable {
 		}		
 	}
 
-	public void setPainttravel(boolean painttravel) {
+	public void setPainttravel(Travel painttravel) {
 		this.painttravel = painttravel;
 	}
 
@@ -83,6 +87,8 @@ public class GcodePainter implements Runnable {
 	private float speedup = 5;
 	public final static float defaultzoommod=2.74f;
 	private float zoommod=defaultzoommod; //0.1f = 0.025ratio 
+	float zoomsmall= zoom/zoommod;
+	private float bedSquareZoomed = bedSquare*zoom;
 	private int pause = 0; 
 	private boolean inpause=false;
 	private int Xoffset=0,Yoffset=0;
@@ -135,6 +141,8 @@ public class GcodePainter implements Runnable {
 	 */
 	public void setZoom(float zoom) {
 		this.zoom = zoom;
+		zoomsmall= zoom/zoommod;
+		bedSquareZoomed = bedSquare*zoom;
 		setCmd(Commands.REPAINTLAYERS);
 	}
 
@@ -267,7 +275,7 @@ public class GcodePainter implements Runnable {
 	
 	public int[] getSize(boolean details){
 		return new int[]{ 
-				(int) (bedSquare * getZoom() + gap + (details ? bedSquare*zoom/zoommod*2 : 0) ),
+				(int) (bedSquare * getZoom() + gap + (details ? bedSquareZoomed/zoommod*2 : 0) ),
 				(int) (bedSquare * getZoom() + (bedSquare * getZoom()/boxheightfactor))		
 		};
 	}
@@ -323,6 +331,7 @@ public class GcodePainter implements Runnable {
 	 */
 	public void setZoomMod(float mod){
 		zoommod=mod;
+		zoomsmall= zoom/zoommod;
 		setCmd(Commands.REPAINTLAYERS);
 	}
 	
@@ -348,12 +357,15 @@ public class GcodePainter implements Runnable {
 		System.out.println("Diff:"+bedsizeDiff);
 		
 		zoommod=zoomaspect;		
+		zoomsmall= zoom/zoommod;
+		bedSquareZoomed = bedSquare*zoom;
+		
 	}
 
 	private void calculateOffset() {
 		//System.out.println("Bound:"+model.getBoundaries()[0]+"/"+model.getBoundaries()[1]);
 		//Calculate offset
-		if(model.getBoundaries()[0] >= bedSquare || model.getBoundaries()[1] <= 0){
+		if(model.getBoundaries()[0] >= bedSquare || model.getBoundaries()[1] <= 0 || extrazoom != 1){
 			//67,139/2  =  0
 			//250-150=200
 			float midpoint = model.getBoundaries()[0]-(model.getDimension()[0]/2);
@@ -361,7 +373,7 @@ public class GcodePainter implements Runnable {
 		}else{
 			Xoffset=0;
 		}
-		if(model.getBoundaries()[2] >= bedSquare || model.getBoundaries()[3] <= 0){
+		if(model.getBoundaries()[2] >= bedSquare || model.getBoundaries()[3] <= 0 || extrazoom != 1){
 			//67,139/2  =  0
 			//250-150=200
 			float midpoint = model.getBoundaries()[2]-(model.getDimension()[1]/2);
@@ -369,11 +381,16 @@ public class GcodePainter implements Runnable {
 		}else{
 			Yoffset=0;
 		}
+		
+
+		
 		if(roundbed){
 			//zero is always in the center of the round bed
 			Xoffset=bedSquare/2;
 			Yoffset=bedSquare/2;
 		}
+		
+		
 		if(bedsizeDiff != 0){
 			if(bedsizeDiff < 0){
 				Xoffset=(bedSquare-(bedSquare+bedsizeDiff))/2;
@@ -383,6 +400,18 @@ public class GcodePainter implements Runnable {
 				Xoffset=0;
 			}
 		}
+		
+		//Experimental extra zoom
+		if(extrazoom != 1){
+			float midpoint = model.getBoundaries()[0]-(model.getDimension()[0]/2);
+			System.out.println("Mid:"+midpoint);
+			Xoffset = (int)(bedSquare/extrazoom /2-midpoint);
+			
+			float midpoint2 = model.getBoundaries()[2]-(model.getDimension()[1]/2);
+			System.out.println(bedSquare/extrazoom/2+"sq  Mid2:"+midpoint2);
+			Yoffset = (int)((bedSquare/extrazoom/2-midpoint2));
+		}
+		
 		//System.out.println("X/Y Offset:"+Xoffset+"/"+Yoffset);
 	}
 
@@ -478,7 +507,7 @@ public class GcodePainter implements Runnable {
 	private void printDetails(GraphicRenderer g2, Layer lay) {
 		//g2.setColor(lay.getNumber() % colNR);
 		g2.setColor(colNR);
-		float boxheight=(bedSquare*zoom)/boxheightfactor;
+		float boxheight=(bedSquareZoomed)/boxheightfactor;
 		//int linegap=(int)((4*zoom)+3.2f);
 		float size=2.5f+(3.10f*zoom)/200*bedSquare;
 		int linegap=(int)size;
@@ -503,8 +532,8 @@ public class GcodePainter implements Runnable {
 		case 4:
 			det=modellaysum;
 			String[] lines = modellaysum;
-			if(lines.length*linegap+30 >= bedSquare*zoom+boxheight -(bedSquare*zoom/zoommod) ){
-				start=(int) (((bedSquare*zoom+boxheight -linegap -(bedSquare*zoom/zoommod) )/linegap)+1)*(detailstype-2); //TODO calculate number
+			if(lines.length*linegap+30 >= bedSquareZoomed+boxheight -(bedSquareZoomed/zoommod) ){
+				start=(int) (((bedSquareZoomed+boxheight -linegap -(bedSquareZoomed/zoommod) )/linegap)+1)*(detailstype-2); //TODO calculate number
 				//System.out.println("START:"+start);
 				break;
 			}
@@ -523,36 +552,36 @@ public class GcodePainter implements Runnable {
 			det=modeldetails;
 			break;
 		}
-		g2.clearrect(bedSquare*zoom+gap+5,(bedSquare*zoom/zoommod)+2+header, (bedSquare * zoom/zoommod*2)-7, bedSquare * zoom + boxheight -(bedSquare*zoom/zoommod)-7 ,print?1:0);
+		g2.clearrect(bedSquareZoomed+gap+5,(bedSquareZoomed/zoommod)+2+header, (bedSquareZoomed/zoommod*2)-7, bedSquareZoomed + boxheight -(bedSquareZoomed/zoommod)-7 ,print?1:0);
 		
 		
 		int c=0;
 		for (int i = start; i < det.length; i++) {
-			int y = (int)(bedSquare*zoom/zoommod)+header+3+linegap+c*linegap; //avoid painting across the border
+			int y = (int)(bedSquareZoomed/zoommod)+header+3+linegap+c*linegap; //avoid painting across the border
 			c++;
-			if(y+30 >= bedSquare*zoom+boxheight) break;
+			if(y+30 >= bedSquareZoomed+boxheight) break;
 			
-			g2.drawtext(det[i], bedSquare*zoom+gap+8,y );
+			g2.drawtext(det[i], bedSquareZoomed+gap+8,y );
 			
 		}
 	}
 
 	private void printLabelBox(GraphicRenderer g2, int boxposp,int bsizepercent, CharSequence value, CharSequence labl,int laynr) {
-		float boxsize=((bedSquare*zoom+gap)/100)*bsizepercent;
-		float boxpos=((bedSquare*zoom+gap)/100)*boxposp;
-		float boxheight=(bedSquare*zoom)/boxheightfactor;
+		float boxsize=((bedSquareZoomed+gap)/100)*bsizepercent;
+		float boxpos=((bedSquareZoomed+gap)/100)*boxposp;
+		float boxheight=(bedSquareZoomed)/boxheightfactor;
 		float gapz=zoom;
 		float size=10.15f*(zoom)/200*bedSquare;
-		g2.clearrect(boxpos,bedSquare*zoom, boxsize,boxheight+2,2);
+		g2.clearrect(boxpos,bedSquareZoomed, boxsize,boxheight+2,2);
 		//g2.clearrect(boxpos+2,bedsizeSquare*zoom+2, boxsize-3,boxheight-1,print?1:0);
 		g2.setColor(colNR+1);//white
-		g2.drawrect(boxpos,bedSquare*zoom, boxsize,boxheight+2);
+		g2.drawrect(boxpos,bedSquareZoomed, boxsize,boxheight+2);
 		//g2.setColor(laynr % colNR);
 		g2.setColor(colNR);//white
 		g2.setFontSize(size);
-		g2.drawtext(value, boxpos, bedSquare*zoom+size-gapz,boxsize);
+		g2.drawtext(value, boxpos, bedSquareZoomed+size-gapz,boxsize);
 		g2.setFontSize(size/3);
-		g2.drawtext(labl, boxpos, bedSquare*zoom+boxheight-2-size/3,boxsize);
+		g2.drawtext(labl, boxpos, bedSquareZoomed+boxheight-2-size/3,boxsize);
 	}
 
 	private void paintLoading(GraphicRenderer g) {
@@ -585,9 +614,9 @@ public class GcodePainter implements Runnable {
 	private void paintHelp(GraphicRenderer g) {
 		g.setColor(0);
 		
-		float boxsize = (bedSquare*zoom)/2.5f;
-		float xbox=(bedSquare*zoom)/2-boxsize/2;
-		float ybox=(bedSquare*zoom)/2-boxsize/2;
+		float boxsize = (bedSquareZoomed)/2.5f;
+		float xbox=(bedSquareZoomed)/2-boxsize/2;
+		float ybox=(bedSquareZoomed)/2-boxsize/2;
 		g.fillrect(xbox,ybox , boxsize+30, boxsize+109);
 		g.drawrect(xbox-3,ybox-3 , boxsize+36, boxsize+115);
 		float size=5.5f+(3.10f*zoom)/200*bedSquare;
@@ -629,6 +658,11 @@ public class GcodePainter implements Runnable {
 		}
 
 	private void printBed(GraphicRenderer g2) {
+		float rightofBed=bedSquareZoomed + gap;
+		float bedsquarezoom=bedSquareZoomed;
+		float zoomsmall= zoom/zoommod;
+		float boxsize=bedSquare*zoomsmall; //size of front view or side view box
+		
 		int rectback =  print?1:0;
 		int roundback = rectback;
 		if(roundbed || bedsizeDiff != 0){
@@ -637,81 +671,82 @@ public class GcodePainter implements Runnable {
 		//bed and side view
 		g2.clearrect(0, 0, g2.getWidth(),g2.getHeight(),roundback);
 		//Bed only
-		g2.clearrect(0, 0, bedSquare * zoom ,bedSquare * zoom ,rectback);
+		g2.clearrect(0, 0, bedsquarezoom ,bedsquarezoom ,rectback);
 		
 		g2.setColor(colNR+1);
 		g2.setStroke(3);
-		g2.drawrect(0, 0, bedSquare * zoom, bedSquare * zoom); // Draw print bed
-		g2.clearrect(bedSquare * zoom, 0,  gap, bedSquare * zoom,2); //level bar Color 
-		g2.drawrect(bedSquare * zoom , 0, gap, bedSquare * zoom); // Draw level bar border
+		g2.drawrect(0, 0, bedsquarezoom, bedsquarezoom); // Draw print bed
+		g2.clearrect(bedsquarezoom, 0,  gap, bedsquarezoom,2); //level bar Color 
+		g2.drawrect(bedsquarezoom , 0, gap, bedsquarezoom); // Draw level bar border
 		
 		
 		//Draw box for modeldetails , front view and side view
 		//Front & side view boxes
-		float zoomsmall= zoom/zoommod;
-		g2.clearrect(bedSquare * zoom + gap, 0, (bedSquare*zoomsmall)*2, header,2); //Label background side&font
-		g2.drawrect(bedSquare * zoom + gap, 0, bedSquare*zoomsmall, header);//Label background border
-		g2.drawrect(bedSquare * zoom + gap +bedSquare*zoomsmall , 0, bedSquare*zoomsmall, header);//Label background border
+	
+		g2.clearrect(rightofBed, 0, (boxsize)*2, header,2); //Label background side&font
+		g2.drawrect(rightofBed, 0, boxsize, header);//Label background border
+		g2.drawrect(rightofBed +boxsize , 0, boxsize, header);//Label background border
 		
-		g2.drawrect(bedSquare * zoom + gap, 0, bedSquare*zoomsmall, bedSquare * zoomsmall);
-		g2.drawrect(bedSquare * zoom + gap +bedSquare*zoomsmall , 0, bedSquare*zoomsmall, bedSquare * zoomsmall);
+		g2.drawrect(rightofBed, 0, boxsize, boxsize);
+		g2.drawrect(rightofBed +boxsize , 0, boxsize, boxsize);
 
 		//full modeldetails box
-		float boxheight=(bedSquare*zoom)/boxheightfactor;
-		g2.clearrect(bedSquare * zoom + gap, bedSquare * zoomsmall, (bedSquare*zoomsmall)*2, header,2); //Label background modeldetails
-		g2.drawrect(bedSquare * zoom + gap, bedSquare * zoomsmall, bedSquare*zoomsmall*2, header);//Label background border
-		g2.drawrect(bedSquare * zoom + gap, 0,  bedSquare*zoomsmall*2, bedSquare * zoom+boxheight+2); // Draw print		
+		float boxheight=(bedsquarezoom)/boxheightfactor;
+		g2.clearrect(rightofBed, boxsize, (boxsize)*2, header,2); //Label background modeldetails
+		g2.drawrect(rightofBed, boxsize, boxsize*2, header);//Label background border
+		g2.drawrect(rightofBed, 0,  boxsize*2, bedsquarezoom+boxheight+2); // Draw print		
 		
 		
 		//Title for front view / side view and model details		
 		float fsize=2+5f*(zoom)/200*bedSquare;
 		g2.setFontSize(fsize);
 		g2.setColor(colNR);
-		g2.drawtext("Front View", bedSquare * zoom + gap+bedSquare*zoomsmall,fsize+3,bedSquare*zoomsmall);
-		g2.drawtext("Side View", bedSquare * zoom + gap,fsize+3,bedSquare*zoomsmall);
-		g2.drawtext("Model Details", bedSquare * zoom + gap,bedSquare * zoomsmall+fsize+5,bedSquare*zoomsmall*2);
+		g2.drawtext("Front View", rightofBed+boxsize,fsize+3,boxsize);
+		g2.drawtext("Side View", rightofBed,fsize+3,boxsize);
+		g2.drawtext("Model Details", rightofBed,boxsize+fsize+5,boxsize*2);
 		
 		//Draw circle for round bed
-		if(roundbed){
+		if(roundbed && extrazoom == 1){
 			g2.setStroke(0);
-			g2.fillArc(0, 0, (int)(bedSquare*zoom), (int)(bedSquare*zoom), 0,360,roundback);
+			g2.fillArc(0, 0, (int)(bedsquarezoom), (int)(bedsquarezoom), 0,360,roundback);
 			g2.setColor(colNR);
-			g2.drawArc(0, 0, (int)(bedSquare*zoom), (int)(bedSquare*zoom), 0,360);
+			g2.drawArc(0, 0, (int)(bedsquarezoom), (int)(bedsquarezoom), 0,360);
 		}
-		
+
+		//non square bed sizes
 		float xBorder = 0;
 		float yBorder =0;
-		//non square bed sizes
-		if(bedsizeDiff != 0){
+		if(bedsizeDiff != 0 && extrazoom == 1){
 			//Bed only
 			g2.setStroke(1);
 			if(bedsizeDiff < 0){
 				//Larger Y 
 				xBorder = (bedSquare-(bedSquare+bedsizeDiff))/2* zoom;
-				g2.clearrect(xBorder, 0 ,(bedSquare+bedsizeDiff) * zoom,bedSquare *zoom ,roundback);
-				g2.drawrect(xBorder, 0 ,(bedSquare+bedsizeDiff) * zoom,bedSquare *zoom );
+				g2.clearrect(xBorder, 0 ,(bedSquare+bedsizeDiff) * zoom,bedsquarezoom ,roundback);
+				g2.drawrect(xBorder, 0 ,(bedSquare+bedsizeDiff) * zoom,bedsquarezoom );
 			}else{
 				//Larger X
 				yBorder = (bedSquare-(bedSquare-bedsizeDiff))/2 * zoom;
-				g2.clearrect(0, yBorder, bedSquare * zoom ,(bedSquare-bedsizeDiff) * zoom ,roundback);
-				g2.drawrect(0, yBorder, bedSquare * zoom ,(bedSquare-bedsizeDiff) * zoom );
+				g2.clearrect(0, yBorder, bedsquarezoom ,(bedSquare-bedsizeDiff) * zoom ,roundback);
+				g2.drawrect(0, yBorder, bedsquarezoom ,(bedSquare-bedsizeDiff) * zoom );
 			}
 			
 		}
+		
 		//Draw grid
 		g2.setStroke(2);
 		g2.setColor(colNR);
-		int stepsize = 10;
+		int stepsize = (int)(10*extrazoom);
 		if(bedSquare >= 1000) stepsize=50;
 		for (int i = stepsize; i < bedSquare; i=i+stepsize) {
-			if((i*zoom) < (bedSquare*zoom-xBorder*2)) g2.drawline(xBorder+i*zoom,yBorder+0,xBorder+i*zoom,bedSquare*zoom-yBorder);
-			if((i*zoom) < (bedSquare*zoom-yBorder*2)) g2.drawline(xBorder+0,yBorder+i*zoom,bedSquare*zoom-xBorder,yBorder+i*zoom);	
+			if((i*zoom) < (bedsquarezoom-xBorder*2)) g2.drawline(xBorder+i*zoom,yBorder+0,xBorder+i*zoom,bedsquarezoom-yBorder);
+			if((i*zoom) < (bedsquarezoom-yBorder*2)) g2.drawline(xBorder+0,yBorder+i*zoom,bedsquarezoom-xBorder,yBorder+i*zoom);	
 		}
 		
 		
 		//draw front & side grid
-		g2.drawline(bedSquare * zoom + gap, bedSquare*zoomsmall, bedSquare * zoom + gap +60, bedSquare * zoomsmall-60);
-		g2.drawline(bedSquare * zoom + gap+bedSquare * zoomsmall, bedSquare*zoomsmall, bedSquare * zoom + gap +bedSquare *zoomsmall -60, bedSquare * zoomsmall-60);
+		g2.drawline(rightofBed, boxsize, rightofBed +60, boxsize-60);
+		g2.drawline(rightofBed+boxsize, boxsize, rightofBed +boxsize -60, boxsize-60);
 		
 
 	
@@ -731,16 +766,17 @@ public class GcodePainter implements Runnable {
 		//Print level bar
 		g2.setStroke(1);
 		g2.setColor(lay.getNumber() % colNR);
-		float factor = (bedSquare * zoom - 2) / (model.getDimension()[2] * 10);
-		g2.fillrect(bedSquare * zoom, bedSquare * zoom - (int) ((lay.getZPosition() * 10) * factor), gap,
+		float factor = (bedSquareZoomed - 2) / (model.getDimension()[2] * 10);
+		g2.fillrect(bedSquareZoomed, bedSquareZoomed - (int) ((lay.getZPosition() * 10) * factor), gap,
 				(int) (lay.getLayerheight() * 10 * factor)); // Draw level indicator
 	}
 
 	private float printLine(GraphicRenderer g2, Position lastpos, Position pos, float zpos, float time,long starttime,boolean travel) {
-		float x1 = Math.min((lastpos.x + Xoffset) * zoom,bedSquare*zoom);
-		float y1 = (bedSquare * zoom) - ((lastpos.y + Yoffset) * zoom);
-		float x2 = Math.min((pos.x + Xoffset) * zoom, bedSquare*zoom);
-		float y2 = (bedSquare * zoom) - ((pos.y + Yoffset) * zoom);
+
+		float x1 = Math.min((lastpos.x + Xoffset) * zoom,bedSquareZoomed);
+		float y1 = (bedSquare/extrazoom * zoom) - ((lastpos.y + Yoffset) * zoom);
+		float x2 = Math.min((pos.x + Xoffset) * zoom, bedSquareZoomed);
+		float y2 = (bedSquare/extrazoom * zoom) - ((pos.y + Yoffset) * zoom);
 
 		if (!ffLayer && fftoGcode == 0 && fftoLayer == 0 && speedup < 10 ) {
 			// Instead of painting one long line and wait , we split the line
@@ -759,9 +795,9 @@ public class GcodePainter implements Runnable {
 					float ly=y1 + (i * stepy);
 					float ny=( y1+ ((i + 1) * stepy));
 					
-					g2.setPos((int)lx,(int)ly);
-					g2.drawline(lx, ly, nx, ny);
-					printLineHorizontal2(g2,lx,ly,nx,ny, zpos,travel);
+					g2.setPos((int)(nx*extrazoom),(int)(ny*extrazoom));
+					g2.drawline(lx*extrazoom, ly*extrazoom, nx*extrazoom, ny*extrazoom);
+					printLineHorizontal2(g2,lx*extrazoom,ly*extrazoom,nx*extrazoom,ny*extrazoom, zpos*extrazoom,travel);
 					try {
 						g2.repaint();
 						long paintdur=System.currentTimeMillis()-starttime;
@@ -776,8 +812,8 @@ public class GcodePainter implements Runnable {
 			}
 		}
 
-		g2.drawline(x1, y1, x2, y2);
-		printLineHorizontal2(g2,x1,y1,x2,y2, zpos,travel);
+		g2.drawline(x1*extrazoom, y1*extrazoom, x2*extrazoom, y2*extrazoom);
+		printLineHorizontal2(g2,x1*extrazoom,y1*extrazoom,x2*extrazoom,y2*extrazoom, zpos*extrazoom,travel);
 		return time; // not slept, sleep in the main loop
 	}
 	
@@ -836,7 +872,7 @@ public class GcodePainter implements Runnable {
 	//	g2.drawrect(((cx+Xoffset)*zoom), (bedsizeSquare * zoom) -((cy+Yoffset)*zoom), (int)1, (int)1);
 	//	g2.setColor(3);
 	//	g2.drawrect(((utx+Xoffset)*zoom),(bedsizeSquare * zoom) - ((uty+Yoffset)*zoom), (int)radius*2*zoom, (int)radius*2*zoom);
-		g2.drawArc((int)((utx+Xoffset)*zoom), (int)((bedSquare * zoom) -((uty+Yoffset)*zoom)), (int)(radius*2*zoom), (int)(radius*2*zoom), (int)angle1,(int)angle);
+		g2.drawArc((int)((utx+Xoffset)*zoom *extrazoom), (int)((bedSquareZoomed) -((uty+Yoffset)*zoom*extrazoom)), (int)(radius*2*zoom*extrazoom), (int)(radius*2*zoom*extrazoom), (int)angle1,(int)angle);
 		//TODO: split arc in multiple sections to have a smoother paint
 		return 0;
 	}
@@ -846,23 +882,24 @@ public class GcodePainter implements Runnable {
 	
 	private void printLineHorizontal(GraphicRenderer g2, Position lastpos, Position pos, float zpos) {
 		//TODO save some CPU cycles by remembering what has been drawn already on this layer and avoid redraw
-		float zoomsmall= zoom/zoommod;
+		float boxsize = bedSquare *zoomsmall;
+		float rightofBed=bedSquareZoomed + gap;
 //		System.out.println("--STARTPOS: X"+lastpos.x+" Y"+lastpos.y+" Gcode:"+gc.getCodeline());
 //		System.out.println("--ENDPOS: X"+pos.x+" Y"+pos.y);
 //		System.out.println("Offset:"+Xoffset+" "+Yoffset+" Zoom:"+zoom +" small:"+zoomsmall);
-		float z =  (bedSquare *zoomsmall) - (zpos*zoomsmall) - 20 ;		
+		float z =  (boxsize) - (zpos*zoomsmall) - 20 ;		
 		/*
 		 * Print side view
 		 */
-		float y1 = (bedSquare * zoomsmall) - ((lastpos.y + Yoffset) * zoomsmall)+ (bedSquare * zoom + gap);		
-		float y2 = (bedSquare * zoomsmall) - ((pos.y + Yoffset) * zoomsmall)+ (bedSquare * zoom + gap);
+		float y1 = (boxsize) - ((lastpos.y + Yoffset) * zoomsmall)+ (rightofBed);		
+		float y2 = (boxsize) - ((pos.y + Yoffset) * zoomsmall)+ (rightofBed);
 		g2.drawline(y1, z, y2, z);
 		
 		/*
 		 * Print front view
 		 */
-		float x1 = ((lastpos.x + Xoffset) * zoomsmall + (bedSquare * zoom + gap))+(bedSquare * zoomsmall) ;
-		float x2 = ((pos.x + Xoffset) * zoomsmall+ (bedSquare * zoom + gap))+(bedSquare * zoomsmall);
+		float x1 = ((lastpos.x + Xoffset) * zoomsmall + (rightofBed))+(boxsize) ;
+		float x2 = ((pos.x + Xoffset) * zoomsmall+ (rightofBed))+(boxsize);
 		g2.drawline(x1, z, x2,z);
 		
 		g2.setPos((int)y1, (int)x1, (int)z);
@@ -894,28 +931,32 @@ public class GcodePainter implements Runnable {
 	
 	private void printLineHorizontal2(GraphicRenderer g2,float lx,float ly,float x, float y, float zpos,boolean travel) {
 		//TODO save some CPU cycles by remembering what has been drawn already on this layer and avoid redraw
-		float zoomsmall= zoom/zoommod;
-		float z =  (bedSquare *zoomsmall) - (zpos*zoomsmall) - 20 ;		
+		float boxsize = bedSquare *zoomsmall;
+		float rightofBed=bedSquareZoomed + gap;
+		float z =  (boxsize) - (zpos*zoomsmall) - 20 ;		
 		/*
 		 * Print side view
 		 */
-		float y1 = (bedSquare * zoomsmall) - ((ly / zoom) * zoomsmall)+ (bedSquare * zoom + gap);		
-		float y2 = (bedSquare * zoomsmall) - ((y / zoom) * zoomsmall)+ (bedSquare * zoom + gap);
+		float y1 = (boxsize) - ((ly / zoom) * zoomsmall)+ (rightofBed);		
+		float y2 = (boxsize) - ((y / zoom) * zoomsmall)+ (rightofBed);
+		if(!travel){
+			g2.drawline(y1, z, y2, z);
+		}
 		/*
 		 * Print front view
 		 */
-		float x1 = ((lx / zoom) * zoomsmall + (bedSquare * zoom + gap))+(bedSquare * zoomsmall) ;
-		float x2 = ((x / zoom) * zoomsmall+ (bedSquare * zoom + gap))+(bedSquare * zoomsmall);
+		float x1 = ((lx / zoom) * zoomsmall + (rightofBed))+(boxsize) ;
+		float x2 = ((x / zoom) * zoomsmall+ (rightofBed))+(boxsize);
 
 		if(!travel){ //do not paint travel
-			g2.drawline(y1, z, y2, z);
 			g2.drawline(x1, z, x2,z);
 		}
-		
-		
 		g2.setPos((int)y1, (int)x1, (int)z);
 	}
 
+
+	
+	
 	@Override
 	/**
 	 * Paint the gcodes to a offline image (offbuf) and trigger repaint
@@ -952,21 +993,22 @@ public class GcodePainter implements Runnable {
 				 for (Layer lay : layers) {
 					//System.out.println("Layer #"+lay.getNumber()+"  low:"+lay.lowidx+" high:"+lay.highidx);
 					if(oneLayerAtATime){
-						g2.clearrect(2, 2, bedSquare*zoom-2, bedSquare*zoom,print?1:0);
+						g2.clearrect(2, 2, bedSquareZoomed-2, bedSquareZoomed,print?1:0);
 						printBed(g2);
 					}else{
 						//Fading the previous layer
 						if(fftoLayer == 0 || fftoLayer <= lay.getNumber()+10){
-							g2.faintRect(2, 2, bedSquare*zoom+gap, bedSquare*zoom);
+							g2.faintRect(2, 2, bedSquareZoomed+gap, bedSquareZoomed);
 						}
 					}
 						
 					currentlayer=lay;
-					ffLayer=false;					
+					ffLayer=false;	
+					sideList=new float[6];
 					printDetails(g2, lay);
 					paintLevelBar(g2, lay);
 					paintLabel(g2, lay,null);
-
+					
 										
 					// Print & Paint all Gcodes
 					if(model == null) return;
@@ -986,6 +1028,7 @@ public class GcodePainter implements Runnable {
 						if(gcdef == Constants.GCDEF.UNKNOWN || gcdef == Constants.GCDEF.COMMENT){
 							if(fftoGcode != 0 && fftoGcode == ig){
 								fftoGcode=0;
+								System.out.println("Jump to Gcode:"+ig+" took "+ (System.currentTimeMillis()-ffstarttime));
 							}//make sure to reset fftogcode even if it is a comment (loop hang)
 							continue;
 						}
@@ -1028,7 +1071,7 @@ public class GcodePainter implements Runnable {
 							}
 							//System.out.println("XXXXX"+gCode);
 			
-						g2.setPos((int)((pos.x+Xoffset)*zoom), (int)((bedSquare * zoom) - (pos.y+Yoffset)*zoom));
+						g2.setPos((int)((pos.x+Xoffset)*zoom*extrazoom), (int)((bedSquareZoomed) - ((pos.y+Yoffset)*zoom*extrazoom )));
 						if (lastpos != null) {
 							if (gCode.isExtruding()) { //TODO Add all_extrude for CNC
 								g2.setColor(lay.getNumber() % colNR);		
@@ -1038,10 +1081,13 @@ public class GcodePainter implements Runnable {
 								}else{
 									printLine(g2, lastpos, pos,zpos,sleeptime,starttime,false);
 								}
-								//printLineHorizontal(g2, lastpos, pos,lay,gCode); //Side & front view
-							} else if (painttravel) {
-								g2.setColor(colNR+1);
-								g2.setStroke(0);
+							} else if (painttravel != Travel.NOT_PAINTED) {
+								if(painttravel == Travel.DOTTED || gcdef== Constants.GCDEF.G0){
+									g2.setColor(colNR+1);
+									g2.setStroke(0);
+								}else{//Paint travel full (CNC)
+									g2.setColor(lay.getNumber() % colNR);	
+								}
 								if(gcdef == Constants.GCDEF.G2 ||gcdef == Constants.GCDEF.G3 ){
 									printArc(g2, lastpos, pos, lay, gCode);
 								}else{
@@ -1080,6 +1126,7 @@ public class GcodePainter implements Runnable {
 							}else{
 								if(fftoGcode != 0 && fftoGcode == ig){
 									fftoGcode=0;
+									System.out.println("Jump to Gcode:"+ig+" took "+ (System.currentTimeMillis()-ffstarttime));
 								}
 								if(fftoLayer != 0 && fftoLayer == lay.getNumber()){
 									fftoLayer=0;
@@ -1089,7 +1136,7 @@ public class GcodePainter implements Runnable {
 							
 						} catch (InterruptedException e) {
 							inpause=false;
-							g2.clearrect(bedSquare*zoom+gap+1,bedSquare * zoom + (bedSquare*zoom)/24f, (bedSquare * zoom/zoommod*2)-2, (bedSquare*zoom)/24f,print?1:0);
+							g2.clearrect(bedSquareZoomed+gap+1,bedSquareZoomed + (bedSquareZoomed)/24f, (bedSquareZoomed/zoommod*2)-2, (bedSquareZoomed)/24f,print?1:0);
 						}
 							
 					}//ForGCodes
@@ -1255,9 +1302,9 @@ public class GcodePainter implements Runnable {
 		inpause=true;
 		if(!snapshot){
 			printLabelBox(g2, 82,12,"P", "Pause",lay.getNumber());
-			g2.clearrect(bedSquare*zoom+gap+1,bedSquare * zoom + (bedSquare*zoom)/24f, (bedSquare * zoom/zoommod*2)-2, (bedSquare*zoom)/24f,print?1:0);
-			g2.drawrect(bedSquare*zoom+gap+4,bedSquare * zoom + (bedSquare*zoom)/24f +2, (bedSquare * zoom/zoommod*2)-7, (bedSquare*zoom)/24f -5);
-			g2.drawtext("L"+lineidx+": "+ gCode.getCodeline().toString().trim(), bedSquare*zoom+gap+10, bedSquare * zoom +(bedSquare*zoom)/24f +  (bedSquare*zoom)/48f +1 );
+			g2.clearrect(bedSquareZoomed+gap+1,bedSquareZoomed + (bedSquareZoomed)/24f, (bedSquareZoomed/zoommod*2)-2, (bedSquareZoomed)/24f,print?1:0);
+			g2.drawrect(bedSquareZoomed+gap+4,bedSquareZoomed + (bedSquareZoomed)/24f +2, (bedSquareZoomed/zoommod*2)-7, (bedSquareZoomed)/24f -5);
+			g2.drawtext("L"+lineidx+": "+ gCode.getCodeline().toString().trim(), bedSquareZoomed+gap+10, bedSquareZoomed +(bedSquareZoomed)/24f +  (bedSquareZoomed)/48f +1 );
 		}
 		g2.repaint();
 		Thread.sleep(pause); //allow pause also if printing			
@@ -1321,6 +1368,8 @@ public class GcodePainter implements Runnable {
 				fftoLayer--;
 				norepaint=true;
 			}
+			g2.setFontSize(40);
+			g2.drawtext("Please wait", bedSquareZoomed/2-50, bedSquareZoomed/2,100);
 			try {
 			Thread.sleep(100); //wait to ensure that repaints are finished
 			} catch (Exception e) {
@@ -1363,24 +1412,30 @@ public class GcodePainter implements Runnable {
 		case REPAINTLAYERS:
 			cmd = Commands.NOOP;
 			if(fftoGcode==0){
+				ffstarttime = System.currentTimeMillis();
 				fftoGcode=lineidx;
+				g2.setFontSize(40);
+				g2.drawtext("Please wait", bedSquareZoomed/2-50, bedSquareZoomed/2,100);
 			}
 			return 1;
 		case STEPBACK:
 			cmd = Commands.NOOP;
 			if(fftoGcode==0 && lineidx > 3){
+				ffstarttime = System.currentTimeMillis();
 				fftoGcode=lineidx-3; //why 3 ?
 			}
 			return 1;
 		case STEP50X:
 			cmd = Commands.NOOP;
 			if(fftoGcode==0 && lineidx < model.getGcodecount()-50){
+				ffstarttime = System.currentTimeMillis();
 				fftoGcode=lineidx+50; 
 			}
 			return 1;
 		case STEP50XBACK:
 			cmd = Commands.NOOP;
 			if(fftoGcode==0 && lineidx > 50){
+				ffstarttime = System.currentTimeMillis();
 				fftoGcode=lineidx-50; 
 			}
 			return 1;
@@ -1419,7 +1474,7 @@ public class GcodePainter implements Runnable {
 		System.gc();
 		gcodepainter = new Thread(this);
 		gcodepainter.start();
-
+		extrazoom=1f;
 		boolean ret;
 		if (modelin == null) {
 			try {

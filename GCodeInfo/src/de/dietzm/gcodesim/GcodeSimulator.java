@@ -66,6 +66,7 @@ import de.dietzm.Temperature;
 import de.dietzm.gcodes.GCodeFactory;
 import de.dietzm.gcodes.bufferfactory.GCodeFactoryBuffer;
 import de.dietzm.gcodesim.GcodePainter.Commands;
+import de.dietzm.gcodesim.GcodePainter.Travel;
 import de.dietzm.print.ConsoleIf;
 import de.dietzm.print.Dummy;
 import de.dietzm.print.ReceiveBuffer;
@@ -130,6 +131,7 @@ public class GcodeSimulator extends JFrame implements ActionListener {
 	 * 1.26 network sender , autostart & autosave 
 	 * 1.28 redesign, T0: answers, bfb fix
 	 * 1.29 snapshot function, paint dual nozzle even when m128, aspect ratio + resize
+	 * 1.31 Custom bed size support, fit to page zoom
 	 */
 	
 	
@@ -153,7 +155,7 @@ public class PrintrPanel extends JPanel {
 			if(awt != null)	awt.drawImage(g);
 		}
 	}
-	public static final String VERSION = "v1.30";	
+	public static final String VERSION = "v1.31";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
@@ -320,7 +322,7 @@ public class PrintrPanel extends JPanel {
 		gp.setSnapshotMode();
 		gp.jumptoLayer(10000);
 		gp.togglePause();
-		gp.setPainttravel(false);
+		gp.setPainttravel(Travel.NOT_PAINTED);
 		int lc = gp.model.getLayercount(true);
 		System.out.println("Layers:"+lc);
 		if(lc==0) System.exit(2);
@@ -402,6 +404,7 @@ public class PrintrPanel extends JPanel {
 		    JMenu view = new JMenu ("View");
 		    addMenuItem(view, "Zoom In", "i",KeyEvent.VK_I);
 		    addMenuItem(view, "Zoom Out", "o",KeyEvent.VK_O);
+		    addMenuItem(view, "Zoom Extra", "w",KeyEvent.VK_W);
 		    view.addSeparator();
 		    addMenuItem(view, "Show/Hide Details", "m",KeyEvent.VK_M);
 		    addMenuItem(view, "Toggle Detail type", "t",KeyEvent.VK_T);
@@ -1051,6 +1054,7 @@ public class PrintrPanel extends JPanel {
 
 			@Override
 			public void keyTyped(KeyEvent arg0) {
+			//	System.out.println("A:"+arg0);
 				if (arg0.getKeyChar() == '+') {
 					gp.toggleSpeed(true);
 				} else if (arg0.getKeyChar() == '-') {
@@ -1106,6 +1110,17 @@ public class PrintrPanel extends JPanel {
 					showNetworkIPDialog();
 				} else if (arg0.getKeyChar() == 'h') {
 					gp.showHelp();
+				} else if (arg0.getKeyChar() == 'w') {
+					//System.out.println("extrazoom:");
+					if(gp.extrazoom != 1) {
+						gp.extrazoom = 1;
+						gp.setCmd(Commands.RESTART);
+						return;
+					}
+					float fax = (gp.bedSquare-5) / gp.model.getDimension()[0];
+					float fay = gp.bedSquare / gp.model.getDimension()[1];
+					gp.extrazoom = Math.min(fax, fay);
+					gp.setCmd(Commands.RESTART);
 				} else if (arg0.getKeyChar() == 'c') {
 					try {
 						int[] sz = gp.getSize(showdetails);
