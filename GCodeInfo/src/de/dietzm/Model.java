@@ -706,13 +706,13 @@ public class Model {
 	}
 	
 	public Layer getLayer(int number) {
-		layer.get(number);
+		
 //		for (Layer lay : layer.values()) {
 //			if(lay.getNumber()==number){
 //				return lay;
 //			}
 //		}
-		return null;
+		return layer.get(number);
 	}
 
 	public int getLayercount(boolean printedonly) {

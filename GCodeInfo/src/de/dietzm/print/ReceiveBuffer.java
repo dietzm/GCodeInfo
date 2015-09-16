@@ -254,6 +254,10 @@ public class ReceiveBuffer implements CharSequence,Appendable {
 		String coords = "X"+getField('X') + " Y"+getField('Y') + " Z"+ getField('Z');
 		return coords;
 	}
+	public CharSequence parseExtruderPos(){
+		String coords = "E"+getField('E');
+		return coords;
+	}
 
 	
 	/**

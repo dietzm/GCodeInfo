@@ -23,6 +23,9 @@ public class PrintQueue implements Runnable {
 	//private boolean clear =false;
 	private LinkedBlockingQueue<GCode> aprintQ = new LinkedBlockingQueue<GCode>();
 	private LinkedBlockingQueue<GCode> mprintQ = null;
+	
+	//recover queue - Used to return to the old coords after pause (e.g. filament change)
+	private LinkedBlockingQueue<GCode> rprintQ = new LinkedBlockingQueue<GCode>(5);;
 	GCode[] postgc = null;
 	
 	public PrintQueue(int max_manual){
@@ -35,6 +38,10 @@ public class PrintQueue implements Runnable {
 
 	public void put(GCode code)throws InterruptedException{
 		mprintQ.put(code);			
+	}
+	
+	public void putRecover(GCode code)throws InterruptedException{
+		rprintQ.put(code);			
 	}
 	
 	public void putAuto(GCode code)throws InterruptedException{
@@ -84,6 +91,11 @@ public class PrintQueue implements Runnable {
 		return gc;
 	}
 	
+	public GCode pollRecover(int timeout_sec) throws InterruptedException {
+		GCode gc = rprintQ.poll(timeout_sec,TimeUnit.SECONDS);
+		return gc;
+	}
+	
 	public int getSizeAuto(){
 		return aprintQ.size();
 	}
@@ -92,12 +104,24 @@ public class PrintQueue implements Runnable {
 		return mprintQ.size();
 	}
 	
+	public int getSizeRecover(){
+		return rprintQ.size();
+	}
+	
 	/**
 	 * is the manual queue empty ?
 	 * @return
 	 */
 	public boolean isManualEmpty(){
 		return mprintQ.isEmpty();
+	}
+	
+	/**
+	 * is the recover queue empty ?
+	 * @return
+	 */
+	public boolean isRecoverEmpty(){
+		return rprintQ.isEmpty();
 	}
 
 	public GCode pollAuto() throws InterruptedException {
@@ -125,6 +149,7 @@ public class PrintQueue implements Runnable {
 		}
 		aprintQ.clear();
 		mprintQ.clear();
+		rprintQ.clear();
 		printModel=null;
 		remainingtime=0;
 	}

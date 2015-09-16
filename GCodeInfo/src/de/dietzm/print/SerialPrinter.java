@@ -25,15 +25,13 @@ public class SerialPrinter implements Runnable, Printer {
 	public static final String serial = "SERIAL"; //log tag
 	public static final String io = "IO"; //log tag	
 
-	private GCode recoverPoint = null; //Used to return to the old coords after pause (e.g. filament change)
-
-
 	private ConsoleIf cons = null;
 	private PrinterConnection mConn = null;
 	private PrintQueue printQueue = null;
 	private final ReceiveBuffer ioBuffer = new ReceiveBuffer(4096);
 	private StringBuffer sdfiles = new StringBuffer();
 	private int startline = 0;
+	private int pauseatline=0;
 	
 	private Thread runner = null;
 	private long printstart; //time when print started
@@ -47,7 +45,8 @@ public class SerialPrinter implements Runnable, Printer {
 	private boolean resetoninit=true;
 	private boolean logerrors=true;
 	private boolean onconnect =false;
-	private boolean homexyfinish = false; 
+	private boolean homexyfinish = false;
+	private boolean homexypause = false;
 	private int extrnr = 1;
 	private boolean strictmode = true;
 	private int mintimout=50;
@@ -68,6 +67,14 @@ public class SerialPrinter implements Runnable, Printer {
 	public void setHomeXYfinish(boolean homexyfinish) {
 		this.homexyfinish = homexyfinish;
 	}
+	
+	public void setHomeXYPause(boolean homexypause) {
+		this.homexypause = homexypause;
+	}
+	
+	public boolean isHomeXYPause() {
+		return homexypause;
+	}
 
 	public boolean isResetoninit() {
 		return resetoninit;
@@ -75,6 +82,16 @@ public class SerialPrinter implements Runnable, Printer {
 
 	public void setResetoninit(boolean resetoninit) {
 		this.resetoninit = resetoninit;
+	}
+	
+	/**
+	 * Serialprinter will pause automatically when this line number is get from queue
+	 * 0 to reset
+	 * don't user negative numbers
+	 * @param linenr
+	 */
+	public void setPauseAtLine(int linenr) {
+		this.pauseatline = linenr;
 	}
 	
 	public void setOnConnect(boolean executeOnConnect) {
@@ -288,6 +305,7 @@ public class SerialPrinter implements Runnable, Printer {
 		if (state.printing)	setPrintMode(false);
 		printQueue.clear();
 		state.lastE = 0;
+		pauseatline=0;
 		state.lastpos = new float[3];
 		try{
 			if(mConn.init(resetoninit)){
@@ -318,6 +336,7 @@ public class SerialPrinter implements Runnable, Printer {
 				state.printspeed=100;
 				state.extrfactor=100;
 				state.resends=0;
+				pauseatline=0;
 				state.resendskips=0;
 				printQueue.clear();
 				cons.updateState(States.RESET,States.RESETMSG,0);
@@ -496,52 +515,10 @@ public class SerialPrinter implements Runnable, Printer {
 	 * @throws InterruptedException
 	 */
 	private void printAndWaitQueue() throws InterruptedException {
-		GCode code = null;
-		// do temp watch every 10 sec if busy. 
-		//don't do tempwatch if not printing and manual gcode is in queue, if sd streaming or if listing sdcard files
-		if (System.currentTimeMillis() - lastTempWatch < tempwatchintervall || (!state.printing && !printQueue.isManualEmpty()) || state.streaming || state.sdlist) {
-			if (state.printing && !state.pause && printQueue.isManualEmpty()) {
-				if(recoverPoint != null){
-					cons.appendText("Starting from recovery point");
-					code= recoverPoint;
-					recoverPoint=null;
-				}else{
-					code = printQueue.pollAuto(); // poll for auto ops
-				}
-				if (code == null){
-					state.lastgcode = G0;
-					if(state.percentCompleted >= 100){
-						state.sdprint=false; //end printing
-					}
-					if(state.sdprint){
-						code=M27; //get SD status
-					}else{
-						setPrintMode(false); // Finish printing
-					}
-				}else{
-					state.lastgcode = code;// remember last code to sync with UI
-					state.lineidx++;
-					if(state.lineidx < startline || !code.isPrintable()){
-						return; //not printable or Resume (startline)
-					}
-				}
-					
-				if(logerrors && Constants.lastGarbage-garbagetime > 0){
-					garbagetime=Constants.lastGarbage;
-					cons.appendText("Garbage collector run during print !");
-					cons.log("GC", String.valueOf(garbagetime));
-				}
-			}else{
-				code = printQueue.pollManual(1); // poll for manual ops
-				if(code != null){
-					state.lastgcode = code;
-				}
-			}
-		} else {
-			code = M105; // retrieve temp
-			state.lastgcode = code;
-			lastTempWatch = System.currentTimeMillis();
-		}
+		/*
+		 * Get the next gcode from queue
+		 */
+		GCode code = getNextGCode();
 		if (state.reset || code == null)
 			return;
 
@@ -692,10 +669,14 @@ public class SerialPrinter implements Runnable, Printer {
 					cons.updateState(States.TOOLCHANGE,null, -1);
 				}else if(setRecoverPoint && code == M114){
 					try{
-					CharSequence coord = recv.parseCoord();
-					cons.appendText("Recovery Coords:"+coord);
-					setRecoverPoint=false;
-					recoverPoint = GCodeFactory.getGCode("G1 "+coord, -1);
+						CharSequence coord = recv.parseCoord();
+						CharSequence epos = recv.parseExtruderPos();
+						cons.appendText("Recovery Coords: "+coord +" "+epos+ " T"+state.activeExtr);
+						setRecoverPoint=false;
+						//The recover point belongs to a specifc extruder (extruder offset)
+						printQueue.putRecover(GCodeFactory.getGCode("T"+state.activeExtr, -1));
+						printQueue.putRecover(GCodeFactory.getGCode("G92 "+epos, -1));
+						printQueue.putRecover(GCodeFactory.getGCode("G1 "+coord, -2));
 					}catch(Exception e){
 						cons.appendText("Could not set recovery point");
 					}
@@ -764,6 +745,74 @@ public class SerialPrinter implements Runnable, Printer {
 		}
 		
 		
+	}
+
+	/**
+	 * Queries the manual queue and the auto print queue for the next Gcode to execute
+	 * Also inserts M105 (temperature watch) gcodes when intervall is reached
+	 * Some special handling for SD printing and recovery after pause
+	 * @return
+	 * @throws InterruptedException
+	 */
+	private GCode getNextGCode() throws InterruptedException {
+		GCode code = null;
+		// do temp watch every 10 sec if busy. 
+		//don't do tempwatch if not printing and manual gcode is in queue, if sd streaming or if listing sdcard files
+		if (System.currentTimeMillis() - lastTempWatch < tempwatchintervall || (!state.printing && !printQueue.isManualEmpty()) || state.streaming || state.sdlist) {
+				
+			if ( !state.pause && !printQueue.isRecoverEmpty() && printQueue.isManualEmpty() ){
+				/*
+				 * Recovery Queue
+				 */
+				cons.appendText("Starting from recovery point ("+printQueue.getSizeRecover()+")");
+				code= printQueue.pollRecover(0);
+			} else if (state.printing && !state.pause && printQueue.isManualEmpty()) {
+				/*
+				 * Auto Queue	
+				 */
+				code = printQueue.pollAuto(); // poll for auto ops
+				if (code == null){
+					state.lastgcode = G0;
+					if(state.percentCompleted >= 100){
+						state.sdprint=false; //end printing
+					}
+					if(state.sdprint){
+						code=M27; //get SD status
+					}else{
+						setPrintMode(false); // Finish printing
+					}
+				}else{
+					state.lastgcode = code;// remember last code to sync with UI
+					state.lineidx++;
+					if(state.lineidx < startline || !code.isPrintable()){
+						code=null;
+					}
+					if(pauseatline != 0 && pauseatline == state.lineidx){
+						togglePause();
+						pauseatline=0;
+					}
+				}
+					
+				if(logerrors && Constants.lastGarbage-garbagetime > 0){
+					garbagetime=Constants.lastGarbage;
+					cons.appendText("Garbage collector run during print !");
+					cons.log("GC", String.valueOf(garbagetime));
+				}
+			}else{
+				/*
+				 * Manual Queue
+				 */
+				code = printQueue.pollManual(1); // poll for manual ops
+				if(code != null){
+					state.lastgcode = code;
+				}
+			}
+		} else {
+			code = M105; // retrieve temp
+			state.lastgcode = code;
+			lastTempWatch = System.currentTimeMillis();
+		}
+		return code;
 	}
 
 
@@ -1010,6 +1059,7 @@ public class SerialPrinter implements Runnable, Printer {
 			onFinish();
 			state.printspeed=100;
 			state.extrfactor=100;
+			pauseatline=0;
 			cons.updateState(States.FINISHED,fin,-1);
 			state.sdprint=false;
 			state.streaming = false;
@@ -1235,11 +1285,16 @@ public class SerialPrinter implements Runnable, Printer {
 			state.pause = !state.pause;
 		}
 		if (state.pause) {
-			cons.appendText("Pause");
 			if(state.debug){
-				cons.appendText("Pause at GCode line number:" + state.lineidx);
 				cons.appendText(showDebugData());
 			}
+			cons.appendText("Pause at line "+ state.lineidx);
+			//Move to 0:0 on pause, set a recoverypoint to return to last coord when continue
+			if(homexypause){
+				setRecoverPoint();
+				addToPrintQueue(GCodeFactory.getGCode("G28 X0 Y0", -128), true);
+			}
+
 		} else {
 			cons.appendText("Continue");
 		}
