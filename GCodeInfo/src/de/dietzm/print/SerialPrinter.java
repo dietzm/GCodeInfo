@@ -10,7 +10,7 @@ import de.dietzm.gcodes.GCode;
 import de.dietzm.gcodes.GCodeFactory;
 import de.dietzm.gcodes.GCodeStore;
 import de.dietzm.gcodes.MemoryEfficientLenString;
-import de.dietzm.gcodes.MemoryEfficientString;
+
 
 
 public class SerialPrinter implements Runnable, Printer {
@@ -123,6 +123,7 @@ public class SerialPrinter implements Runnable, Printer {
 		
 		public static final String CONNECTED="Connected";
 		public static final String FINISHED="Print Finshed";
+		public static final String STOPPED="Print Stopped";
 		public static final String DISCONNECTED="Disconnected";
 		public static final String CONNECTING="Connecting";
 		public static final String PRINTING="Printing";
@@ -144,6 +145,7 @@ public class SerialPrinter implements Runnable, Printer {
 		public boolean fan = false;
 		public float lastE = 0;
 		public GCode lastgcode = G0;
+		public long lastprinttime = 0; //seconds
 		public float[] lastpos = new float[] { 0f, 0f, 0f };
 		public boolean pause = false;
 		public boolean printing = false;
@@ -281,7 +283,8 @@ public class SerialPrinter implements Runnable, Printer {
 		if (isConnected()) {
 			cons.appendText("Closing connection !");
 			if (state.printing) {
-				state.printing = false;
+				//state.printing = false;
+				setPrintMode(false,true);
 			}
 			try {
 				state.connected = false;
@@ -302,11 +305,12 @@ public class SerialPrinter implements Runnable, Printer {
 
 	
 	private void doInit() {
-		if (state.printing)	setPrintMode(false);
-		printQueue.clear();
-		state.lastE = 0;
-		pauseatline=0;
-		state.lastpos = new float[3];
+		if (state.printing){
+			setPrintMode(false,true);
+		}else{
+			docleanup();
+		}
+
 		try{
 			if(mConn.init(resetoninit)){
 				state.connected=true;
@@ -321,24 +325,44 @@ public class SerialPrinter implements Runnable, Printer {
 		}		
 	}
 	
+	/**
+	 * cleanup internal variables when stop/reset
+	 */
+	private void docleanup(){
+		//Reset
+		state.lastE = 0;
+		state.lastpos = new float[3];
+		state.exttemps = new float[Constants.MAX_EXTRUDER_NR];
+		state.swallows=0;
+		state.unexpected=0;
+		state.timeouts=0;
+		state.printspeed=100;
+		state.extrfactor=100;
+		state.resends=0;
+		pauseatline=0;
+		state.resendskips=0;
+		printQueue.clear();
+		
+		//Stop print
+		state.printspeed=100;
+		state.extrfactor=100;
+		pauseatline=0;
+		printQueue.clear();
+		state.lineidx=0;
+		state.lastgcode = GCodeFactory.getGCode("G0", 0);
+		state.sdprint=false;
+		state.streaming = false;
+		
+	}
+	
+	
 	private void doReset() {
 		if (state.connected) {
 			state.reseting=true;
 			state.reset = false;
 			try {
-				if (state.printing) setPrintMode(false);
-				state.lastE = 0;
-				state.lastpos = new float[3];
-				state.exttemps = new float[Constants.MAX_EXTRUDER_NR];
-				state.swallows=0;
-				state.unexpected=0;
-				state.timeouts=0;
-				state.printspeed=100;
-				state.extrfactor=100;
-				state.resends=0;
-				pauseatline=0;
-				state.resendskips=0;
-				printQueue.clear();
+				if (state.printing) setPrintMode(false,true);
+				docleanup();
 				cons.updateState(States.RESET,States.RESETMSG,0);
 				mConn.reset();
 				ReceiveBuffer recv = readResponse(10000,1000);
@@ -372,7 +396,7 @@ public class SerialPrinter implements Runnable, Printer {
 		printQueue.addModel(mod);
 		
 		//printQueue.putAuto(GCodeFactory.getGCode("M114", 5002));
-		setPrintMode(true);
+		setPrintMode(true,false);
 	}
 
 	public GCode getCurrentGCode() {
@@ -391,6 +415,15 @@ public class SerialPrinter implements Runnable, Printer {
 		int	len = Constants.formatTimetoHHMMSS(time,state.timestring.getBytes());
 		state.timestring.setlength(len-3); //Cut off seconds
 		return state.timestring;
+	}
+	
+	/**
+	 * Get time of last completed print.
+	 * Is not updated when print is running
+	 * @return time in sec
+	 */
+	public long getlastPrintTime(){
+		return state.lastprinttime;
 	}
 	
 	/**
@@ -590,7 +623,7 @@ public class SerialPrinter implements Runnable, Printer {
 			if(state.streaming && recv.containsFail()){
 				//e.g. open failed when filename is wrong
 				cons.appendText("Error during streaming, abort");
-				setPrintMode(false);
+				setPrintMode(false,true);
 			}
 			
 			/*
@@ -779,7 +812,7 @@ public class SerialPrinter implements Runnable, Printer {
 					if(state.sdprint){
 						code=M27; //get SD status
 					}else{
-						setPrintMode(false); // Finish printing
+						setPrintMode(false,false); // Finish printing
 					}
 				}else{
 					state.lastgcode = code;// remember last code to sync with UI
@@ -870,7 +903,7 @@ public class SerialPrinter implements Runnable, Printer {
 				cons.appendText("SD print, Printing:" + state.printing);
            }
 				
-		setPrintMode(true);
+		setPrintMode(true,false);
 		
 	}
 	
@@ -1039,30 +1072,34 @@ public class SerialPrinter implements Runnable, Printer {
 		return state.extrfactor;
 	}
 
-	public void setPrintMode(boolean isprinting) {
+	public void setPrintMode(boolean isprinting,boolean stopped) {
 		state.printing = isprinting;
 		cons.appendText("Set printing " + state.printing);
 		cons.setPrinting(isprinting);
 		
 		if (!isprinting) {
-			String fin = "Print finished in " + ((System.currentTimeMillis() - printstart) / 1000) + "s";
+			state.lastprinttime=((System.currentTimeMillis() - printstart) / 1000);
+			String fin;
+			CharSequence stateFlag;
+			if(stopped){
+				fin = "Print has been stopped after " +  state.lastprinttime + "s at gcode line:"+state.lineidx;
+				stateFlag =States.STOPPED;
+			}else{
+				fin = "Print finished in " +  state.lastprinttime + "s";	
+				stateFlag =States.FINISHED;
+			}
+			
 			cons.log(serial, fin);
 			cons.appendText(fin);
-			printQueue.clear();
-			state.lineidx=0;
 			if (state.testrun) {
 				cons.appendText("Testrun completed, average response time (ms):" + testrunavg / 5002);
 				testrunavg = 0;
 				state.testrun = false;
-			}
-			state.lastgcode = GCodeFactory.getGCode("G0", 0);
-			onFinish();
-			state.printspeed=100;
-			state.extrfactor=100;
-			pauseatline=0;
-			cons.updateState(States.FINISHED,fin,-1);
-			state.sdprint=false;
-			state.streaming = false;
+			}			
+			onFinish();		
+			docleanup();
+			cons.updateState(stateFlag,fin,-1);
+			
 			if(state.debug) cons.appendText(showDebugData());
 			cons.log("DEBUG",showDebugData());
 		} else {

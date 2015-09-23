@@ -51,7 +51,7 @@ public class SerialIO implements SerialPortEventListener, Printer{
 	}
 	
 	@Override
-	public void setPrintMode(boolean isprinting) {
+	public void setPrintMode(boolean isprinting,boolean interrupt) {
 		// TODO Auto-generated method stub
 		
 	}
