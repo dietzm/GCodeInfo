@@ -36,5 +36,15 @@ public class ModelUtil {
 	public static String getLayerHeightString(Model mod){
 		return Constants.floatToString2(mod.getAvgLayerHeight())+" mm";
 	}
+	
+	public static String getExtrusionString(float extr){
+		
+		if(extr >= 1000){
+			extr = extr / 1000f;
+			return Constants.floatToString2(extr)+" m";
+		}else{
+			return Constants.floatToString2(extr)+" mm";
+		}	  
+	}
 
 }
