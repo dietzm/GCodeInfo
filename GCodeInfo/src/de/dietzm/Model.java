@@ -35,6 +35,7 @@ public class Model {
 	private String filename;
 	private String uri = null;
 	private InputStream in=null;
+	private String currency = "€";
 	private GCodeStore gcodes;// = GCodeFactory.getGcodeStore(1);
 	//private SortedMap<Float, Layer> layer = new TreeMap<Float, Layer>();
 	private ArrayList<Layer> layer = new ArrayList<Layer>();
@@ -550,10 +551,13 @@ public class Model {
 		var 	   +="Material:"+getMaterial()+" "+getDiameter()+"mm\n";
 		var		   +="Mass:   "+Constants.round2digits(getMass()/1000)+"cm3\n";
 		var		   +="Weight: "+Constants.round2digits(getWeight())+"g\n";
-		var		   +="Price:  "+Constants.round2digits(getPrice())+"€\n";
+		var		   +="Price:  "+Constants.round2digits(getPrice())+currency+"\n";
 		return var;
 	}
 	
+	public void setCurrency(String currency) {
+		this.currency = currency;
+	}
 	/**
 	 * Guess diameter 
 	 * 1) user defined environment variable
@@ -763,12 +767,14 @@ public class Model {
 	
 	public boolean loadModel(InputStream in)throws IOException{
 		gcodes =  GCodeFactory.loadModel(in,0);
+		filesize=GCodeFactory.getReadBytes();
 		return  gcodes != null;
 	}
 	
 	public boolean loadModel(InputStream in, long size)throws IOException{
 		filesize=size;
 		gcodes =  GCodeFactory.loadModel(in,filesize);
+		filesize=GCodeFactory.getReadBytes();
 		return  gcodes != null;
 	}
 	
@@ -807,7 +813,6 @@ public class Model {
 		return buf.toString();
 	}
 	public String getModelDetailReport(){
-		float time = getTimeaccel();
 		float[] sizes = getDimension();
 		float[] bound = getBoundaries();
 		String mm_in = getUnit();
