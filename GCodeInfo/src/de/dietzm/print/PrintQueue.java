@@ -148,7 +148,8 @@ public class PrintQueue implements Runnable {
 			addmodelth.interrupt();
 		}
 		aprintQ.clear();
-		mprintQ.clear();
+		//Do not clear manual print queue because it is needed for onFinish gcodes
+		//mprintQ.clear();
 		rprintQ.clear();
 		printModel=null;
 		remainingtime=0;
