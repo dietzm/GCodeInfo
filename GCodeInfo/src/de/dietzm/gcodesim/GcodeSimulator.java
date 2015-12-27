@@ -615,9 +615,13 @@ public class PrintrPanel extends JPanel {
 				
 				ConsoleIf console=new ConsoleIf() {
 					
-					public void updateState(CharSequence statemsg,CharSequence detail, int perc){
+					public void updateState(int statemsg,CharSequence detail, int perc){
 						
 					}
+					public void updateState(int statemsg,int detail, int perc){
+						
+					}
+					
 					
 					@Override
 					public void setWakeLock(boolean active) {

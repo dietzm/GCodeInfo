@@ -121,20 +121,43 @@ public class SerialPrinter implements Runnable, Printer {
 
 	public class States {
 		
-		public static final String CONNECTED="Connected";
-		public static final String FINISHED="Print Finshed";
-		public static final String STOPPED="Print Stopped";
-		public static final String DISCONNECTED="Disconnected";
-		public static final String CONNECTING="Connecting";
-		public static final String PRINTING="Printing";
-		public static final String STREAMING="Streaming to SD";
-		public static final String TOOLCHANGE="Tool Change";
-		public static final String PAUSED="Printing Paused";
-		public static final String RESET="Resetting Printer";
-		public static final String CONNECTMSG = "Please connect";
-		public static final String CONNECTINGMSG ="Establish connection";
-		public static final String CONNECTEDMSG ="Ready to print";
-		public static final String RESETMSG ="Resetting,please wait";
+//		public static final String CONNECTED="Connected";
+//		public static final String FINISHED="Print Finshed";
+//		public static final String STOPPED="Print Stopped";
+//		public static final String DISCONNECTED="Disconnected";
+//		public static final String CONNECTING="Connecting";
+//		public static final String PRINTING="Printing";
+//		public static final String STREAMING="Streaming to SD";
+//		public static final String TOOLCHANGE="Tool Change";
+//		public static final String PAUSED="Printing Paused";
+//		public static final String RESET="Resetting Printer";
+//		public static final String CONNECTMSG = "Please connect";
+//		public static final String CONNECTINGMSG ="Establish connection";
+//		public static final String CONNECTEDMSG ="Ready to print";
+//		public static final String RESETMSG ="Resetting,please wait";
+//		public final static String NOPAUSE ="Not Paused";
+//		public final static String NOTCONNECTED ="Not Connected ";
+//		public final static String NOTPRINTING ="Not Printing";
+		public static final int NONE=0;
+		public static final int DISCONNECTED=1;
+		public static final int CONNECTED=2;
+		public static final int STOPPED=3;		
+		public static final int CONNECTING=4;
+		public static final int PRINTING=5;
+		public static final int STREAMING=6;
+		public static final int TOOLCHANGE=7;
+		public static final int PAUSED=8;
+		public static final int RESET=9;
+		public static final int CONNECTMSG = 10;
+		public static final int CONNECTINGMSG =11;
+		public static final int CONNECTEDMSG =12;
+		public static final int RESETMSG =13;
+		public static final int FINISHED=14;
+		public static final int UNKNOWN=15;
+//		public static final int NOPAUSE=16;
+//		public static final int NOTPRINTING=17;
+//		public static final int NOTCONNECTED=18;
+		
 		public int baud = 115200;
 		public float bedtemp = 0;
 		public boolean connected = false;
@@ -330,6 +353,7 @@ public class SerialPrinter implements Runnable, Printer {
 	 */
 	private void docleanup(){
 		//Reset
+		if(state.debug) cons.appendText("cleanup printqueue");
 		state.lastE = 0;
 		state.lastpos = new float[3];
 		state.exttemps = new float[Constants.MAX_EXTRUDER_NR];
@@ -344,10 +368,10 @@ public class SerialPrinter implements Runnable, Printer {
 		printQueue.clear();
 		
 		//Stop print
-		state.printspeed=100;
-		state.extrfactor=100;
-		pauseatline=0;
-		printQueue.clear();
+		//state.printspeed=100;
+		//state.extrfactor=100;
+		//pauseatline=0;
+		//printQueue.clear();
 		state.lineidx=0;
 		state.lastgcode = GCodeFactory.getGCode("G0", 0);
 		state.sdprint=false;
@@ -696,10 +720,10 @@ public class SerialPrinter implements Runnable, Printer {
 					state.percentCompleted=recv.parseSDStatus();
 				}else if(code.getGcodeId() == GCDEF.T0.getId() && state.activeExtr != 0){
 					state.activeExtr=0;
-					cons.updateState(States.TOOLCHANGE,null, -1);
+					cons.updateState(States.TOOLCHANGE,0, -1);
 				}else if(code.getGcodeId() == GCDEF.T1.getId() && state.activeExtr != 1){
 					state.activeExtr=1;
-					cons.updateState(States.TOOLCHANGE,null, -1);
+					cons.updateState(States.TOOLCHANGE,0, -1);
 				}else if(setRecoverPoint && code == M114){
 					try{
 						CharSequence coord = recv.parseCoord();
@@ -766,11 +790,11 @@ public class SerialPrinter implements Runnable, Printer {
 		//Update progress bar percentage. Only update if percent changes.
 		if(isPrinting()){
 			if(state.sdprint){
-				cons.updateState(States.STREAMING, "unknown" ,state.percentCompleted );
+				cons.updateState(States.STREAMING, States.UNKNOWN ,state.percentCompleted );
 			}else if(state.percentCompleted != printQueue.getPercentCompleted()){
 				state.percentCompleted = printQueue.getPercentCompleted();
 				if(state.streaming){
-					cons.updateState(States.STREAMING, "unknown" ,state.percentCompleted );
+					cons.updateState(States.STREAMING, States.UNKNOWN ,state.percentCompleted );
 				}else{
 					cons.updateState(States.PRINTING, getRemainingtime() ,state.percentCompleted );
 				}
@@ -1080,17 +1104,19 @@ public class SerialPrinter implements Runnable, Printer {
 		if (!isprinting) {
 			state.lastprinttime=((System.currentTimeMillis() - printstart) / 1000);
 			String fin;
-			CharSequence stateFlag;
+			int stateFlag;
 			if(stopped){
-				fin = "Print has been stopped after " +  state.lastprinttime + "s at gcode line:"+state.lineidx;
+				fin = state.lastprinttime + "s @ gcode:"+state.lineidx;
 				stateFlag =States.STOPPED;
+				cons.log(serial, "Print stopped after "+ fin);
+				cons.appendText("Print stopped after "+fin);
 			}else{
-				fin = "Print finished in " +  state.lastprinttime + "s";	
+				fin = state.lastprinttime + "s";	
 				stateFlag =States.FINISHED;
+				cons.log(serial, "Print finished in "+ fin);
+				cons.appendText("Print finished in "+fin);
 			}
 			
-			cons.log(serial, fin);
-			cons.appendText(fin);
 			if (state.testrun) {
 				cons.appendText("Testrun completed, average response time (ms):" + testrunavg / 5002);
 				testrunavg = 0;
@@ -1109,7 +1135,7 @@ public class SerialPrinter implements Runnable, Printer {
 			state.lineidx=0;
 			state.percentCompleted=0;
 			if(state.streaming || state.sdprint){
-				cons.updateState(States.STREAMING,"unknown",0);
+				cons.updateState(States.STREAMING,States.UNKNOWN,0);
 			}else{
 				cons.updateState(States.PRINTING,getRemainingtime(),0);
 			}
@@ -1328,8 +1354,16 @@ public class SerialPrinter implements Runnable, Printer {
 			cons.appendText("Pause at line "+ state.lineidx);
 			//Move to 0:0 on pause, set a recoverypoint to return to last coord when continue
 			if(homexypause){
+				//cons.appendText(state.lastgcode.toString());
 				setRecoverPoint();
-				addToPrintQueue(GCodeFactory.getGCode("G28 X0 Y0", -128), true);
+				if(state.activeExtr == 0){
+				//	cons.appendText("Pause Extr0");
+					addToPrintQueue(GCodeFactory.getGCode("G1 X0 Y0", -128), true);
+				}else{
+					//assume that the extruder offset prevents us from moving to 0:0
+				//	cons.appendText("Pause Extr1");
+					addToPrintQueue(GCodeFactory.getGCode("G1 X25 Y25", -128), true);
+				}
 			}
 
 		} else {
@@ -1337,9 +1371,9 @@ public class SerialPrinter implements Runnable, Printer {
 		}
 		if(state.printing){
 			 if(state.pause){
-				 cons.updateState(States.PAUSED,null, -1);
+				 cons.updateState(States.PAUSED,States.NONE , -1);
 			 }else{
-				 cons.updateState(States.PRINTING,null, -1);
+				 cons.updateState(States.PRINTING,States.NONE , -1);
 			 }
 		}
 	}

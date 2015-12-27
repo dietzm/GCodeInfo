@@ -13,5 +13,6 @@ public interface ConsoleIf {
 	public void log(String tag, String value, ReceiveBuffer buf );
 	public void log(String tag, String value );
 	public boolean hasWakeLock();
-	public void updateState(CharSequence statemsg,CharSequence detail,int progressPercent);
+	public void updateState(int statemsg,CharSequence detail,int progressPercent);
+	public void updateState(int msgtype,int msgnr,int progressPercent);
 }
