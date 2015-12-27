@@ -46,11 +46,22 @@ public class NetworkPrinter implements Runnable {
 
 	public void sendToReceiver(String ip, Model mod , int flags) throws IOException {
 		Socket cs = new Socket(ip, PORT);
+		cs.setSoTimeout(1000);
+//		int version = 0;
+//		BufferedInputStream bufin = new BufferedInputStream(cs.getInputStream());
+//		try {
+//			version = bufin.read();
+//		} catch (Exception e) {
+//			e.printStackTrace();
+//			System.out.println("Read timeout, sender might be an older version.");
+//		}
+//		System.out.println("Listener Version:"+version);
+		
 		OutputStream out = cs.getOutputStream();
 		BufferedOutputStream bufout = new BufferedOutputStream(out, 32768);
 		byte[] magic = {0x3B,(byte)0xC0,(byte)0xDE};
 		bufout.write(magic);
-		bufout.write((byte)(RECEIVE_GCODE | FILENAME_SPECIFIED | flags));
+		bufout.write((byte)(RECEIVE_GCODE | FILENAME_SPECIFIED | FILESIZE_SPECIFIED | flags));
 		
 		//send filename
 		String filename = new File(mod.getFilename()).getName();
@@ -59,22 +70,30 @@ public class NetworkPrinter implements Runnable {
 		bufout.write(flen);
 		bufout.write(filebyte,0,flen);
 		
-		//Final newline before send
-		bufout.write(Constants.newline);
+		//send filesize
+		//note: cast to int will limit filesize to 2GB , should be enough
+		//		System.out.println("Filesize send:"+mod.getFilesize());
+		bufout.write(Constants.intToByteArray((int)mod.getFilesize()));
+		
+		//Finish byte -> used as version
+		final int VERSION=11;
+		bufout.write(VERSION);
 		
 		byte[] transBuf = new byte[4096];
 		int len = 0;
 		GCodeStore gcodes = mod.getGcodes();
 		for (GCode gCode : gcodes) {
-		//	try{
 			len = gCode.getCodeline(transBuf);
 			bufout.write(transBuf, 0, len);
-//			}catch(Exception e){
-//				System.out.println("send failed for gCode line:"+idx);
-//			}
 			// System.out.println("Send:"+new String(transBuf,0,len));
 		}
 		bufout.flush();
+		
+//		//send magic to indicate the end
+//		if(VERSION >= 11){
+//			bufout.write(Constants.newline);
+//			bufout.write(magic);
+//		}
 		cs.close();
 	}
 
@@ -90,6 +109,11 @@ public class NetworkPrinter implements Runnable {
 				Socket sin = waitForData();
 				String filename = sin.getInetAddress().getHostAddress() + "_" + new SimpleDateFormat("yyMMdd_HHmmss").format(new Date()) + ".gcode";
 				InputStream in = sin.getInputStream();
+				
+				BufferedOutputStream bufout = new BufferedOutputStream(sin.getOutputStream());
+//				bufout.write(1); //version 
+//				bufout.flush();
+				
 				BufferedInputStream bufin = new BufferedInputStream(in);
 				bufin.mark(4);
 				byte[] magic = new byte[3];
@@ -97,8 +121,9 @@ public class NetworkPrinter implements Runnable {
 				// Magic is 0x3B 0xC0 0xDE - (3B=; to be handled as comment by
 				// older versions)
 				if (len == 3 && magic[0] == (byte)0x3B && magic[1] == (byte)0xC0 && magic[2] == (byte)0xDE) {
-					parseCommandHeader(filename, bufin);
+					parseCommandHeader(filename, bufin,bufout);
 				} else {
+					//old version path
 					bufin.reset(); //3bytes are not the magic.. reset to pos 0
 					gp.printreceived(filename, bufin, false, false,0);
 				}
@@ -111,8 +136,64 @@ public class NetworkPrinter implements Runnable {
 				}
 			}
 	}
+	
+	public static void main(String[] args) {
+		//start Print reciever for testing
+		NetworkPrinter np = new NetworkPrinter();
+		try {
+			System.out.println("Start Network Listener");
+			np.startPrintReceiver(new PrintReceiveListener() {
+				
+				@Override
+				public boolean printrecv_stopprint() {
+					// TODO Auto-generated method stub
+					return false;
+				}
+				
+				@Override
+				public boolean printrecv_setconnected(boolean connected) {
+					// TODO Auto-generated method stub
+					return false;
+				}
+				
+				@Override
+				public boolean printrecv_executeGcode(String Gcode) {
+					// TODO Auto-generated method stub
+					return false;
+				}
+				
+				@Override
+				public boolean printreceived(String msg, InputStream in, boolean autostart, boolean savemodel, int filesize) {
+					System.out.println("Print received");
+					long size=0;
+					int bt;
+					try {
+						while((bt=in.read()) != -1){
+							//read
+							size=size+1;			
+						}
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					System.out.println("File bytes:"+size);
+					System.out.println("Filesize:"+filesize);
+					System.out.println("Filename:"+msg);
+					System.out.println("autostart:"+autostart);
+					System.out.println("autosave:"+savemodel);
+					if(filesize != size){
+						System.err.println("Filesize does not match !!!");
+					}
+					return true;
+				}
+			});
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 
-	private void parseCommandHeader(String filename, BufferedInputStream bufin) throws IOException {
+	private void parseCommandHeader(String filename, BufferedInputStream bufin, BufferedOutputStream bufout) throws IOException {
 		// Magic detected
 		
 		int flags = bufin.read();
@@ -157,11 +238,22 @@ public class NetworkPrinter implements Runnable {
 				System.out.println("netrec: autosave");
 			}
 		
+			//Use finish byte to detect client version
 			int finish = bufin.read();
-			if(finish != 0x13){
+			int version = 0;
+			if(finish == 11){
+				version = 1;
+			}else if(finish == Constants.newlineb){
+				version=0;				
+			}else{
 				System.out.println("Error: wrong finish byte received: "+finish);
 			}
-			gp.printreceived(filename, bufin, autostart, savefile, filesize);
+			System.out.println("Client Version:"+version+"("+finish+")");
+			
+			boolean succ=gp.printreceived(filename, bufin, autostart, savefile, filesize);
+			if(!succ){
+				System.out.println("receive error");
+			}
 			
 		//execute gcode file
 		}else{
