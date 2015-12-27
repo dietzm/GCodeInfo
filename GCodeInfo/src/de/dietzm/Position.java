@@ -40,4 +40,8 @@ public class Position {
 		x=x+off.x;
 		y=y+off.y;
 	}
+	
+	public String toString(){
+		return "X:"+x+"Y:"+y;
+	}
 }
