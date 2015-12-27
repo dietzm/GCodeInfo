@@ -450,32 +450,40 @@ public class Constants {
 //		float f = 0.0054454f;
 //		System.out.println(parseFloat("0.0054454545", 0));
 		//System.out.println(Float.MIN_VALUE);
-		ReceiveBuffer rb = new ReceiveBuffer(80);
-		rb.put("M107\n".getBytes());
-//		rb.put("M107 X\n".getBytes());
-		CharSeqBufView[] preallocSegment = {new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView()};
-		splitbyLetter3(rb,preallocSegment);
-		System.out.println("'"+preallocSegment[0].toString()+"'");
+//		ReceiveBuffer rb = new ReceiveBuffer(80);
+//		rb.put("M107\n".getBytes());
+////		rb.put("M107 X\n".getBytes());
+//		CharSeqBufView[] preallocSegment = {new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView(),new CharSeqBufView()};
+//		splitbyLetter3(rb,preallocSegment);
+//		System.out.println("'"+preallocSegment[0].toString()+"'");
+//		
+//		Temperature temp = new Temperature();
+//		rb.put("T:20.00 B:-1.00 @:0".getBytes());
+//		temp.setTempstring(rb);
+//		System.out.println(temp.toString());
+//		System.out.println("FL:"+temp.getBedTempTargetFloat());
+//		
+//		rb.put("T:50.1 /0.0 B:16.9 /0.0 T0:205.0 /205.0 T1:50.1 /0.0".getBytes());
+//		temp.setTempstring(rb);
+//		System.out.println(temp.toString());
+//		System.out.println("FL:"+temp.getBedTempTargetFloat());
+//		
+//		rb.put("T0: 23.4/-273.1 T1: 21.6/-273.1 T2: 21.6/-273.1 B:23.7 /-273.1".getBytes());
+//		temp.setTempstring(rb);
+//		System.out.println(temp.toString());
+//		System.out.println("FL:"+temp.getBedTempTargetFloat());
+//
+//		rb.put("ok T:181.2 /0.0 B:48.6 /0.0 T0:10.9 /0.0 @:0 B@:0".getBytes());
+//		temp.setTempstring(rb);
+//		System.out.println(temp.toString());
 		
-		Temperature temp = new Temperature();
-		rb.put("T:20.00 B:-1.00 @:0".getBytes());
-		temp.setTempstring(rb);
-		System.out.println(temp.toString());
-		System.out.println("FL:"+temp.getBedTempTargetFloat());
+		int a = 322323256;
+		System.out.println("I:"+a);
+		byte[] bt = intToByteArray(a);
+		System.out.println("B:"+bt[0]+":"+bt[1]+":"+bt[2]+":"+bt[3]);
+		int b = bytetoInt(bt);
+		System.out.println("I:"+b);
 		
-		rb.put("T:50.1 /0.0 B:16.9 /0.0 T0:205.0 /205.0 T1:50.1 /0.0".getBytes());
-		temp.setTempstring(rb);
-		System.out.println(temp.toString());
-		System.out.println("FL:"+temp.getBedTempTargetFloat());
-		
-		rb.put("T0: 23.4/-273.1 T1: 21.6/-273.1 T2: 21.6/-273.1 B:23.7 /-273.1".getBytes());
-		temp.setTempstring(rb);
-		System.out.println(temp.toString());
-		System.out.println("FL:"+temp.getBedTempTargetFloat());
-
-		rb.put("ok T:181.2 /0.0 B:48.6 /0.0 T0:10.9 /0.0 @:0 B@:0".getBytes());
-		temp.setTempstring(rb);
-		System.out.println(temp.toString());
 	}
 	
 
@@ -761,6 +769,19 @@ public class Constants {
         result = result + ((b[2] & MASK) << 16);
         result = result + ((b[3] & MASK) << 24);            
     return result;
+	}
+	
+	public static final byte[] intToByteArray(int value) {
+//	    return new byte[] {
+//	            (byte)(value >> 24),
+//	            (byte)(value >> 16),
+//	            (byte)(value >> 8),
+//	            (byte)value};
+	    return new byte[] {
+	            (byte)(value ),
+	            (byte)(value >> 8),
+	            (byte)(value >> 16),
+	            (byte)(value >> 24) };
 	}
 	/**
 	 * Float to string with 3 digits
