@@ -213,7 +213,7 @@ public class GCodeXYFMin extends GCodeAbstractNoData {
 	 */
 	@Override
 	public float getSpeed(){
-		return Constants.round2digits((distance/timeaccel));
+		return Constants.round2digits(f/60);
 	}
 
 

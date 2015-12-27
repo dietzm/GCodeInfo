@@ -353,7 +353,7 @@ public class GCodeFactoryBuffer implements GCodeFactoryImpl {
 		System.out.println("Load:  ZF:"+gcodetypes[8]);
 		System.out.println("Load:  F"+gcodetypes[9]);
 		System.out.println("Load:  OptiFallback:"+gcodetypes[10]);
-		
+		System.out.println("Load:  Size: "+readbytes+"/"+readlines);
 		System.out.println("Load Used Memory:" 
 				+ ( Runtime.getRuntime().totalMemory() -  Runtime.getRuntime().freeMemory()) / (1024*1024));
 		if(errorcnt != 0){

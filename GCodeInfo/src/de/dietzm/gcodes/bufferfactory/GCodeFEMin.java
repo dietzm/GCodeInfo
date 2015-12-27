@@ -12,7 +12,7 @@ public class GCodeFEMin extends GCodeAbstractNoData {
 	private float e=Float.MAX_VALUE; //will be initalitzed with absolut extrusion 
 	private float f=Float.MAX_VALUE; //will be initalitzed with absolut extrusion 
 	//Dynamic values updated by analyse	 (7MB for 300000 gcodes)
-	private float time;
+//	private float time;
 	private float timeaccel; //track acceleration as extra time 
 //	private float distance;
 	private float extrusion; //remember with less accuracy (just for display)
@@ -196,7 +196,8 @@ public class GCodeFEMin extends GCodeAbstractNoData {
 	 */
 	@Override
 	public float getSpeed(){
-		return f;
+		//Do not return E speeds
+		return 0;
 	}
 
 
