@@ -38,6 +38,10 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 	long titletime=0;
 	float zoom = 1;
 	Position[] extruderoffset = null;
+	
+	private String[] labels ={
+			"Layer","Z Position","XY Speed","E Speed","Remaining Time","Speedup","Fan","Side View", "Front View", "Model Details","Layer Height"
+			,"Average Speed","Z Height","Print Time","Cost","Print","Wait","Pause"};
 
 	// Color[] colors = new Color[] { new Color(0xffAAAA), new Color(0xffBAAA),
 	// new Color(0xffCAAA), new Color(0xffDAAA),
@@ -282,6 +286,13 @@ public class AWTGraphicRenderer implements GraphicRenderer {
 		g.drawRect((int) x, (int) y, (int) w, (int) h);
 	}
 
+	public void drawtext(int id, float x, float y, float w) {
+		try {
+			drawtext(labels[id],x, y, w);
+		} catch (Exception e) {
+		}
+	}
+	
 	@Override
 	public void drawtext(CharSequence text, float x, float y) {
 		// g.getFontMetrics();

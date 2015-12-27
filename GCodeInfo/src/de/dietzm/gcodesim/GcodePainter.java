@@ -5,10 +5,10 @@ import java.io.InputStream;
 import java.util.ArrayList;
 
 import de.dietzm.Constants;
+import de.dietzm.Constants.GCDEF;
 import de.dietzm.Layer;
 import de.dietzm.Model;
 import de.dietzm.Position;
-import de.dietzm.Constants.GCDEF;
 import de.dietzm.gcodes.GCode;
 import de.dietzm.gcodes.GCodeStore;
 import de.dietzm.gcodes.MemoryEfficientLenString;
@@ -29,7 +29,7 @@ public class GcodePainter implements Runnable {
 	public int colNR = 7;
 	private Travel painttravel = Travel.DOTTED;
 	private int defbuffersize = 15;
-	private int header = 35; 
+	private int header = 40; 
 	public static float boxheightfactor = 10f;
 	public boolean roundbed=false;
 	boolean snapshot=false; 
@@ -420,36 +420,36 @@ public class GcodePainter implements Runnable {
 		//On Layer change, skip for individual gcodes to save cycles
 		if(gc == null){
 			// Paint boxes with infos about current layer
-			printLabelBox(g2, 0,12, Constants.inttoChar(lay.getNumber(),tempbuf), Constants.LAYER_LABEL,lay.getNumber());
-			printLabelBox(g2, 12,20,Constants.floattoChar(lay.getZPosition(),tempbuf,2), Constants.ZPOS_LABEL,lay.getNumber());
-			printLabelBox(g2, 32,12,Constants.ZERO_LABEL, Constants.XYSPEED_LABEL,lay.getNumber());
-			printLabelBox(g2, 44,14,Constants.ZERO_LABEL, Constants.ESPEED_LABEL,lay.getNumber());
-			printLabelBox(g2, 95,5,getFanSpeed(lay.getFanspeed()), Constants.FAN_LABEL,lay.getNumber());	
+			printLabelBox(g2, 0,12, Constants.inttoChar(lay.getNumber(),tempbuf), GraphicRenderer.LAYER,lay.getNumber());
+			printLabelBox(g2, 12,20,Constants.floattoChar(lay.getZPosition(),tempbuf,2), GraphicRenderer.ZPOS,lay.getNumber());
+			printLabelBox(g2, 32,12,Constants.ZERO_LABEL, GraphicRenderer.XYSPEED,lay.getNumber());
+			printLabelBox(g2, 44,14,Constants.ZERO_LABEL, GraphicRenderer.ESPEED,lay.getNumber());
+			printLabelBox(g2, 95,5,getFanSpeed(lay.getFanspeed()), GraphicRenderer.FAN,lay.getNumber());	
 			
 		}else{
 			if(snapshot){
-				printLabelBox(g2, 32,12,Constants.floattoChar(model.getAvgLayerHeight(),tempbuf,2), Constants.LAYERH_LABEL,lay.getNumber());
-				printLabelBox(g2, 44,14,Constants.inttoChar(Math.round(model.getSpeed(Layer.Speed.SPEED_ALL_AVG)),tempbuf), Constants.AVGXYSPEED_LABEL,lay.getNumber());
+				printLabelBox(g2, 32,12,Constants.floattoChar(model.getAvgLayerHeight(),tempbuf,2), GraphicRenderer.LHEIGHT,lay.getNumber());
+				printLabelBox(g2, 44,14,Constants.inttoChar(Math.round(model.getSpeed(Layer.Speed.SPEED_ALL_AVG)),tempbuf), GraphicRenderer.AVGSPEED,lay.getNumber());
 				CharSequence cs = Constants.floattoChar(model.getDimension()[2],tempbuf,2);
-				printLabelBox(g2, 12,20,cs, Constants.ZH_LABEL,lay.getNumber());
+				printLabelBox(g2, 12,20,cs, GraphicRenderer.ZHEIGHT,lay.getNumber());
 			}else{
-				printLabelBox(g2, 32,12,Constants.inttoChar(Math.round(gc.getSpeed()),tempbuf), Constants.XYSPEED_LABEL,lay.getNumber());
-				printLabelBox(g2, 44,14,getExtrSpeed(gc), Constants.ESPEED_LABEL,lay.getNumber());
+				printLabelBox(g2, 32,12,Constants.inttoChar(Math.round(gc.getSpeed()),tempbuf), GraphicRenderer.XYSPEED,lay.getNumber());
+				printLabelBox(g2, 44,14,getExtrSpeed(gc), GraphicRenderer.ESPEED,lay.getNumber());
 		
 				//Z-Lift
 				if(gc.isInitialized(Constants.Z_MASK)){
 					CharSequence cs = Constants.floattoChar(gc.getZ(),tempbuf,2);
-					printLabelBox(g2, 12,20,cs, Constants.ZPOS_LABEL,lay.getNumber());
+					printLabelBox(g2, 12,20,cs, GraphicRenderer.ZPOS,lay.getNumber());
 				}
 			}
-			printLabelBox(g2, 95,5,getFanSpeed(gc.getFanspeed()), Constants.FAN_LABEL,lay.getNumber());
+			printLabelBox(g2, 95,5,getFanSpeed(gc.getFanspeed()), GraphicRenderer.FAN,lay.getNumber());
 		}
 		
 		if(snapshot){
 			//paint always the full print time
 			int nr = Constants.formatTimetoHHMMSS(model.getTimeaccel(),tempbuf.getBytes());
 			tempbuf.setlength(nr);
-			printLabelBox(g2, 58,24, tempbuf, Constants.PRINTTIME_LABEL,lay.getNumber());
+			printLabelBox(g2, 58,24, tempbuf, GraphicRenderer.PRINTTIME,lay.getNumber());
 		}else{
 			//paint the remaining time
 			float rmtime = mtime;
@@ -458,23 +458,23 @@ public class GcodePainter implements Runnable {
 			}
 			int nr = Constants.formatTimetoHHMMSS(rmtime,tempbuf.getBytes());
 			tempbuf.setlength(nr);
-			printLabelBox(g2, 58,24, tempbuf, Constants.REMTIME_LABEL,lay.getNumber());
+			printLabelBox(g2, 58,24, tempbuf, GraphicRenderer.RTIME,lay.getNumber());
 		}
 
 		if(print){
 			if(gc!=null){
 				//printLabelBox(g2, 82,12,gc.getLineindex()%2==0?"#":"##", "Print",lay.getNumber());
-				printLabelBox(g2, 81,14,gc.getGcode().toString(), Constants.PRINT_LABEL,lay.getNumber());
+				printLabelBox(g2, 81,14,gc.getGcode().toString(), GraphicRenderer.PRINT,lay.getNumber());
 			}else{
-				printLabelBox(g2, 81,14,Constants.PRINTSTART_LABEL, Constants.PRINT_LABEL,lay.getNumber());
+				printLabelBox(g2, 81,14,Constants.PRINTSTART_LABEL, GraphicRenderer.PRINT,lay.getNumber());
 			}
 		}else{
 			if(snapshot){
 				//Paint price				
-				printLabelBox(g2, 81,14,Constants.floattoChar(model.getPrice(),tempbuf,1)+"€", Constants.PRICE_LABEL,lay.getNumber());
+				printLabelBox(g2, 81,14,Constants.floattoChar(model.getPrice(),tempbuf,1)+"€", GraphicRenderer.COST,lay.getNumber());
 			}else{
 				//Paint speedup
-				printLabelBox(g2, 81,14,speeduplabel, Constants.SPEEDUP_LABEL,lay.getNumber());	
+				printLabelBox(g2, 81,14,speeduplabel, GraphicRenderer.SPEEDUP,lay.getNumber());	
 			}						
 		}
 		
@@ -552,7 +552,7 @@ public class GcodePainter implements Runnable {
 			det=modeldetails;
 			break;
 		}
-		g2.clearrect(bedSquareZoomed+gap+5,(bedSquareZoomed/zoommod)+2+header, (bedSquareZoomed/zoommod*2)-7, bedSquareZoomed + boxheight -(bedSquareZoomed/zoommod)-7 ,print?1:0);
+		g2.clearrect(bedSquareZoomed+gap+5,(bedSquareZoomed/zoommod)+2+header, (bedSquareZoomed/zoommod*2)-7, bedSquareZoomed + boxheight -(bedSquareZoomed/zoommod)-82 ,print?1:0);
 		
 		
 		int c=0;
@@ -566,7 +566,7 @@ public class GcodePainter implements Runnable {
 		}
 	}
 
-	private void printLabelBox(GraphicRenderer g2, int boxposp,int bsizepercent, CharSequence value, CharSequence labl,int laynr) {
+	private void printLabelBox(GraphicRenderer g2, int boxposp,int bsizepercent, CharSequence value, int labl,int laynr) {
 		float boxsize=((bedSquareZoomed+gap)/100)*bsizepercent;
 		float boxpos=((bedSquareZoomed+gap)/100)*boxposp;
 		float boxheight=(bedSquareZoomed)/boxheightfactor;
@@ -676,6 +676,8 @@ public class GcodePainter implements Runnable {
 		g2.setColor(colNR+1);
 		g2.setStroke(3);
 		g2.drawrect(0, 0, bedsquarezoom, bedsquarezoom); // Draw print bed
+		
+		
 		g2.clearrect(bedsquarezoom, 0,  gap, bedsquarezoom,2); //level bar Color 
 		g2.drawrect(bedsquarezoom , 0, gap, bedsquarezoom); // Draw level bar border
 		
@@ -701,9 +703,26 @@ public class GcodePainter implements Runnable {
 		float fsize=2+5f*(zoom)/200*bedSquare;
 		g2.setFontSize(fsize);
 		g2.setColor(colNR);
-		g2.drawtext("Front View", rightofBed+boxsize,fsize+3,boxsize);
-		g2.drawtext("Side View", rightofBed,fsize+3,boxsize);
-		g2.drawtext("Model Details", rightofBed,boxsize+fsize+5,boxsize*2);
+		g2.drawtext(GraphicRenderer.FRONTVIEW, rightofBed+boxsize,fsize+3,boxsize);
+		g2.drawtext(GraphicRenderer.SIDEVIEW, rightofBed,fsize+3,boxsize);
+		g2.drawtext(GraphicRenderer.DETAILS, rightofBed,boxsize+fsize+5,boxsize*2);
+
+		//Unten rechts
+//		g2.setFontSize(fsize*2);
+//		g2.drawtext("3D", bedsquarezoom*0.9f+fsize,bedsquarezoom-fsize);
+//		g2.setStroke(2);
+		//Oben zwischen side/front
+//		g2.setFontSize(fsize*2.5f);
+//		g2.clearrect(rightofBed+boxsize-fsize*1.5f,2,fsize*3f+2,fsize*2f,1);
+//		g2.drawtext("3D", rightofBed+boxsize-fsize*1.5f,fsize*2);
+//		g2.drawrect(rightofBed+boxsize-fsize*1.5f,2,fsize*3f+2,fsize*2f);
+//		g2.setStroke(2);
+		
+	//	g2.drawrect(bedsquarezoom-fsize*2.5f,2,fsize*2.5f,fsize*2.5f);
+//		g2.setStroke(1);
+//		g2.clearrect(bedSquareZoomed+gap+1,bedSquareZoomed + (bedSquareZoomed)/24f, 140, (bedSquareZoomed)/16f,2);
+//		g2.drawrect(bedSquareZoomed+gap+4,bedSquareZoomed + (bedSquareZoomed)/24f +2, 138, (bedSquareZoomed)/16f -5);
+//		g2.drawtext("Open 3D View", bedSquareZoomed+gap+10, bedSquareZoomed +(bedSquareZoomed)/24f +  (bedSquareZoomed)/48f +12 );
 		
 		//Draw circle for round bed
 		if(roundbed && extrazoom == 1){
@@ -758,7 +777,7 @@ public class GcodePainter implements Runnable {
 			g2.drawline(Xoffset*zoom, Yoffset*zoom+10, Xoffset*zoom, Yoffset*zoom-100);
 			g2.setStroke(1);
 		}
-		
+	
 	
 	}
 
@@ -1238,7 +1257,7 @@ public class GcodePainter implements Runnable {
 						fftoLayer=2;
 						return;
 					}
-					printLabelBox(g2, 82,12,"W", "Wait",lay.getNumber());
+					printLabelBox(g2, 82,12,"W", GraphicRenderer.WAIT,lay.getNumber());
 					g2.repaint();
 					while(printer.isPrinting()){
 						Thread.sleep(2500); //check every 2.5 sec if still printing
@@ -1276,7 +1295,7 @@ public class GcodePainter implements Runnable {
 				if (pause != 0) {
 					bufferemptyindex=printlineidx;
 					doPause(lay, renderCode,lineidx);
-					printLabelBox(g2, 82,12,"W", "Wait",lay.getNumber());
+					printLabelBox(g2, 82,12,"W", GraphicRenderer.WAIT,lay.getNumber());
 					g2.repaint();
 				} else if (wait) {
 					//System.out.println("AlignGCode: WAIT "+printCode.isBuffered()+"  PR:"+(printCode.getLineindex()-renderCode.getLineindex())+" BF:"+inbuffer);
@@ -1287,7 +1306,7 @@ public class GcodePainter implements Runnable {
 				}
 			} catch (InterruptedException e) {
 			//	e.printStackTrace();
-				printLabelBox(g2, 82,12,"W", "Wait",lay.getNumber());
+				printLabelBox(g2, 82,12,"W", GraphicRenderer.WAIT,lay.getNumber());
 				g2.repaint();
 			}
 
@@ -1301,7 +1320,7 @@ public class GcodePainter implements Runnable {
 	private void doPause(Layer lay, GCode gCode, int lineidx) throws InterruptedException {
 		inpause=true;
 		if(!snapshot){
-			printLabelBox(g2, 82,12,"P", "Pause",lay.getNumber());
+			printLabelBox(g2, 82,12,"P", GraphicRenderer.PAUSE,lay.getNumber());
 			g2.clearrect(bedSquareZoomed+gap+1,bedSquareZoomed + (bedSquareZoomed)/24f, (bedSquareZoomed/zoommod*2)-2, (bedSquareZoomed)/24f,print?1:0);
 			g2.drawrect(bedSquareZoomed+gap+4,bedSquareZoomed + (bedSquareZoomed)/24f +2, (bedSquareZoomed/zoommod*2)-7, (bedSquareZoomed)/24f -5);
 			g2.drawtext("L"+lineidx+": "+ gCode.getCodeline().toString().trim(), bedSquareZoomed+gap+10, bedSquareZoomed +(bedSquareZoomed)/24f +  (bedSquareZoomed)/48f +1 );
