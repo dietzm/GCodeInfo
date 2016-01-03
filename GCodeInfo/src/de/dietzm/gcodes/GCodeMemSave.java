@@ -159,6 +159,7 @@ public class GCodeMemSave extends GCodeAbstract {
 
 	@Override
 	public String getUnit() {
+		if(ext==null) return "mm";
 		return ext.unit;
 	}
 	
@@ -173,16 +174,19 @@ public class GCodeMemSave extends GCodeAbstract {
 	}
 	@Override
 	public float getIx() {
+		if(ext==null) return 0;
 		return ext.ix;
 	}
 
 	@Override
 	public float getJy() {
+		if(ext==null) return 0;
 		return ext.jy;
 	}
 
 	@Override
 	public float getKz() {
+		if(ext==null) return 0;
 		return ext.kz;
 	}
 	
