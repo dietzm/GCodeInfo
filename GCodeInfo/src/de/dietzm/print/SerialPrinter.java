@@ -22,6 +22,7 @@ public class SerialPrinter implements Runnable, Printer {
 	public static final GCode M27 = GCodeFactory.getGCode("M27", -20);
 	public static final GCode T0 = GCodeFactory.getGCode("T0", -1000);
 	public static final GCode T1 = GCodeFactory.getGCode("T1", -1001);
+	public static final GCode READONLY = GCodeFactory.getGCode("GCODEPRINTR_READONLY", -999999);
 	public static final String serial = "SERIAL"; //log tag
 	public static final String io = "IO"; //log tag	
 
@@ -587,18 +588,20 @@ public class SerialPrinter implements Runnable, Printer {
 			}
 		}
 
-		/*
-		 * Write the gcode to the printer Measure time and lof
-		 */
-		if(state.debug){
-			cons.log(serial, "write gcode line:"+state.lineidx);
-			cons.log(serial, code.getGcode().toString());
+		if(code != READONLY){
+			/*
+			 * Write the gcode to the printer Measure time and lof
+			 */
+			if(state.debug){
+				cons.log(serial, "write gcode line:"+state.lineidx);
+				cons.log(serial, code.getGcode().toString());
+			}
+			int len = code.getCodeline(ioBuffer.array); //Get codeline into buffer
+			ioBuffer.setlength(len);					//adjust buffer len to what we got
+			mConn.writeBuffer(ioBuffer);				//write buffer
+			cons.log(io, null, ioBuffer); 				//log buffer to logfile
+			sendtime = System.currentTimeMillis();
 		}
-		int len = code.getCodeline(ioBuffer.array); //Get codeline into buffer
-		ioBuffer.setlength(len);					//adjust buffer len to what we got
-		mConn.writeBuffer(ioBuffer);				//write buffer
-		cons.log(io, null, ioBuffer); 				//log buffer to logfile
-		sendtime = System.currentTimeMillis();
 		state.readcalls=0; //reset readcalls var debug only
 		int resendcnt=0;
 		/*
@@ -782,6 +785,10 @@ public class SerialPrinter implements Runnable, Printer {
 				cons.log("serial", "Add file output:"+recv.toString());
 				sdfiles.append(recv.toString());
 			}
+			
+			if ( code == READONLY){
+				break;
+			}
 		}
 
 //		int dtime = (int)(System.currentTimeMillis() - starttime);
@@ -862,6 +869,8 @@ public class SerialPrinter implements Runnable, Printer {
 				code = printQueue.pollManual(1); // poll for manual ops
 				if(code != null){
 					state.lastgcode = code;
+				}else if(!strictmode){
+					code = READONLY;
 				}
 			}
 		} else {
@@ -1175,6 +1184,7 @@ public class SerialPrinter implements Runnable, Printer {
 			if(gctimeout == 0) return 6000;
 			return gctimeout;
 		}
+		if (code == READONLY) return mintimout;
 		//Witbox special handlin ... supresses ok when doing G28
 		if( !strictmode 
 				&& !GCDEF.G1.equals(code.getGcodeId()) 
