@@ -16,7 +16,7 @@ public class Temperature {
 	int activeExtruder = 0;
 	TempVal bedtmp;
 	TempVal[] temps;
-	public MemoryEfficientString tempstring = new MemoryEfficientString(new byte[80]);
+	public MemoryEfficientString tempstring = new MemoryEfficientString(new byte[100]);
 	public static final float UNINITIALIZED=-99999;
 
 	/**
@@ -161,8 +161,8 @@ public class Temperature {
 							i++;
 						}
 						startidx = i;
-						while ( i < (tempstring.length()-1) && res[i] != 0 && res[i] != 32 && res[i] != 47 && res[i]!= 64) { // next
-							// space or / or @
+						while ( i < (tempstring.length()-1) && res[i] != 0 && res[i] != 32 && res[i] != 47 && res[i]!= 64 && res[i]!=45 && res[i]!=67 ) { // next
+							// space or / or @ or - or C
 							i++;
 						}
 						stopidx = i;
@@ -177,7 +177,7 @@ public class Temperature {
 						if (res[i] == 47) {
 							i++;
 							startidx = i;
-							while (i < (tempstring.length()-1) && res[i] != 0 && res[i] != 32 && res[i] != 47 && res[i] != 0  && res[i]!= 64) { // next
+							while (i < (tempstring.length()-1) && res[i] != 0 && res[i] != 32 && res[i] != 47 && res[i] != 0  && res[i]!= 64 && res[i]!=67 ) { // next
 								// space or /
 								i++;
 							}
@@ -255,7 +255,8 @@ public class Temperature {
 		ReceiveBuffer rb = new ReceiveBuffer(200);
 		Temperature temp = new Temperature();
 		//rb.put("T:22.0 /0.0 B:0.5 /0.0 @0 B@:0".getBytes());
-		rb.put("T:199.9 /200.0 @19 B:53.0 /50.0 @0 HC:27.0 /0.0 @0 ".getBytes());
+		//rb.put("T:199.9 /200.0 @19 B:53.0 /50.0 @0 HC:27.0 /0.0 @0 ".getBytes());
+		rb.put("ok T:21.3 /0.0 B:82.1 /0.0 T0:21.3 /0.0 @:0 B@:0    ADC B:82.1C->697  T0:21.3C->983".getBytes());
 		
 		//rb.put("T:20.00 E:00 B:40.01@".getBytes());
 		
