@@ -174,7 +174,9 @@ public class GCodeMemSave extends GCodeAbstract {
 	}
 	@Override
 	public float getIx() {
-		if(ext==null) return 0;
+		if(ext==null){
+			return 0;
+		}
 		return ext.ix;
 	}
 

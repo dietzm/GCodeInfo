@@ -181,7 +181,7 @@ public abstract class GCodeAbstract implements GCode {
 	@Override
 	public boolean isBuffered() {
 		//if(gcode==null) return false;
-		if (Constants.GCDEF.G0.equals(gcode) || Constants.GCDEF.G1.equals(gcode) || Constants.GCDEF.G2.equals(gcode)  || Constants.GCDEF.M106.equals(gcode) || Constants.GCDEF.M107.equals(gcode)   ||Constants.GCDEF.G29.equals(gcode) || Constants.GCDEF.G30.equals(gcode) || Constants.GCDEF.G31.equals(gcode) || Constants.GCDEF.G32.equals(gcode)){
+		if (Constants.GCDEF.G0.equals(gcode) || Constants.GCDEF.G1.equals(gcode) || Constants.GCDEF.G2.equals(gcode)  || Constants.GCDEF.M106.equals(gcode) || Constants.GCDEF.M107.equals(gcode)   || Constants.GCDEF.G30.equals(gcode) || Constants.GCDEF.G31.equals(gcode) || Constants.GCDEF.G32.equals(gcode)){
 			return true;
 		}
 		return false;
@@ -192,7 +192,7 @@ public abstract class GCodeAbstract implements GCode {
 	 */
 	@Override
 	public boolean isLongRunning() {
-		if (Constants.GCDEF.M190.equals(gcode) || Constants.GCDEF.M109.equals(gcode) || Constants.GCDEF.G28.equals(gcode) || Constants.GCDEF.M29.equals(gcode) ){
+		if (Constants.GCDEF.M190.equals(gcode) || Constants.GCDEF.M109.equals(gcode) || Constants.GCDEF.G28.equals(gcode) || Constants.GCDEF.G29.equals(gcode) || Constants.GCDEF.M29.equals(gcode) ){
 			return true;
 		}
 		return false;

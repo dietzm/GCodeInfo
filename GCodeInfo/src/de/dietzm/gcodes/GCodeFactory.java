@@ -237,15 +237,20 @@ public class GCodeFactory  {
 				
 				switch (tmpgcode) {
 				case G0:
+				case G00:
 				case G1:
+				case G01:
 					gcd=fillGcodeFields(segments, codelinevar,linenr,tmpgcode);
 					break;
 				case G2:
 				case G3:
+				case G02:
+				case G03:
 					gcd=fillGcodeFields(segments, codelinevar,linenr,tmpgcode);
 					System.err.println("Experimental support of Gcode G2/G3.");
 					break;
 				case G4: //Dwell
+				case G04: //Dwell
 					//TODO add to duration
 					gcd=createDefaultGCode(codelinevar, linenr, tmpgcode);
 					break;
