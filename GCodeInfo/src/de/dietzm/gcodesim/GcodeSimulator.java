@@ -48,7 +48,9 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JComboBox;
 import javax.swing.JDialog;
+import javax.swing.JEditorPane;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -59,6 +61,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
+import javax.swing.text.DefaultCaret;
 
 import de.dietzm.Constants;
 import de.dietzm.Position;
@@ -69,8 +72,11 @@ import de.dietzm.gcodesim.GcodePainter.Commands;
 import de.dietzm.gcodesim.GcodePainter.Travel;
 import de.dietzm.print.ConsoleIf;
 import de.dietzm.print.Dummy;
+import de.dietzm.print.RXTXPrint;
 import de.dietzm.print.ReceiveBuffer;
 import de.dietzm.print.SerialPrinter;
+import de.dietzm.print.SerialPrinter.Axis;
+import de.dietzm.print.SerialPrinter.ResetMode;
 
 
 /**
@@ -132,6 +138,7 @@ public class GcodeSimulator extends JFrame implements ActionListener {
 	 * 1.28 redesign, T0: answers, bfb fix
 	 * 1.29 snapshot function, paint dual nozzle even when m128, aspect ratio + resize
 	 * 1.31 Custom bed size support, fit to page zoom
+	 * 1.32 GcodePrintr V252 base + fixed G02/G03
 	 */
 	
 	
@@ -155,7 +162,7 @@ public class PrintrPanel extends JPanel {
 			if(awt != null)	awt.drawImage(g);
 		}
 	}
-	public static final String VERSION = "v1.31";	
+	public static final String VERSION = "v1.32";	
 	GcodePainter gp;
 	AWTGraphicRenderer awt;
 	boolean showdetails =true;
@@ -164,6 +171,7 @@ public class PrintrPanel extends JPanel {
 	static int bedsizeX=200;
 	static int bedsizeY=200;
 	static int bedrectsize=200;
+	ConsoleIf console;
 	static String dualoffsetXY = "0:0";
 	BufferedImage img = null;
 	PainterPanel painter = null;
@@ -175,7 +183,7 @@ public class PrintrPanel extends JPanel {
 	JPanel printpanel = null;
 	JButton banner = null;
 	static String theme = "default";
-	
+	SerialPrinter	sio ;
 	//Properties
 	static String networkip = "192.168.0.50";
 	static String lastfilepath = System.getProperty("user.dir");
@@ -207,6 +215,83 @@ public class PrintrPanel extends JPanel {
 			add(printpanel,BorderLayout.EAST);
 		}
 		
+		console=new ConsoleIf() {
+			
+			public void updateState(int statemsg,CharSequence detail, int perc){
+				
+			}
+			public void updateState(int statemsg,int detail, int perc){
+				
+			}
+			
+			
+			@Override
+			public void setWakeLock(boolean active) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void setTemp(Temperature temp) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void setPrinting(boolean printing) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void log(String tag, String value, ReceiveBuffer buf) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void log(String tag, String value) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public boolean hasWakeLock() {
+				// TODO Auto-generated method stub
+				return false;
+			}
+			
+			@Override
+			public void clearConsole() {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public int chooseDialog(String[] items, String[] values, int type) {
+			System.out.println("Choosedialog");
+			showChooseDialog(items);
+			return 1;
+			}
+			
+			@Override
+			public void appendTextNoCR(CharSequence... txt) {
+				for (CharSequence n : txt) {
+					System.out.println(n);
+					cons.append(n.toString());
+		         }
+			}
+			
+			@Override
+			public void appendText(CharSequence... txt) {
+				for (CharSequence n : txt) {
+					System.out.println(n);
+					cons.append(n.toString()+"\n");
+					cons.setCaretPosition(cons.getDocument().getLength());
+		         }
+												
+			}
+		};
 	}
 
 	private JButton initBanner() {
@@ -238,7 +323,7 @@ public class PrintrPanel extends JPanel {
 	
 	public JPanel getPrintButtonPanel(){
 		JPanel bp = new JPanel();
-		bp.setPreferredSize(new Dimension(210, 1000));
+		bp.setPreferredSize(new Dimension(230, 1000));
 		bp.setLayout(new FlowLayout());
 		bp.add(new JLabel("        Motor Control       "));
 		addButton(bp,"X-Home","XHome");
@@ -250,27 +335,34 @@ public class PrintrPanel extends JPanel {
 		addButton(bp,"Y-Home","YHome");
 		addButton(bp,"Y-","Y-");
 		addButton(bp,"Z-","Z-");
-		bp.add(new JLabel("    Extruder & Heat   "));
+		bp.add(new JLabel("    Extruder & Heat          "));
 		addButton(bp,"Extrude","Extrude");
 		addButton(bp,"Retract","Retract");
 		addButton(bp,"Fan","Fan");
-		bp.add(new JLabel("      Print Control      "));
+		bp.add(new JLabel("      Print Control                "));
 		addButton(bp,"Connect","Connect");
 		addButton(bp,"Reset","Reset");
-		addButton(bp,"Print","Print");
-		
+		addButton(bp,"Print","Print");		
 		bp.add(new JLabel("      Console      "));
 		cons = new JTextArea(">");
+	
 		cons.setPreferredSize(new Dimension(200,2000));
+		DefaultCaret caret = (DefaultCaret)cons.getCaret();
+	    caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
+	    
 		JScrollPane scp = new JScrollPane(cons);
 		scp.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
 		scp.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-		scp.setPreferredSize(new Dimension(205,200));
+		scp.setPreferredSize(new Dimension(205,400));
+
 		bp.add(scp);
+		
+		addButton(bp,"Send Gcode","gcode").setPreferredSize(new Dimension(200,40));;	
+
 		return bp;
 	}
 
-	private void addButton(JPanel bp,String title,String cmd) {
+	private JButton addButton(JPanel bp,String title,String cmd) {
 		JButton load = new JButton(title);
 		load.setPreferredSize(new Dimension(65, 60));
 		load.addActionListener(this);
@@ -279,6 +371,7 @@ public class PrintrPanel extends JPanel {
 		load.setMargin(new Insets(0, 0, 0, 0));
 		load.setFont(load.getFont().deriveFont(5));
 		bp.add(load);
+		return load;
 	}
 	
 	public void init(String filename,InputStream in) throws IOException{
@@ -574,7 +667,7 @@ public class PrintrPanel extends JPanel {
 	public void actionPerformed(ActionEvent arg0) {
 		if(arg0.getActionCommand().equals("GCodePrintr")){		
 					try {
-						openWebpage(new URI("http://gcodeprintr.dietzm.de"));
+						openWebpage(new URI("http://3dprintapps.de"));
 					} catch (URISyntaxException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -610,91 +703,78 @@ public class PrintrPanel extends JPanel {
 			}
 			return;
 		}
+		if(arg0.getActionCommand().equals("XHome")){
+			sio.homeAxis(Axis.X);
+		}
+		if(arg0.getActionCommand().equals("YHome")){
+			sio.homeAxis(Axis.Y);
+		}
+		if(arg0.getActionCommand().equals("ZHome")){
+			sio.homeAxis(Axis.Z);
+		}
+		if(arg0.getActionCommand().equals("Y+")){
+			sio.moveStep(Axis.Y, 1);
+		}
+		if(arg0.getActionCommand().equals("Y-")){
+			sio.moveStep(Axis.Y, -1);
+		}
+		if(arg0.getActionCommand().equals("X+")){
+			sio.moveStep(Axis.X, 1);
+		}
+		if(arg0.getActionCommand().equals("X-")){
+			sio.moveStep(Axis.X, -1);
+		}
+		if(arg0.getActionCommand().equals("Z-")){
+			sio.moveStep(Axis.Z, -1);
+		}
+		if(arg0.getActionCommand().equals("Z+")){
+			sio.moveStep(Axis.Z, 1);
+		}
+		if(arg0.getActionCommand().equals("gcode")){
+			showSednGcodeDialog();
+		}
+		if(arg0.getActionCommand().equals("Print")){
+			try {
+				sio.printModel(gp.model, null, false, 0);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				cons.append("Error: "+e);
+				e.printStackTrace();
+			}
+			//sio.addToPrintQueue(GCodeFactory.getGCode("M109 S200", 0), true);
+			
+		}
+		if(arg0.getActionCommand().equals("Extrude")){
+			sio.moveStep(Axis.E, 1);
+		}
+		if(arg0.getActionCommand().equals("Retract")){
+			sio.moveStep(Axis.E, -1);
+		}
+		if(arg0.getActionCommand().equals("Fan")){
+			cons.append("Not supported");
+		}
+		if(arg0.getActionCommand().equals("Reset")){
+			sio.setResetMode(ResetMode.CONTROLX);
+			sio.reset();
+		}
 		if(arg0.getActionCommand().equals("Connect")){
 			try {
-				
-				ConsoleIf console=new ConsoleIf() {
-					
-					public void updateState(int statemsg,CharSequence detail, int perc){
-						
-					}
-					public void updateState(int statemsg,int detail, int perc){
-						
-					}
-					
-					
-					@Override
-					public void setWakeLock(boolean active) {
-						// TODO Auto-generated method stub
-						
-					}
-					
-					@Override
-					public void setTemp(Temperature temp) {
-						// TODO Auto-generated method stub
-						
-					}
-					
-					@Override
-					public void setPrinting(boolean printing) {
-						// TODO Auto-generated method stub
-						
-					}
-					
-					@Override
-					public void log(String tag, String value, ReceiveBuffer buf) {
-						// TODO Auto-generated method stub
-						
-					}
-					
-					@Override
-					public void log(String tag, String value) {
-						// TODO Auto-generated method stub
-						
-					}
-					
-					@Override
-					public boolean hasWakeLock() {
-						// TODO Auto-generated method stub
-						return false;
-					}
-					
-					@Override
-					public void clearConsole() {
-						// TODO Auto-generated method stub
-						
-					}
-					
-					@Override
-					public int chooseDialog(String[] items, String[] values, int type) {
-					System.out.println("Choosedialog");
-					return 1;
-					}
-					
-					@Override
-					public void appendTextNoCR(CharSequence... txt) {
-						for (CharSequence n : txt) {
-							System.out.println(n);
-							cons.append(n.toString());
-				         }
-					}
-					
-					@Override
-					public void appendText(CharSequence... txt) {
-						for (CharSequence n : txt) {
-							System.out.println(n);
-							cons.append(n.toString()+"\n");
-				         }
-														
-					}
-				};
-				SerialPrinter	sio = new SerialPrinter(console);
-				
+				if(sio != null && sio.isConnected()){
+					sio.disconnect();
+					cons.append("Disconnect");
+					return;
+				}
+
+				sio = new SerialPrinter(console);
 				
 				gp.setPrintercon(sio);
-				
-				sio.connect(new Dummy(sio, console),115200);	
-				sio.connectTo("usb");
+				sio.setDebug(true);
+			//	sio.connect(new Dummy(sio, console),115200);	
+				sio.setTimeout(3000);
+				sio.connect(new RXTXPrint(sio,sio.getConsole()), 115200);
+				//sio.connectTo("/dev/ttyACM0");
+				//cons.append("Connected\n");
+				//sio.addToPrintQueue(GCodeFactory.getGCode("version", 0), false);
 				} catch (NoClassDefFoundError er) {
 					//er.printStackTrace();
 					System.out.println("Opening COM Port FAILED ! RXTX Jar Missing.  " + er);
@@ -772,6 +852,117 @@ public class PrintrPanel extends JPanel {
 		tf2.addActionListener(action);
 		in.add(new Label("Enter Layer Number"));
 		in.add(tf2);
+		in.add(btn1);
+		in.add(btn2);
+		in.add(status);
+		in.setSize(330,120);
+		in.setVisible(true);
+	}
+	
+	public void showSednGcodeDialog(){
+		final JDialog in = new JDialog(this,"Send GCode",true);
+		in.setLayout(new FlowLayout());
+		in.setBackground(Color.lightGray);
+		final JTextField tf2 = new JTextField(15);
+		final JLabel status = new JLabel("                                                    ");
+		tf2.setText("G28");
+//		tf2.setSize(200,20);
+		JButton btn1 = new JButton("Send");
+		JButton btn2 = new JButton("Cancel");
+		btn2.setActionCommand("Cancel");
+		
+		in.addWindowListener(new WindowListener() {			
+			@Override
+			public void windowOpened(WindowEvent arg0) {}			
+			@Override
+			public void windowIconified(WindowEvent arg0) {	}			
+			@Override
+			public void windowDeiconified(WindowEvent arg0) {}			
+			@Override
+			public void windowDeactivated(WindowEvent arg0) {}			
+			@Override
+			public void windowClosing(WindowEvent arg0) {
+				in.setVisible(false);				
+			}			
+			@Override
+			public void windowClosed(WindowEvent arg0) {
+				in.setVisible(false);				
+			}			
+			@Override
+			public void windowActivated(WindowEvent arg0) {	}
+		});
+		ActionListener action= new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if(e.getActionCommand().equals("Cancel")){
+					in.dispose();
+					return;
+				}
+				String lar = tf2.getText();
+				sio.addToPrintQueue(GCodeFactory.getGCode(lar, 0), false)	;			
+			}
+		};
+		btn1.addActionListener(action);
+		btn2.addActionListener(action);
+		tf2.addActionListener(action);
+		in.add(new Label("Enter GCode"));
+		in.add(tf2);
+		in.add(btn1);
+		in.add(btn2);
+		in.add(status);
+		in.setSize(330,120);
+		in.setVisible(true);
+	}
+	
+	public void showChooseDialog(String[] names){
+		final JDialog in = new JDialog(this,"Send GCode",true);
+		in.setLayout(new FlowLayout());
+		in.setBackground(Color.lightGray);
+		
+		final JLabel status = new JLabel("                                                    ");
+		final JComboBox<String> box = new JComboBox<String>(names);
+		JButton btn1 = new JButton("Ok");
+		JButton btn2 = new JButton("Cancel");
+		btn2.setActionCommand("Cancel");
+		
+		in.addWindowListener(new WindowListener() {			
+			@Override
+			public void windowOpened(WindowEvent arg0) {}			
+			@Override
+			public void windowIconified(WindowEvent arg0) {	}			
+			@Override
+			public void windowDeiconified(WindowEvent arg0) {}			
+			@Override
+			public void windowDeactivated(WindowEvent arg0) {}			
+			@Override
+			public void windowClosing(WindowEvent arg0) {
+				in.setVisible(false);				
+			}			
+			@Override
+			public void windowClosed(WindowEvent arg0) {
+				in.setVisible(false);				
+			}			
+			@Override
+			public void windowActivated(WindowEvent arg0) {	}
+		});
+		ActionListener action= new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if(e.getActionCommand().equals("Cancel")){
+					in.dispose();
+					return;
+				}
+				sio.connectTo((String)box.getSelectedItem());
+				in.dispose();
+			}
+		};
+		btn1.addActionListener(action);
+		btn2.addActionListener(action);
+	//	tf2.addActionListener(action);
+		in.add(new Label("Enter GCode"));
+		in.add(box);
 		in.add(btn1);
 		in.add(btn2);
 		in.add(status);
