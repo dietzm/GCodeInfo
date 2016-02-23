@@ -160,6 +160,7 @@ public class PrintQueue implements Runnable {
 	}
 	
 	public int getPercentCompleted() {
+		if(printModel == null) return 100;
 		if ((printModel.getGcodecount()/100) == 0) return 100;
 		if (aprintQ.size() == 0) return 100;
 		//System.out.println("Gcode count:"+printModel.getGcodecount());
