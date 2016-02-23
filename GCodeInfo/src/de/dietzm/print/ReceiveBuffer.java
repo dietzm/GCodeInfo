@@ -151,6 +151,18 @@ public class ReceiveBuffer implements CharSequence,Appendable {
 		return false; //ASCII
 	}
 	
+	/**
+	 * Smoothie return !! when halted
+	 * @return
+	 */
+	public boolean isHalted(){
+		if(len<2) return false;
+		for (int i = 0; i < len-1; i++) {
+			if(array[i]==33 && array[i+1]==33) return true;
+		}
+		return false; //ASCII
+	}
+	
 	public int indexOf(char ch){
 		if(len<1) return -1;
 		for (int i = 0; i < len-1; i++) {

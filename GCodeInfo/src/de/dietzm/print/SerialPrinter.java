@@ -44,6 +44,7 @@ public class SerialPrinter implements Runnable, Printer {
 	private float testrunavg = 0;
 	private int tempwatchintervall = 10000;
 	private boolean resetoninit=true;
+	ResetMode resetmode = ResetMode.DTR;
 	private boolean logerrors=true;
 	private boolean onconnect =false;
 	private boolean homexyfinish = false;
@@ -84,6 +85,12 @@ public class SerialPrinter implements Runnable, Printer {
 	public void setResetoninit(boolean resetoninit) {
 		this.resetoninit = resetoninit;
 	}
+	public void setResetMode(ResetMode mode){
+		resetmode=mode;
+		if(resetmode == ResetMode.SMOOTHIERESET || resetmode == ResetMode.M112){
+			resetoninit=false;
+		}
+	}
 	
 	/**
 	 * Serialprinter will pause automatically when this line number is get from queue
@@ -118,6 +125,9 @@ public class SerialPrinter implements Runnable, Printer {
 
 	public static enum Axis {
 		E, X, Y, Z
+	}
+	public static enum ResetMode {
+		DTR, SMOOTHIERESET, M112 , CONTROLX
 	}
 
 	public class States {
@@ -389,13 +399,64 @@ public class SerialPrinter implements Runnable, Printer {
 				if (state.printing) setPrintMode(false,true);
 				docleanup();
 				cons.updateState(States.RESET,States.RESETMSG,0);
-				mConn.reset();
-				ReceiveBuffer recv = readResponse(10000,1000);
-				if (recv.isEmpty()) {
-					cons.appendText("No printer response after reset ! Your hardware might not support reset over serial.");
-				} else {
-					cons.appendTextNoCR(recv);
-				}			
+			
+				if(resetmode == ResetMode.DTR ){
+					mConn.reset(); //DTR Reset
+					ReceiveBuffer recv = readResponse(10000,1000);
+					if (recv.isEmpty()) {
+						cons.appendText("No printer response after reset ! Your hardware might not support reset over serial.");
+					} else {
+						cons.appendTextNoCR(recv);
+					}
+				}else if (resetmode == ResetMode.SMOOTHIERESET){
+					GCode code = GCodeFactory.getGCode("reset", -1);
+					int len = code.getCodeline(ioBuffer.array); //Get codeline into buffer
+					ioBuffer.setlength(len);					//adjust buffer len to what we got
+					mConn.writeBuffer(ioBuffer);				//write buffer
+					cons.log(io, null, ioBuffer); 				//log buffer to logfile
+					ReceiveBuffer recv = readResponse(10000,1000);
+					if (recv.isEmpty()) {
+						cons.appendText("No printer response after reset ! Your hardware might not support the reset command.");
+					} else {
+						cons.appendTextNoCR(recv);
+					}
+				}else if (resetmode == ResetMode.M112){
+					GCode code = GCodeFactory.getGCode("M112", -1);
+					int len = code.getCodeline(ioBuffer.array); //Get codeline into buffer
+					ioBuffer.setlength(len);					//adjust buffer len to what we got
+					mConn.writeBuffer(ioBuffer);				//write buffer
+					cons.log(io, null, ioBuffer); 				//log buffer to logfile
+					ReceiveBuffer recv = readResponse(10000,1000);
+					if (recv.isEmpty()) {
+						cons.appendText("No printer response after reset ! Your hardware might not support the M112 command.");
+					} else {
+						cons.appendTextNoCR(recv);
+					}
+				}else if (resetmode == ResetMode.CONTROLX){
+					GCode code = GCodeFactory.getGCode((char)24+"", -1);
+					if(state.debug){
+						cons.log(serial, "write gcode line: CTRLX");
+					}
+					int len = code.getCodeline(ioBuffer.array); //Get codeline into buffer
+					ioBuffer.setlength(len);					//adjust buffer len to what we got
+					mConn.writeBuffer(ioBuffer);				//write buffer
+					cons.log(io, null, ioBuffer); 				//log buffer to logfile
+					code = GCodeFactory.getGCode("M999", -1);
+					if(state.debug){
+						cons.log(serial, "write gcode line: M999");
+					}
+					len = code.getCodeline(ioBuffer.array); //Get codeline into buffer
+					ioBuffer.setlength(len);					//adjust buffer len to what we got
+					mConn.writeBuffer(ioBuffer);				//write buffer
+					cons.log(io, null, ioBuffer); 				//log buffer to logfile
+					ReceiveBuffer recv = readResponse(10000,1000);
+					if (recv.isEmpty()) {
+						cons.appendText("No printer response after reset ! Your hardware might not support the CTRL-X command.");
+					} else {
+						cons.appendTextNoCR(recv);
+					}
+				}
+				
 			} catch (Exception e) {
 				if (state.debug)
 					cons.appendText("Reset failed or interrupted:" + e);
@@ -754,6 +815,14 @@ public class SerialPrinter implements Runnable, Printer {
 				}
 				break;
 			}
+			
+			//Sheck if smoothieboard is halted (!!)
+			if(recv.isHalted()){
+				cons.appendText("Smoothieboard is halted. Please run M999 to continue.");
+				state.unexpected++;
+				break;
+			}
+				
 			//Check if temperature field needs to be updated (M109,m116,..)
 			if (recv.containsTx()) { // Parse temperature
 				try {
