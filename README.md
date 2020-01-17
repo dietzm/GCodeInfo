@@ -1,42 +1,28 @@
-GCodeInfo
-=========
+# GCodeInfo
 
- This is a small command line tool to analyse gcodes (control codes for 3D printers, CNC,...). 
- It calculates various print details like 
-  -print time -used filament 
-  -yx move distance 
-  -print object dimension 
-  -average print speeds 
-  -number of layers 
-  -layer details 
-  -speed distribution 
-  -weight and price of the printed object ...  
-  
-I used it to optimize my slicer settings and print times for my reprap printer. 
-Tested mostly with slic3r generated gcodes.
- 
-  ***UPDATE V0.95 Version****
-Added guessed info about print material and diameter
-Added info about mass and weight (based on guessed material info)
-Added info about price (based on guessed material info + default price per kg=30€)
-Ability to specify environment variables to overwrite diameter and price per kg (FILAMENT_DIAMETER, FILAMENT_PRICE_KG)
-(Guessing of PLA or ABS is based on temperature, Diameter guessing based slicer comments or rough guess assuming WOT=~2) .
-Fixed some issues with Skeinforge comments and average calulations.
+This is a small command line tool to analyse gcodes (control codes for 3D printers, CNC,...). It calculates various print details like:
 
-***UPDATE V0.94 Version****
-Added support for Java 1.6 (MacOS)
+- print time -used filament 
+- yx move distance 
+- print object dimension 
+- average print speeds 
+- number of layers 
+- layer details 
+- speed distribution 
+- weight and price of the printed object ...  
 
-***UPDATE V0.93 Version****
-Fixed issues with Z-Lift and negative coordinates.
-Added "position on print bed" to model details.
-Show gcode load time and analyse time.
-Added undodumented option "g" for debugging (print gcode details)
+I used it to optimize my slicer settings and print times for my reprap printer. Tested mostly with slic3r generated gcodes.
 
-
+## Usage
 
 Start the java program by calling on the command line (Java 1.7.x required)
-java -jar GCodeInfo.jar [mplnscg] gcode_file
 
+```
+java -jar GCodeInfo.jar [mplnscg] gcode_file
+```
+## Output Example
+
+```
 GcodeUtil 0.91
 Usage: GcodeUtil [mode m|p|n] gcodefile [
 Modes:
@@ -145,5 +131,21 @@ Avg.Speed(Travel): 140.73mm/s
 Max.Speed(Print): 120.0mm/s
 Min.Speed(Print): 33.0mm/s
 Percent of time:12.52%
+```
+## Release Notes
 
-Tested mostly with slic3r generated gcodes.
+### UPDATE V0.95 Version
+- Added guessed info about print material and diameter
+- Added info about mass and weight (based on guessed material info)
+- Added info about price (based on guessed material info + default price per kg=30€)
+- Ability to specify environment variables to overwrite diameter and price per kg (FILAMENT_DIAMETER, FILAMENT_PRICE_KG) (Guessing of PLA or ABS is based on temperature, Diameter guessing based slicer comments or rough guess assuming WOT=~2) .
+- Fixed some issues with Skeinforge comments and average calulations.
+
+### UPDATE V0.94 Version
+- Added support for Java 1.6 (MacOS)
+
+### UPDATE V0.93 Version
+- Fixed issues with Z-Lift and negative coordinates.
+- Added "position on print bed" to model details.
+- Show gcode load time and analyse time.
+- Added undodumented option "g" for debugging (print gcode details)
