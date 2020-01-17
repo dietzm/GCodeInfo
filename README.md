@@ -138,7 +138,7 @@ Percent of time:12.52%
 - Added guessed info about print material and diameter
 - Added info about mass and weight (based on guessed material info)
 - Added info about price (based on guessed material info + default price per kg=30€)
-- Ability to specify environment variables to overwrite diameter and price per kg (FILAMENT_DIAMETER, FILAMENT_PRICE_KG) (Guessing of PLA or ABS is based on temperature, Diameter guessing based slicer comments or rough guess assuming WOT=~2) .
+- Ability to specify environment variables to overwrite diameter and price per kg (`FILAMENT_DIAMETER`, `FILAMENT_PRICE_KG`) (Guessing of PLA or ABS is based on temperature, Diameter guessing based slicer comments or rough guess assuming WOT=~2) .
 - Fixed some issues with Skeinforge comments and average calulations.
 
 ### UPDATE V0.94 Version
