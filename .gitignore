@@ -1,0 +1,7 @@
+# Ignore macOS cache files
+**/.DS_Store
+# Ignore the bin directory
+GCodeInfo/bin
+# Ignore class files in all of the sub directories
+GCodeInfo/**/*.class
+

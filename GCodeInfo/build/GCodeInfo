@@ -1,0 +1,19 @@
+#!/bin/bash
+
+script_directory="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+readlink_command='readlink -e'
+if [[ "$( uname -s )" == 'Darwin' ]]; then
+    readlink_command='readlink'
+fi
+
+if real_script_path="$( $readlink_command \
+    "$script_directory"'/'"$( basename "$0" )" )"
+then
+    real_script_directory="$( dirname "$real_script_path" )"
+else
+    # shellcheck disable=SC2034
+    real_script_directory="$script_directory"
+fi
+
+# TODO: Support JVM options
+java -jar "$real_script_directory"'/GCodeInfo.jar' "$@"

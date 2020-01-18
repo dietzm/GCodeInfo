@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<jardesc>
+    <jar path="GCodeInfo/build/GCodeInfo.jar"/>
+    <options buildIfNeeded="true" compress="true" descriptionLocation="/GCodeInfo/GCodeInfo_all.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="false" overwrite="true" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
+    <storedRefactorings deprecationInfo="true" structuralOnly="false"/>
+    <selectedProjects/>
+    <manifest generateManifest="true" mainClassHandleIdentifier="=GCodeInfo/src&lt;de.dietzm{GCodeUtil.java[GCodeUtil" manifestLocation="/GCodeInfo/META-INF/MANIFEST.MF" manifestVersion="1.0" reuseManifest="false" saveManifest="false" usesManifest="true">
+        <sealing sealJar="false">
+            <packagesToSeal/>
+            <packagesToUnSeal/>
+        </sealing>
+    </manifest>
+    <selectedElements exportClassFiles="true" exportJavaFiles="true" exportOutputFolder="false">
+        <file path="/GCodeInfo/.gitignore"/>
+        <file path="/GCodeInfo/GCodeInfo_generated.jardesc"/>
+        <folder path="/GCodeInfo/python"/>
+        <file path="/GCodeInfo/.project"/>
+        <file path="/GCodeInfo/.DS_Store"/>
+        <folder path="/GCodeInfo/lib"/>
+        <javaElement handleIdentifier="=GCodeInfo/src"/>
+        <javaElement handleIdentifier="=GCodeInfo/res"/>
+        <file path="/GCodeInfo/librxtxSerial.jnilib"/>
+        <folder path="/GCodeInfo/.settings"/>
+        <file path="/GCodeInfo/.classpath"/>
+        <file path="/GCodeInfo/LICENSE"/>
+    </selectedElements>
+</jardesc>

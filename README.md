@@ -1,42 +1,81 @@
-GCodeInfo
-=========
+# GCodeInfo
 
- This is a small command line tool to analyse gcodes (control codes for 3D printers, CNC,...). 
- It calculates various print details like 
-  -print time -used filament 
-  -yx move distance 
-  -print object dimension 
-  -average print speeds 
-  -number of layers 
-  -layer details 
-  -speed distribution 
-  -weight and price of the printed object ...  
-  
-I used it to optimize my slicer settings and print times for my reprap printer. 
-Tested mostly with slic3r generated gcodes.
- 
-  ***UPDATE V0.95 Version****
-Added guessed info about print material and diameter
-Added info about mass and weight (based on guessed material info)
-Added info about price (based on guessed material info + default price per kg=30€)
-Ability to specify environment variables to overwrite diameter and price per kg (FILAMENT_DIAMETER, FILAMENT_PRICE_KG)
-(Guessing of PLA or ABS is based on temperature, Diameter guessing based slicer comments or rough guess assuming WOT=~2) .
-Fixed some issues with Skeinforge comments and average calulations.
+This is a small command line tool to analyse gcodes (control codes for 3D printers, CNC,...). It calculates various print details like:
 
-***UPDATE V0.94 Version****
-Added support for Java 1.6 (MacOS)
+- print time -used filament 
+- yx move distance 
+- print object dimension 
+- average print speeds 
+- number of layers 
+- layer details 
+- speed distribution 
+- weight and price of the printed object ...  
 
-***UPDATE V0.93 Version****
-Fixed issues with Z-Lift and negative coordinates.
-Added "position on print bed" to model details.
-Show gcode load time and analyse time.
-Added undodumented option "g" for debugging (print gcode details)
+I used it to optimize my slicer settings and print times for my reprap printer. Tested mostly with slic3r generated gcodes.
 
+## Building
 
+Prior to build the project, you will need:
+
+- Eclipse IDE
+
+Once installed:
+
+1. Clone or download (And decompress) this repository to your computer
+2. Open the `GCodeInfo` folder as a project in Eclipse
+3. By default, projects will build automatically but you can prevent this by
+    clicking on the **Project** menu and unchecking the **Build Automatically**
+    button. Then, every time you want to build the project you will need to
+    click the **Project > Build** menu
+4. You can build a `.jar` file inside of the `build` directory by
+    right-clicking on any of the `.jardesc` files and then on the
+    **Create JAR** context menu. The project contains two `.jardesc` files:
+
+    - `GCodeInfo_generated.jardesc`: Will create a `.jar` file only 
+        including the compiled files and the resources of the project.
+    - `GCodeInfo_all.jardesc`: Will create a `.jar` file containing all of the
+        project files, including the compiled and the source code files.
+
+    By default a `.jar` file is available on the `build` folder of this
+    repository to use it without having to compile the project.
+
+## Usage
 
 Start the java program by calling on the command line (Java 1.7.x required)
-java -jar GCodeInfo.jar [mplnscg] gcode_file
 
+```
+java -jar ./GCodeInfo/GCodeInfo/build/GCodeInfo.jar [mplnscg] <GCODE_FILE>
+```
+
+where `<GCODE_FILE>` should be replaced by the path to the G-Code file you want
+information about.
+
+The software will work with default values for the filament diameter, filament
+material and filament price per Kg settings, but these defaults can be
+overriden with the use of environment variables which in `bash` can be set as
+follows:
+
+```bash
+export FILAMENT_DIAMETER=1.75
+export FILAMENT_MATERIAL='PLA'
+export FILAMENT_PRICE_KG=30
+java -jar ./GCodeInfo/GCodeInfo/build/GCodeInfo.jar [mplnscg] <GCODE_FILE>
+```
+
+Instead of calling `java -jar ...` directly a bash script is included inside of
+the `GCodeInfo/build` folder so that in Linux and macOS you can call it as
+follows:
+
+```bash
+./GCodeInfo/GCodeInfo/build/GCodeInfo [mplnscg] <GCODE_FILE>
+```
+
+this script can be symlinked and executed without issues as long as the `.jar`
+file is kept on the same folder as the script
+
+## Output Example
+
+```
 GcodeUtil 0.91
 Usage: GcodeUtil [mode m|p|n] gcodefile [
 Modes:
@@ -145,5 +184,21 @@ Avg.Speed(Travel): 140.73mm/s
 Max.Speed(Print): 120.0mm/s
 Min.Speed(Print): 33.0mm/s
 Percent of time:12.52%
+```
+## Release Notes
 
-Tested mostly with slic3r generated gcodes.
+### UPDATE V0.95 Version
+- Added guessed info about print material and diameter
+- Added info about mass and weight (based on guessed material info)
+- Added info about price (based on guessed material info + default price per kg=30€)
+- Ability to specify environment variables to overwrite diameter and price per kg (`FILAMENT_DIAMETER`, `FILAMENT_PRICE_KG`) (Guessing of PLA or ABS is based on temperature, Diameter guessing based slicer comments or rough guess assuming WOT=~2) .
+- Fixed some issues with Skeinforge comments and average calulations.
+
+### UPDATE V0.94 Version
+- Added support for Java 1.6 (MacOS)
+
+### UPDATE V0.93 Version
+- Fixed issues with Z-Lift and negative coordinates.
+- Added "position on print bed" to model details.
+- Show gcode load time and analyse time.
+- Added undodumented option "g" for debugging (print gcode details)
