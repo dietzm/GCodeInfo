@@ -15,6 +15,5 @@ else
     real_script_directory="$script_directory"
 fi
 
-# The program doesn't receive parameters yet so if this script is provided with
-# arguments we will pass them directly as the JVM options
-java "$@" -jar "$real_script_directory"'/GCodeInfo.jar'
+# TODO: Support JVM options
+java -jar "$real_script_directory"'/GCodeInfo.jar' "$@"
