@@ -62,6 +62,17 @@ export FILAMENT_PRICE_KG=30
 java -jar ./GCodeInfo/GCodeInfo/build/GCodeInfo.jar [mplnscg] <GCODE_FILE>
 ```
 
+Instead of calling `java -jar ...` directly a bash script is included inside of
+the `GCodeInfo/build` folder so that in Linux and macOS you can call it as
+follows:
+
+```bash
+./GCodeInfo/GCodeInfo/build/GCodeInfo [mplnscg] <GCODE_FILE>
+```
+
+this script can be symlinked and executed without issues as long as the `.jar`
+file is kept on the same folder as the script
+
 ## Output Example
 
 ```
